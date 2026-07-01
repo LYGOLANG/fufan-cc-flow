@@ -1,0 +1,15 @@
+[package]
+name = "cc-app"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1.0.103"
+cc-core = { path = "../cc-core" }
+eframe = "0.35.0"
+egui = "0.35.0"
+egui_commonmark = { version = "0.24.0", features = ["better_syntax_highlighting"] }
+serde_json = "1.0.150"
+syntect = { version = "5.3.0", default-features = false, features = ["default-fancy", "dump-load", "html"] }
+tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "sync", "time"] }
+vte = "0.15.0"
