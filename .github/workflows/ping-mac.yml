@@ -1,0 +1,10 @@
+name: Ping Mac
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: macos-latest
+    steps:
+      - run: echo hello
