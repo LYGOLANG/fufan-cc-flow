@@ -24,10 +24,10 @@ import {
 import { useUIStore } from "../stores/uiStore";
 import { useSystemStore } from "../stores/systemStore";
 import { useConfigStore } from "../stores/configStore";
-import type { Engine, CodexEffort, CodexModel } from "../stores/configStore";
 import { useClaudeStatus } from "../hooks/useClaudeStatus";
 import type { ModelId, EffortLevel } from "../types/claude";
 import { api } from "../services/api";
+import ProvidersPanel from "../components/settings/ProvidersPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,18 +38,6 @@ const INSTALL_COMMANDS: Record<InstallMethod, string> = {
   winget: "winget install Anthropic.ClaudeCode",
   cmd: "curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd",
 };
-
-const MODELS: { id: ModelId; label: string; desc: string }[] = [
-  { id: "opus",   label: "Claude Opus 4.8",   desc: "最强大，适合复杂任务" },
-  { id: "sonnet", label: "Claude Sonnet 4.6", desc: "速度与能力的平衡" },
-  { id: "haiku",  label: "Claude Haiku 4.5",  desc: "轻量快速，适合简单任务" },
-];
-
-const EFFORT_LEVELS: { id: EffortLevel; label: string }[] = [
-  { id: "high",   label: "高" },
-  { id: "medium", label: "中" },
-  { id: "low",    label: "低" },
-];
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -493,8 +481,8 @@ function Step1EnvCard({ done }: { done: boolean }) {
 // ─── Anthropic Tab ─────────────────────────────────────────────────────────────
 
 function AnthropicTab() {
-  const { proxySettings, claudeSettingsEnv, authStatus, claudeTesting, claudeTestResult, availableModels, modelsSource, modelsLoading, loadModels, saveClaudeSettings, testClaude, loadAuthStatus } = useSystemStore();
-  const { apiKey, setApiKey, model, setModel, effort, setEffort, thinking, setThinking } = useConfigStore();
+  const { proxySettings, claudeSettingsEnv, authStatus, claudeTesting, claudeTestResult, availableModels, loadModels, saveClaudeSettings, testClaude, loadAuthStatus } = useSystemStore();
+  const { apiKey, setApiKey, model } = useConfigStore();
   // Default the auth toggle to your actual login method (订阅/OAuth vs API Key),
   // so re-entering settings reflects what you previously set up.
   const [authMode, setAuthMode] = useState<"apikey" | "oauth">(
@@ -510,15 +498,12 @@ function AnthropicTab() {
     }
   }, [authStatus]);
 
-  // Load the live model list (from /v1/models) when this tab mounts.
+  // Load the live model list (from /v1/models) when this tab mounts —
+  // 对话框里的模型菜单也吃这份列表。
   useEffect(() => {
     if (availableModels.length === 0) loadModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const modelOptions: { id: ModelId; label: string; desc: string }[] =
-    availableModels.length > 0
-      ? availableModels.map((o) => ({ id: o.id, label: o.label, desc: o.id }))
-      : MODELS;
   const [showKey, setShowKey] = useState(false);
   const [testMsg, setTestMsg] = useState<string | null>(null);
 
@@ -639,73 +624,13 @@ function AnthropicTab() {
         </div>
       </section>
 
-      {/* Model selection */}
-      <section>
-        <div className="flex items-center justify-between mb-1">
-          <SectionTitle icon={Zap} label="模型" color="text-purple-bright" />
-          <span className="text-[10px] text-slate-500">
-            {modelsLoading
-              ? "加载中…"
-              : modelsSource === "live"
-                ? `✓ 来自 CLI（${availableModels.length}）`
-                : "默认列表"}
-          </span>
-        </div>
-        <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-          {modelOptions.map((m) => (
-            <label
-              key={m.id}
-              className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                model === m.id
-                  ? "border-purple-bright/30 bg-purple-glow/8"
-                  : "border-white/5 hover:border-white/10 hover:bg-white/5"
-              }`}
-            >
-              <input
-                type="radio"
-                name="settings-model"
-                value={m.id}
-                checked={model === m.id}
-                onChange={() => setModel(m.id)}
-                className="accent-purple-bright"
-              />
-              <div>
-                <div className={`text-xs font-medium ${model === m.id ? "text-white" : "text-slate-200"}`}>
-                  {m.label}
-                </div>
-                <div className="text-[10px] text-slate-500">{m.desc}</div>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        <div className="flex gap-2 mt-3">
-          {EFFORT_LEVELS.map((e) => (
-            <button
-              key={e.id}
-              onClick={() => setEffort(e.id)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                effort === e.id
-                  ? "border-amber-glow/30 bg-amber-glow/10 text-amber-glow"
-                  : "border-white/5 text-slate-400 hover:bg-white/5"
-              }`}
-            >
-              思考{e.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Extended thinking toggle */}
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-slate-300">扩展思考 (Extended Thinking)</span>
-          <button
-            onClick={() => setThinking(!thinking)}
-            className={`relative w-10 h-5 rounded-full transition-colors ${thinking ? "bg-purple-glow" : "bg-slate-700"}`}
-          >
-            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${thinking ? "translate-x-5" : "translate-x-0"}`} />
-          </button>
-        </div>
-      </section>
+      {/* 模型/推理力度不在这里选:统一在对话框右下角的模型按钮 */}
+      <div className="flex items-center gap-2 p-3 rounded-xl border border-purple-bright/15 bg-purple-glow/[0.04]">
+        <Zap size={13} className="text-purple-bright flex-shrink-0" />
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          模型、推理力度、扩展思考的切换都在<span className="text-purple-bright font-medium">对话输入框右下角的模型按钮</span>里,这里只负责授权。
+        </p>
+      </div>
 
       {/* Test & Save */}
       <div className="pt-2 border-t border-white/5 space-y-2">
@@ -741,163 +666,7 @@ function AnthropicTab() {
   );
 }
 
-// ─── Domestic Tab ──────────────────────────────────────────────────────────────
-
-function DomesticTab() {
-  const {
-    claudeSettingsEnv, claudeSettingsSaving,
-    claudeTesting, claudeTestResult,
-    saveClaudeSettings, testClaude, loadAuthStatus,
-  } = useSystemStore();
-
-  const [baseUrl, setBaseUrl] = useState(claudeSettingsEnv.ANTHROPIC_BASE_URL ?? "");
-  const [apiKey, setApiKey] = useState(claudeSettingsEnv.ANTHROPIC_API_KEY ?? "");
-  const [model, setModel] = useState(claudeSettingsEnv.ANTHROPIC_MODEL ?? "");
-  const [showKey, setShowKey] = useState(false);
-  const [testMsg, setTestMsg] = useState<string | null>(null);
-
-  // Sync local state when store loads
-  useEffect(() => {
-    setBaseUrl(claudeSettingsEnv.ANTHROPIC_BASE_URL ?? "");
-    setApiKey(claudeSettingsEnv.ANTHROPIC_API_KEY ?? "");
-    setModel(claudeSettingsEnv.ANTHROPIC_MODEL ?? "");
-  }, [claudeSettingsEnv]);
-
-  async function handleTestAndSave() {
-    setTestMsg(null);
-
-    // 1. Write to settings.json
-    await saveClaudeSettings({
-      ANTHROPIC_BASE_URL:  baseUrl || undefined,
-      ANTHROPIC_API_KEY:   apiKey  || undefined,
-      ANTHROPIC_MODEL:     model   || undefined,
-      // Clear proxy env in settings.json (domestic model doesn't need VPN)
-      HTTP_PROXY:  undefined,
-      HTTPS_PROXY: undefined,
-      http_proxy:  undefined,
-      https_proxy: undefined,
-    });
-
-    // 2. Clear proxy.json so subprocess doesn't pick up the VPN proxy
-    const { api: apiService } = await import("../services/api");
-    await apiService.systemApi.saveProxy({ httpProxy: "", httpsProxy: "", socksProxy: "" });
-
-    // 3. Test connection (no proxy overrides — domestic model goes direct)
-    const result = await testClaude({ baseUrl, apiKey, model: model || "haiku" });
-
-    if (result.success) {
-      setTestMsg(`✓ 模型就绪！回复: "${result.responseText.slice(0, 40)}" (${result.latency}ms)`);
-      await loadAuthStatus();
-    }
-  }
-
-  return (
-    <div className="space-y-5">
-      <div className="p-3 rounded-xl border border-violet-info/20 bg-violet-info/5 text-[11px] text-slate-300 leading-relaxed">
-        通过替换 Anthropic 兼容 API 端点，将 Claude Code 的基座模型替换为国产模型（如 Kimi、DeepSeek 等）。
-        这些参数将写入 <span className="font-mono text-violet-info">~/.claude/settings.json</span>。
-      </div>
-
-      <section>
-        <SectionTitle icon={Globe} label="API 端点" color="text-violet-info" />
-        <input
-          type="url"
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-          placeholder="https://api.moonshot.ai/anthropic"
-          className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-info/40 transition-colors font-mono"
-        />
-        <p className="mt-1.5 text-[10px] text-slate-600">
-          示例：Kimi → <span className="font-mono">https://api.moonshot.ai/anthropic</span>
-        </p>
-      </section>
-
-      <section>
-        <SectionTitle icon={KeyRound} label="API Key" color="text-violet-info" />
-        <div className="relative">
-          <input
-            type={showKey ? "text" : "password"}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-你的密钥..."
-            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 pr-10 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-info/40 transition-colors font-mono"
-          />
-          <button type="button" onClick={() => setShowKey(!showKey)}
-            className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 transition-colors">
-            {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-        </div>
-      </section>
-
-      <section>
-        <SectionTitle icon={Server} label="模型名称" color="text-violet-info" />
-        <input
-          type="text"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          placeholder="kimi-k2.5"
-          className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-info/40 transition-colors font-mono"
-        />
-        <p className="mt-1.5 text-[10px] text-slate-600">
-          示例：Kimi K2.5 → <span className="font-mono">kimi-k2.5</span>
-        </p>
-      </section>
-
-      <div className="p-3 rounded-xl border border-amber-glow/20 bg-amber-glow/5 text-[11px] text-slate-300 leading-relaxed">
-        <span className="font-semibold text-amber-glow">⚠️ 注意：</span>
-        保存时将<strong className="text-white">清空代理设置</strong>。
-        国内模型无需代理，保留代理可能导致连接失败。
-      </div>
-
-      {/* Test & Save */}
-      <div className="pt-2 border-t border-white/5 space-y-2">
-        <button
-          onClick={handleTestAndSave}
-          disabled={claudeTesting || claudeSettingsSaving || !baseUrl || !apiKey}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium bg-[#ca5d3d] hover:bg-amber-glow text-white transition-colors shadow-sm disabled:opacity-40"
-        >
-          {claudeTesting || claudeSettingsSaving
-            ? <><Loader2 size={14} className="animate-spin" />处理中...</>
-            : <><Zap size={14} />测试 & 保存</>
-          }
-        </button>
-        {claudeTestResult && (
-          <div className={`flex items-start gap-2 text-xs px-3 py-2.5 rounded-lg border ${
-            claudeTestResult.success
-              ? "border-emerald-ok/20 bg-emerald-ok/5 text-emerald-ok"
-              : "border-rose-err/20 bg-rose-err/5 text-rose-err"
-          }`}>
-            {claudeTestResult.success
-              ? <CheckCircle size={13} className="mt-0.5 flex-shrink-0" />
-              : <XCircle size={13} className="mt-0.5 flex-shrink-0" />
-            }
-            <span className="leading-relaxed">
-              {testMsg ?? (claudeTestResult.error
-                ? `错误：${claudeTestResult.error}`
-                : claudeTestResult.responseText)}
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── OpenAI Codex Engine Card ──────────────────────────────────────────────────
-
-const CODEX_MODELS: { id: CodexModel; label: string; desc: string }[] = [
-  { id: "gpt-5.5",             label: "GPT-5.5",             desc: "旗舰，复杂任务最强" },
-  { id: "gpt-5.4",             label: "GPT-5.4",             desc: "均衡，日常编码够用" },
-  { id: "gpt-5.4-mini",        label: "GPT-5.4-Mini",        desc: "轻量快速，简单任务" },
-  { id: "gpt-5.3-codex-spark", label: "GPT-5.3-Codex-Spark", desc: "超快，极速响应" },
-];
-
-const CODEX_EFFORTS: { id: CodexEffort; label: string }[] = [
-  { id: "xhigh",  label: "极高" },
-  { id: "high",   label: "高" },
-  { id: "medium", label: "中" },
-  { id: "low",    label: "低" },
-];
 
 function CodexCard() {
   const {
@@ -906,7 +675,6 @@ function CodexCard() {
     loadCodexInfo, loadCodexAuthStatus, codexSubscriptionLogin,
     codexLoginApiKey, codexLogout, testCodex,
   } = useSystemStore();
-  const { codexModel, setCodexModel, codexEffort, setCodexEffort } = useConfigStore();
 
   const [authMode, setAuthMode] = useState<"subscription" | "apikey">("subscription");
   const [apiKey, setApiKey] = useState("");
@@ -1115,60 +883,13 @@ function CodexCard() {
         )}
       </section>
 
-      {/* Model selection */}
-      <section className={installed ? "" : "opacity-40 pointer-events-none select-none"}>
-        <SectionTitle icon={Cpu} label="模型" color="text-sky-link" />
-        <div className="space-y-1.5">
-          {CODEX_MODELS.map((m) => (
-            <label
-              key={m.id}
-              className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                codexModel === m.id
-                  ? "border-sky-link/30 bg-sky-link/8"
-                  : "border-white/5 hover:border-white/10 hover:bg-white/5"
-              }`}
-            >
-              <input
-                type="radio"
-                name="settings-codex-model"
-                value={m.id}
-                checked={codexModel === m.id}
-                onChange={() => setCodexModel(m.id)}
-                className="accent-sky-link"
-              />
-              <div>
-                <div className={`text-xs font-medium ${codexModel === m.id ? "text-white" : "text-slate-200"}`}>
-                  {m.label}
-                </div>
-                <div className="text-[10px] text-slate-500">{m.desc}</div>
-              </div>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      {/* Reasoning effort toggle (点击切换) */}
-      <section className={installed ? "" : "opacity-40 pointer-events-none select-none"}>
-        <SectionTitle icon={Zap} label="推理强度" color="text-amber-glow" />
-        <div className="flex gap-2">
-          {CODEX_EFFORTS.map((e) => (
-            <button
-              key={e.id}
-              onClick={() => setCodexEffort(e.id)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                codexEffort === e.id
-                  ? "border-amber-glow/30 bg-amber-glow/10 text-amber-glow"
-                  : "border-white/5 text-slate-400 hover:bg-white/5"
-              }`}
-            >
-              {e.label}
-            </button>
-          ))}
-        </div>
-        <p className="mt-1.5 text-[10px] text-slate-600">
-          对应 Codex 的 reasoning effort（gpt-5.5）。切换后对后续对话生效。
+      {/* 模型/推理强度不在这里选:统一在对话框右下角的模型按钮 */}
+      <div className="flex items-center gap-2 p-3 rounded-xl border border-sky-link/15 bg-sky-link/[0.04]">
+        <Cpu size={13} className="text-sky-link flex-shrink-0" />
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          GPT 模型与推理强度的切换在<span className="text-sky-link font-medium">对话输入框右下角的模型按钮</span>里(供应商选 OpenAI),这里只负责安装与登录。
         </p>
-      </section>
+      </div>
 
       {/* Test */}
       <div className={`pt-2 border-t border-white/5 space-y-2 ${installed ? "" : "opacity-40 pointer-events-none select-none"}`}>
@@ -1200,50 +921,12 @@ function CodexCard() {
   );
 }
 
-// ─── Step 2: Auth & Model ──────────────────────────────────────────────────────
-
-function Step2AuthCard({ locked }: { locked: boolean }) {
-  const [tab, setTab] = useState<"anthropic" | "domestic">("anthropic");
-
-  return (
-    <div className={`transition-opacity ${locked ? "opacity-40 pointer-events-none select-none" : ""}`}>
-      {locked && (
-        <div className="flex items-center gap-2 p-3 rounded-xl border border-white/5 bg-white/[0.02] mb-4">
-          <Lock size={14} className="text-slate-500" />
-          <span className="text-xs text-slate-500">请先完成第①步（安装 Claude Code）</span>
-        </div>
-      )}
-
-      {/* Tab selector */}
-      <div className="grid grid-cols-2 gap-2 mb-5">
-        {(["anthropic", "domestic"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`py-2.5 rounded-xl text-xs font-medium border transition-all ${
-              tab === t
-                ? t === "anthropic"
-                  ? "border-emerald-ok/30 bg-emerald-ok/10 text-emerald-ok"
-                  : "border-violet-info/30 bg-violet-info/10 text-violet-info"
-                : "border-white/5 text-slate-400 hover:bg-white/5"
-            }`}
-          >
-            {t === "anthropic" ? "🌐 Anthropic 官方模型" : "🇨🇳 国产基座替换"}
-          </button>
-        ))}
-      </div>
-
-      {tab === "anthropic" ? <AnthropicTab /> : <DomesticTab />}
-    </div>
-  );
-}
-
 // ─── Main SettingsPage (modal overlay) ────────────────────────────────────────
 
 export default function SettingsPage() {
   const { setSettingsPageOpen } = useUIStore();
   const { claudeInfo, authStatus, loadClaudeInfo, loadAuthStatus, loadClaudeSettings, codexAuthStatus } = useSystemStore();
-  const { engine, setEngine } = useConfigStore();
+  const { engine } = useConfigStore();
   const claudeStatus = useClaudeStatus();
 
   useEffect(() => {
@@ -1262,7 +945,6 @@ export default function SettingsPage() {
   }, [setSettingsPageOpen]);
 
   const step1Done = !!claudeInfo?.installed;
-  const step2Done = claudeStatus === "ready";
 
   // 头部状态徽标随所选引擎变化
   const isCodex = engine === "codex";
@@ -1341,53 +1023,32 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          {/* Engine selector */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Settings size={13} className="text-slate-400" />
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">对话引擎</span>
+          {/* ① 模型供应商:唯一的供应商入口,模型切换在对话框右下角 */}
+          <div className="rounded-2xl border p-5 border-violet-info/20 bg-violet-info/[0.03]">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-7 h-7 rounded-full border border-violet-info/40 bg-violet-info/10 flex items-center justify-center flex-shrink-0">
+                <Server size={14} className="text-violet-info" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-200 font-display">模型供应商</h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  展开任意一家配置认证(国产模型填 API Key 即用,端点已内置可改);
+                  <span className="text-violet-info">切换供应商和模型在对话输入框右下角的模型按钮</span>
+                </p>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {([
-                { id: "claude", label: "Claude Code", desc: "Anthropic · Agent SDK", color: "amber-glow" },
-                { id: "codex",  label: "OpenAI Codex", desc: "ChatGPT 订阅 / API Key", color: "teal-400" },
-              ] as { id: Engine; label: string; desc: string; color: string }[]).map((e) => (
-                <button
-                  key={e.id}
-                  onClick={() => setEngine(e.id)}
-                  className={`flex flex-col items-start gap-0.5 p-3 rounded-xl border text-left transition-all ${
-                    engine === e.id
-                      ? e.id === "codex"
-                        ? "border-teal-400/40 bg-teal-400/10"
-                        : "border-amber-glow/40 bg-amber-glow/10"
-                      : "border-white/5 bg-white/[0.02] hover:bg-white/5"
-                  }`}
-                >
-                  <span className={`text-sm font-semibold ${engine === e.id ? "text-white" : "text-slate-300"}`}>
-                    {e.label}
-                  </span>
-                  <span className="text-[10px] text-slate-500">{e.desc}</span>
-                </button>
-              ))}
-            </div>
+            <ProvidersPanel
+              renderProviderExtra={(p) =>
+                p.kind === "anthropic-official" ? (
+                  <AnthropicTab />
+                ) : p.kind === "codex" ? (
+                  <CodexCard />
+                ) : null
+              }
+            />
           </div>
 
-          {engine === "codex" ? (
-            <div className="rounded-2xl border p-5 border-teal-400/20 bg-teal-400/[0.03]">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-7 h-7 rounded-full border border-teal-400/40 bg-teal-400/10 flex items-center justify-center flex-shrink-0">
-                  <KeyRound size={14} className="text-teal-300" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-200 font-display">OpenAI Codex 引擎</h2>
-                  <p className="text-[11px] text-slate-500 mt-0.5">安装 codex CLI 并以 ChatGPT 订阅或 API Key 认证</p>
-                </div>
-              </div>
-              <CodexCard />
-            </div>
-          ) : (
-          <>
-          {/* Step 1 */}
+          {/* ② Claude Code 环境 + 授权(Anthropic 官方模型用) */}
           <div className={`rounded-2xl border p-5 ${
             step1Done
               ? "border-emerald-ok/15 bg-emerald-ok/[0.03]"
@@ -1406,34 +1067,6 @@ export default function SettingsPage() {
             </div>
             <Step1EnvCard done={step1Done} />
           </div>
-
-          {/* Step 2 */}
-          <div className={`rounded-2xl border p-5 ${
-            !step1Done
-              ? "border-white/5"
-              : step2Done
-                ? "border-emerald-ok/15 bg-emerald-ok/[0.03]"
-                : "border-purple-bright/20 bg-purple-glow/[0.03]"
-          }`}>
-            <div className="flex items-center gap-3 mb-4">
-              <StepIndicator done={step2Done} locked={!step1Done} number={2} />
-              <div>
-                <h2 className={`text-sm font-semibold font-display ${!step1Done ? "text-slate-500" : "text-slate-200"}`}>
-                  授权 & 模型配置
-                </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  {!step1Done
-                    ? "完成第①步后解锁"
-                    : step2Done
-                      ? "已配置 — 随时可修改"
-                      : "配置 API Key / OAuth 或切换为国产基座模型"}
-                </p>
-              </div>
-            </div>
-            <Step2AuthCard locked={!step1Done} />
-          </div>
-          </>
-          )}
 
         </div>
       </div>

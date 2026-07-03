@@ -4,6 +4,8 @@ import InputBar from "./InputBar";
 import { useChatStore } from "../../stores/chatStore";
 import { useUIStore } from "../../stores/uiStore";
 import { useSystemStore } from "../../stores/systemStore";
+import { useConfigStore } from "../../stores/configStore";
+import { useProviderStore } from "../../stores/providerStore";
 import { useClaudeStatus } from "../../hooks/useClaudeStatus";
 import { startNewSession } from "../../utils/openProject";
 import SettingsPage from "../../pages/SettingsPage";
@@ -13,6 +15,11 @@ export default function ChatPanel() {
   const { setHistoryModalOpen, wsConnected, setSettingsPageOpen, settingsPageOpen, projectPath, setFolderBrowserOpen } = useUIStore();
   const { claudeInfo, authStatus } = useSystemStore();
   const claudeStatus = useClaudeStatus();
+  // 状态标签跟随当前供应商:非 Anthropic 时显示对应供应商名,而不是固定 Claude Code
+  const providerId = useConfigStore((s) => s.providerId);
+  const providers = useProviderStore((s) => s.providers);
+  const currentProvider = providers.find((p) => p.id === providerId);
+  const isNonAnthropic = !!currentProvider && currentProvider.kind !== "anthropic-official";
 
   // Use last user message as task title
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
@@ -60,6 +67,23 @@ export default function ChatPanel() {
                 <Zap size={11} className="flex-shrink-0" />
                 <span>未连接</span>
               </>
+            ) : isNonAnthropic ? (
+              <button
+                onClick={handleOpenSettings}
+                className={`flex items-center gap-2 transition-colors hover:opacity-80 ${
+                  currentProvider!.configured ? "text-slate-400" : "text-amber-glow"
+                }`}
+                title="点击打开设置"
+              >
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  currentProvider!.configured ? "bg-emerald-ok" : "bg-amber-glow"
+                }`} />
+                <Zap size={11} className="flex-shrink-0" />
+                <span>
+                  {currentProvider!.name}
+                  {currentProvider!.configured ? "" : " · 未配置 →"}
+                </span>
+              </button>
             ) : (
               <button
                 onClick={handleOpenSettings}

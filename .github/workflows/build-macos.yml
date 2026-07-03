@@ -1,0 +1,47 @@
+name: Build macOS desktop app
+
+# Manual trigger only — macOS runners burn Actions minutes at a 10x multiplier,
+# and this app doesn't need a build on every push yet.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri -> target
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri app (bundles the Node sidecar automatically)
+        run: pnpm --filter client exec tauri build
+
+      - name: Upload dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-flow-macos-dmg
+          path: client/src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Upload .app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-flow-macos-app
+          path: client/src-tauri/target/release/bundle/macos/*.app
+          if-no-files-found: error

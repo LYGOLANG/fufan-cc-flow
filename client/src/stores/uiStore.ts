@@ -46,6 +46,8 @@ interface UIState {
   openProjects: string[];
   /** Each project's last active session id, so switching tabs resumes it. */
   projectSessions: Record<string, string>;
+  /** Projects with a task currently running server-side (incl. backgrounded tabs). */
+  busyProjects: string[];
 
   // Input run mode
   runMode: RunMode;
@@ -88,6 +90,8 @@ interface UIState {
   removeRecentProject: (p: string) => void;
   closeOpenProject: (p: string) => void;
   setProjectSession: (projectPath: string, sessionId: string) => void;
+  /** Mark a project's task as running/idle (drives the tab "running" indicator). */
+  setProjectBusy: (projectPath: string, busy: boolean) => void;
 
   setRunMode: (mode: RunMode) => void;
 
@@ -132,8 +136,9 @@ export const useUIStore = create<UIState>((set) => ({
     return saved;
   })(),
   projectSessions: JSON.parse(localStorage.getItem("fufan_projectSessions") || "{}"),
+  busyProjects: [],
 
-  runMode: "default",
+  runMode: "bypassPermissions",
 
   historyModalOpen: false,
   fileViewModalOpen: false,
@@ -196,6 +201,16 @@ export const useUIStore = create<UIState>((set) => ({
       else delete map[projectPath];
       localStorage.setItem("fufan_projectSessions", JSON.stringify(map));
       return { projectSessions: map };
+    }),
+  setProjectBusy: (projectPath, busy) =>
+    set((s) => {
+      const has = s.busyProjects.includes(projectPath);
+      if (busy === has) return s;
+      return {
+        busyProjects: busy
+          ? [...s.busyProjects, projectPath]
+          : s.busyProjects.filter((x) => x !== projectPath),
+      };
     }),
 
   setRunMode: (mode) => set({ runMode: mode }),

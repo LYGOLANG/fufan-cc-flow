@@ -8,6 +8,7 @@ import { wsService } from "../../services/websocket";
 import { api } from "../../services/api";
 import SlashCommandMenu, { type SlashCommandMenuHandle, type SlashCommand } from "./SlashCommandMenu";
 import AttachmentPreview from "./AttachmentPreview";
+import ModelSelector from "../manage/ModelSelector";
 import type { Attachment } from "../../types/claude";
 
 const RUN_MODES: { id: RunMode; label: string }[] = [
@@ -54,6 +55,7 @@ export default function InputBar() {
   const engine = useConfigStore((s) => s.engine);
   const codexModel = useConfigStore((s) => s.codexModel);
   const codexEffort = useConfigStore((s) => s.codexEffort);
+  const providerId = useConfigStore((s) => s.providerId);
   const { runMode, setRunMode, setSettingsPageOpen, projectPath, prefillInput, setPrefillInput } = useUIStore();
   const { claudeInfo } = useSystemStore();
 
@@ -117,7 +119,7 @@ export default function InputBar() {
 
   // 直接粘贴图片到输入框 → 走附件上传，纯文本粘贴不受影响
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    if (notInstalled || noProject || isStreaming) return;
+    if (notInstalled || noProject) return;
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -141,7 +143,7 @@ export default function InputBar() {
       e.preventDefault();
       void uploadFiles(imageFiles);
     }
-  }, [notInstalled, noProject, isStreaming, uploadFiles]);
+  }, [notInstalled, noProject, uploadFiles]);
 
   const handleRemoveAttachment = useCallback((id: string) => {
     setAttachments((prev) => {
@@ -156,7 +158,9 @@ export default function InputBar() {
 
   const handleSend = useCallback(() => {
     const prompt = text.trim();
-    if (!prompt || isStreaming || notInstalled || noProject) return;
+    // 不再拦 isStreaming——正在处理时也能发,后端会排队,等当前这轮结束自动接着处理,
+    // 不用等它跑完才能继续输入。
+    if (!prompt || notInstalled || noProject) return;
 
     const currentAttachments = attachments.length > 0 ? [...attachments] : undefined;
     const attachmentPaths = currentAttachments?.map((a) => a.serverPath).filter(Boolean) as string[] | undefined;
@@ -167,7 +171,7 @@ export default function InputBar() {
     const forkInfo = useChatStore.getState().pendingFork;
     wsService.send("send_message", {
       prompt, model, effort, runMode,
-      engine, codexModel, codexEffort,
+      engine, codexModel, codexEffort, providerId,
       apiKey: apiKey || undefined,
       sessionId: forkInfo?.sessionId || currentSessionId || undefined,
       forkSession: forkInfo ? true : undefined,
@@ -178,8 +182,12 @@ export default function InputBar() {
       useChatStore.getState().clearPendingFork();
     }
 
-    // Instant feedback: start streaming lifecycle immediately (don't wait for session_init)
-    useChatStore.getState().startStreaming();
+    // 只有当前没有正在流式输出时才立即切到 streaming 视觉状态;如果已经在流式,
+    // 这条消息在后端排队,等当前这轮结束自动续上,session_init/assistant_text 事件
+    // 到时候会自然把状态接回去,不在这里手动重置(避免打断当前正在渲染的那轮)。
+    if (!useChatStore.getState().isStreaming) {
+      useChatStore.getState().startStreaming();
+    }
     if (prompt.startsWith("/compact")) {
       useChatStore.getState().setStatusText("正在压缩上下文...");
     }
@@ -191,7 +199,7 @@ export default function InputBar() {
     }
     setAttachments([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-  }, [text, isStreaming, model, effort, runMode, engine, codexModel, codexEffort, notInstalled, noProject, currentSessionId, pendingFork, attachments]);
+  }, [text, model, effort, runMode, engine, codexModel, codexEffort, notInstalled, noProject, currentSessionId, pendingFork, attachments]);
 
   const handleAbort = useCallback(() => wsService.send("abort", {}), []);
 
@@ -261,12 +269,12 @@ export default function InputBar() {
     if (cmd.type === "prompt" && cmd.promptText) {
       const prompt = cmd.promptText;
       useChatStore.getState().addUserMessage(prompt);
-      const { model: m, effort: e, apiKey: k, engine: eng, codexModel: cm, codexEffort: ce } = useConfigStore.getState();
+      const { model: m, effort: e, apiKey: k, engine: eng, codexModel: cm, codexEffort: ce, providerId: pid } = useConfigStore.getState();
       const { runMode: rm } = useUIStore.getState();
       const sid = useChatStore.getState().currentSessionId;
       wsService.send("send_message", {
         prompt, model: m, effort: e, runMode: rm,
-        engine: eng, codexModel: cm, codexEffort: ce,
+        engine: eng, codexModel: cm, codexEffort: ce, providerId: pid,
         apiKey: k || undefined, sessionId: sid || undefined,
       });
       // Instant feedback
@@ -351,7 +359,7 @@ export default function InputBar() {
                     ? "输入消息继续（将创建分支会话）..."
                   : "描述你的下一个任务或提问..."
             }
-            disabled={isStreaming || notInstalled || noProject}
+            disabled={notInstalled || noProject}
             rows={1}
             className="w-full bg-transparent text-sm text-slate-200 placeholder-slate-500 pl-12 pr-14 py-3.5 resize-none focus:outline-none font-sans leading-relaxed disabled:opacity-50"
             style={{ minHeight: "52px" }}
@@ -373,7 +381,17 @@ export default function InputBar() {
 
           {/* Send / Abort / Setup button */}
           <div className="absolute right-3 top-2.5">
-            {isStreaming ? (
+            {text.trim() && !notInstalled && !noProject ? (
+              // 有文字就始终显示发送——处理中也能发,后端排队,不用等当前任务结束。
+              <button
+                onClick={handleSend}
+                className="p-1.5 rounded-lg text-white transition-colors"
+                style={{ background: "#7c3aed" }}
+                title={isStreaming ? "发送(将排队，等当前任务结束后处理)" : "发送 (Enter)"}
+              >
+                <ArrowUp size={16} />
+              </button>
+            ) : isStreaming ? (
               <button
                 onClick={handleAbort}
                 className="p-1.5 rounded-lg bg-rose-err/10 text-rose-err hover:bg-rose-err/20 border border-rose-err/20 transition-colors"
@@ -479,9 +497,8 @@ export default function InputBar() {
                     {isStreaming ? "双击 ESC 中断" : "Enter 发送，Shift+Enter 换行，/ 命令"}
                   </span>
                 )}
-                <span className="text-[10px] text-slate-500 font-mono">
-                  {model} / {effort}
-                </span>
+                {/* 供应商 → 模型 两级切换器(向上弹出) */}
+                <ModelSelector direction="up" />
               </>
             )}
           </div>

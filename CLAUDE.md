@@ -45,7 +45,7 @@ fufan-cc-flow-src/
 ## 开发命令
 
 ```bash
-pnpm dev       # 同时启动前后端开发服务器（前端 :5173，后端 :3001）
+pnpm dev       # 同时启动前后端开发服务器（前端 :5273，后端 :3001）
 pnpm build     # 构建生产版本
 pnpm lint      # ESLint 检查
 pnpm format    # Prettier 格式化

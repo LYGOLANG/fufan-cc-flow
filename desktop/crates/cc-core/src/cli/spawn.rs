@@ -39,6 +39,15 @@ pub fn build_claude_command(args: &[String]) -> Result<Command> {
         c
     };
 
+    // 不给这个子进程分配新控制台——不然桌面壳(无控制台的 GUI 程序)每次发消息
+    // spawn 一个 claude/cmd 子进程,都会弹一个黑框窗口。
+    // tokio::process::Command 在 Windows 上原生就有 creation_flags(),不需要额外 import CommandExt。
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
     cmd.kill_on_drop(false);
     Ok(cmd)
 }

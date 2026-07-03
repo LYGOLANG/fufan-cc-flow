@@ -124,22 +124,9 @@ export class MarketplaceService {
 
       for (const marketplaceName of marketplaceDirs) {
         const marketplaceDir = join(MARKETPLACES_DIR, marketplaceName);
-
-        // Scan plugins/ (official)
-        await this.scanPluginDir(
-          join(marketplaceDir, "plugins"),
+        await this.scanMarketplaceManifest(
+          marketplaceDir,
           marketplaceName,
-          false,
-          installedNames,
-          installCounts,
-          result
-        );
-
-        // Scan external_plugins/
-        await this.scanPluginDir(
-          join(marketplaceDir, "external_plugins"),
-          marketplaceName,
-          true,
           installedNames,
           installCounts,
           result
@@ -156,54 +143,67 @@ export class MarketplaceService {
     }
   }
 
-  private async scanPluginDir(
-    dir: string,
+  /**
+   * Reads the marketplace's `.claude-plugin/marketplace.json` manifest and resolves each
+   * declared plugin's `source` (e.g. "./", "./plugins/x") relative to the marketplace dir.
+   * This matches the real Claude Code marketplace schema — many marketplaces are single-plugin
+   * repos with `"source": "./"` and no `plugins/`/`external_plugins/` subdirectory at all, so a
+   * fixed-directory-convention scan silently finds nothing for them.
+   */
+  private async scanMarketplaceManifest(
+    marketplaceDir: string,
     marketplace: string,
-    isExternal: boolean,
     installedNames: Set<string>,
     installCounts: Record<string, number>,
     result: MarketplacePlugin[]
   ): Promise<void> {
+    const manifestPath = join(marketplaceDir, ".claude-plugin", "marketplace.json");
+    let manifest: {
+      owner?: { name?: string };
+      plugins?: Array<{
+        name?: string;
+        description?: string;
+        source?: string;
+        author?: { name?: string };
+      }>;
+    };
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
+      const raw = await fs.readFile(manifestPath, "utf-8");
+      manifest = JSON.parse(raw);
+    } catch {
+      return; // no marketplace.json here
+    }
 
-        // Read .claude-plugin/plugin.json
-        const pluginJsonPath = join(dir, entry.name, ".claude-plugin", "plugin.json");
+    const plugins = Array.isArray(manifest.plugins) ? manifest.plugins : [];
+    for (const entry of plugins) {
+      if (!entry?.name) continue;
+      const name = entry.name;
+      let description = entry.description || "";
+      let author = entry.author?.name || manifest.owner?.name || "";
+      let isExternal = false;
+
+      if (typeof entry.source === "string") {
+        isExternal = entry.source.includes("external_plugins");
+        const pluginJsonPath = join(marketplaceDir, entry.source, ".claude-plugin", "plugin.json");
         try {
           const raw = await fs.readFile(pluginJsonPath, "utf-8");
-          const meta = JSON.parse(raw) as {
-            name?: string;
-            description?: string;
-            author?: { name?: string };
-          };
-
-          const name = meta.name || entry.name;
-          result.push({
-            name,
-            description: meta.description || "",
-            author: meta.author?.name || "",
-            marketplace,
-            installed: installedNames.has(name),
-            installCount: installCounts[name],
-            isExternal,
-          });
+          const meta = JSON.parse(raw) as { description?: string; author?: { name?: string } };
+          description = meta.description || description;
+          author = meta.author?.name || author;
         } catch {
-          // plugin.json not found or invalid, add with minimal info
-          result.push({
-            name: entry.name,
-            description: "",
-            author: "",
-            marketplace,
-            installed: installedNames.has(entry.name),
-            installCount: installCounts[entry.name],
-            isExternal,
-          });
+          // no separate plugin.json (or unreadable) — fall back to marketplace.json's own fields
         }
       }
-    } catch {
-      // directory doesn't exist
+
+      result.push({
+        name,
+        description,
+        author,
+        marketplace,
+        installed: installedNames.has(name),
+        installCount: installCounts[name],
+        isExternal,
+      });
     }
   }
 

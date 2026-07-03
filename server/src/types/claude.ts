@@ -50,6 +50,10 @@ export interface AgentServiceOptions {
   maxBudget?: number;
   allowedTools?: string[];
   apiKey?: string;
+  /** Anthropic 兼容第三方端点(DeepSeek/MiniMax/Kimi/GLM/自定义)。设置后注入 ANTHROPIC_BASE_URL */
+  baseUrl?: string;
+  /** 兼容端点的 API Key(注入 ANTHROPIC_AUTH_TOKEN) */
+  authToken?: string;
   httpProxy?: string;
   httpsProxy?: string;
   socksProxy?: string;

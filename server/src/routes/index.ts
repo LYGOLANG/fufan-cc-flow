@@ -13,6 +13,7 @@ import attachmentsRouter from "./attachments.js";
 import hooksRouter from "./hooks.js";
 import marketplaceRouter from "./marketplace.js";
 import teamsRouter from "./teams.js";
+import providersRouter from "./providers.js";
 
 const router: RouterType = Router();
 
@@ -30,6 +31,7 @@ router.use("/attachments", attachmentsRouter);
 router.use("/hooks", hooksRouter);
 router.use("/marketplace", marketplaceRouter);
 router.use("/teams", teamsRouter);
+router.use("/providers", providersRouter);
 
 router.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: Date.now() });

@@ -8,4 +8,8 @@ Thumbs.db
 target/
 client/src-tauri/target/
 client/src-tauri/gen/
+client/src-tauri/binaries/
+client/src-tauri/server-dist/
 .claude/
+.engram/
+**/.engram/

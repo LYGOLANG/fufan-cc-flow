@@ -44,6 +44,16 @@ const sessionModelCache = new Map<string, string>();
 const sessionEffortCache = new Map<string, string>();
 
 export class ClaudeAgentService extends EventEmitter {
+  // "error" 事件无监听器时 emit 会抛异常(WS 断开后迟到的错误事件曾炸掉整个
+  // server),兜底降级为日志。
+  override emit(event: string | symbol, ...args: unknown[]): boolean {
+    if (event === "error" && this.listenerCount("error") === 0) {
+      logger.warn(`[claude] dropped error event (no listeners): ${JSON.stringify(args[0]).slice(0, 300)}`);
+      return false;
+    }
+    return super.emit(event, ...args);
+  }
+
   /** 活跃的 query 流（sessionId → Query） */
   private activeStreams = new Map<string, Query>();
   /** 中断控制器（sessionId → AbortController） */
@@ -85,8 +95,25 @@ export class ClaudeAgentService extends EventEmitter {
     // 仅含 API Key 的环境去 spawn "node"，在 Windows 上会因找不到 PATH
     // 报 ENOENT，被 SDK 误报为 "Claude Code executable not found"。
     const env: Record<string, string | undefined> = { ...process.env };
-    if (options.apiKey) {
+    if (options.baseUrl) {
+      // 第三方 Anthropic 兼容端点(DeepSeek/MiniMax/Kimi/GLM/自定义):
+      // 各家文档统一约定用 ANTHROPIC_AUTH_TOKEN(Bearer)鉴权,必须清掉
+      // ANTHROPIC_API_KEY 避免 CLI 用 x-api-key 撞官方鉴权逻辑。
+      env["ANTHROPIC_BASE_URL"] = options.baseUrl;
+      env["ANTHROPIC_AUTH_TOKEN"] = options.authToken || "";
+      delete env["ANTHROPIC_API_KEY"];
+      if (options.model) {
+        // 兼容端点没有 haiku 系列,后台小任务(标题生成等)也必须指到同一模型,
+        // 否则 CLI 默认调 haiku 直接 404。
+        env["ANTHROPIC_MODEL"] = options.model;
+        env["ANTHROPIC_SMALL_FAST_MODEL"] = options.model;
+        env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = options.model;
+      }
+      // 屏蔽遥测/更新检查等对 api.anthropic.com 的非必要请求
+      env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1";
+    } else if (options.apiKey) {
       env["ANTHROPIC_API_KEY"] = options.apiKey;
+      delete env["ANTHROPIC_AUTH_TOKEN"];
     } else {
       // OAuth/订阅模式：清除环境里残留的 ANTHROPIC_API_KEY（如系统级环境变量），
       // 否则 CLI 会优先用它鉴权而忽略 ~/.claude 订阅凭证，导致 exit code 1。

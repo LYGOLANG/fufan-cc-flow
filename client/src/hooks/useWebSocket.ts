@@ -28,9 +28,6 @@ export function useWebSocket() {
   const setWsConnected = useUIStore((s) => s.setWsConnected);
 
   useEffect(() => {
-    // Connect always — server defaults to process.cwd() when no project param
-    wsService.connect(projectPath);
-
     // ── Per-task mutable state ──
     let accumulatedText = "";
     let accumulatedThinking = "";
@@ -520,10 +517,14 @@ export function useWebSocket() {
       }
     });
 
+    // 绑定该项目为活动连接(连接不存在则创建;已存在则复用,不断开其它项目)。
+    // 放在 subscribe 之后,让 setActiveProject 补发的连接态能被上面的 handler 收到。
+    wsService.setActiveProject(projectPath);
+
     return () => {
       if (flushTimer) clearTimeout(flushTimer);
+      // 只解绑本次的事件处理器;不断开连接——后台项目的任务需要继续在服务端运行。
       unsub();
-      wsService.disconnect();
     };
   }, [projectPath]);
 }

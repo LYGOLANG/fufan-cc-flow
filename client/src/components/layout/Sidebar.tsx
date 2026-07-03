@@ -100,16 +100,11 @@ export default function Sidebar() {
             <Zap size={16} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <a
-              href="https://fufan.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-sm font-display font-bold text-white truncate leading-tight hover:text-amber-glow transition-colors"
-            >
-              Fufan-CC Flow
-            </a>
+            <div className="block text-sm font-display font-bold text-white truncate leading-tight">
+              Agent Flow
+            </div>
             <div className="text-[10px] text-slate-500 truncate leading-tight">
-              赋范空间出品
+              爱折腾出品
             </div>
           </div>
           {/* Collapse toggle */}

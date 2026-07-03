@@ -5,6 +5,15 @@ import { logger } from "./utils/logger.js";
 
 const PORT = Number(process.env.PORT) || 3001;
 
+// 兜底防线:任何漏网的异常/未处理 rejection 只记日志,不允许放倒整个后端
+// (后端一死,前端所有探测接口失败,会误显示"未安装 Claude Code")。
+process.on("uncaughtException", (err) => {
+  logger.error(`[uncaughtException] ${err.stack || err.message}`);
+});
+process.on("unhandledRejection", (reason) => {
+  logger.error(`[unhandledRejection] ${reason instanceof Error ? reason.stack : String(reason)}`);
+});
+
 const server = http.createServer(app);
 setupWebSocket(server);
 
@@ -22,6 +31,6 @@ server.on("error", (err: NodeJS.ErrnoException) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  logger.info(`Fufan-CC Flow server running on http://0.0.0.0:${PORT}`);
+  logger.info(`Agent Flow server running on http://0.0.0.0:${PORT}`);
   logger.info("WebSocket endpoints: /ws/chat");
 });

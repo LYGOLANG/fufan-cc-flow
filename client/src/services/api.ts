@@ -1,4 +1,5 @@
 import type { FileNode, FileContent } from "../types/file";
+import type { ProviderInfo, ProviderTestResult } from "../types/provider";
 import type { McpServer } from "../types/mcp";
 import type { SkillInfo, SkillDetail, SkillGenerateResult } from "../types/skill";
 import type { PluginInfo } from "../types/plugin";
@@ -33,6 +34,30 @@ export const api = {
   getConfig: () => request<Record<string, unknown>>("/config"),
   updateConfig: (data: Record<string, unknown>) =>
     request("/config", { method: "PATCH", body: JSON.stringify(data) }),
+
+  // ── Providers(模型供应商) ──
+  getProviders: () =>
+    request<{ providers: ProviderInfo[]; hiddenBuiltins?: string[] }>("/providers"),
+  restoreDefaultProviders: () =>
+    request<{ providers: ProviderInfo[]; hiddenBuiltins?: string[] }>("/providers/restore-defaults", {
+      method: "POST",
+    }),
+  updateProvider: (id: string, data: { name?: string; apiKey?: string; baseUrl?: string; models?: string[]; defaultModel?: string }) =>
+    request<{ provider: ProviderInfo }>(`/providers/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  createProvider: (data: { name: string; baseUrl: string; apiKey?: string; models?: string[] }) =>
+    request<{ provider: ProviderInfo }>("/providers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteProvider: (id: string) =>
+    request<{ ok: boolean }>(`/providers/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  testProvider: (id: string) =>
+    request<ProviderTestResult>(`/providers/${encodeURIComponent(id)}/test`, { method: "POST" }),
+  refreshProviderModels: (id: string) =>
+    request<{ models: string[] }>(`/providers/${encodeURIComponent(id)}/models`, { method: "POST" }),
 
   // ── Sessions ──
   getSessions: (project?: string) =>

@@ -3,6 +3,7 @@ import { Plus, X, Folder } from "lucide-react";
 import { useUIStore } from "../../stores/uiStore";
 import { useChatStore } from "../../stores/chatStore";
 import { openProject, startNewSession } from "../../utils/openProject";
+import { wsService } from "../../services/websocket";
 
 /** Last path segment for a friendly tab label. */
 function baseName(p: string): string {
@@ -18,7 +19,7 @@ function baseName(p: string): string {
  */
 export default function ProjectTabs() {
   const {
-    openProjects, projectPath,
+    openProjects, projectPath, busyProjects,
     setProjectPath, closeOpenProject, setProjectSession, setFolderBrowserOpen,
   } = useUIStore();
   const { currentSessionId, setSessionId } = useChatStore();
@@ -44,6 +45,8 @@ export default function ProjectTabs() {
         setSessionId("");
       }
     }
+    // 关闭标签 = 明确结束该项目:断开其连接,服务端随之收尾正在跑的任务
+    wsService.closeProject(p);
     closeOpenProject(p);
   }
 
@@ -53,18 +56,26 @@ export default function ProjectTabs() {
     <div className="flex items-center gap-1 px-2 h-9 border-b border-white/5 bg-obsidian-900/40 overflow-x-auto flex-shrink-0">
       {openProjects.map((p) => {
         const active = p === projectPath;
+        const busy = busyProjects.includes(p);
         return (
           <button
             key={p}
             onClick={() => switchToProject(p)}
-            title={p}
+            title={busy ? `${p}（任务运行中）` : p}
             className={`group flex items-center gap-1.5 pl-2.5 pr-1.5 h-7 rounded-md text-xs whitespace-nowrap transition-colors flex-shrink-0 ${
               active
                 ? "bg-white/10 text-white"
                 : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
             }`}
           >
-            <Folder size={12} className={active ? "text-amber-glow" : "text-slate-500"} />
+            {busy ? (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-emerald-ok flex-shrink-0 agent-pulse-ring"
+                title="任务运行中"
+              />
+            ) : (
+              <Folder size={12} className={active ? "text-amber-glow" : "text-slate-500"} />
+            )}
             <span className="max-w-[140px] truncate">{baseName(p)}</span>
             <span
               role="button"

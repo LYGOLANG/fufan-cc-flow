@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatMessage, ToolCall, TokenUsage, TaskResult, Attachment, PermissionRequest } from "../types/claude";
+import { useConfigStore } from "./configStore";
+import { useProviderStore } from "./providerStore";
 
 interface ChatState {
   messages: ChatMessage[];
@@ -72,6 +74,20 @@ interface ChatState {
 
 let msgCounter = 0;
 
+/** 当前供应商的显示名,盖章到新建的 assistant 消息上(懒加载避免循环依赖) */
+function assistantSenderName(): string {
+  try {
+    // 动态 require 语义:这两个 store 都不反向依赖 chatStore,直接 import 也安全,
+    // 但放在函数里取 getState 保证拿到的是"发送时刻"的最新值。
+    const { providerId } = useConfigStore.getState();
+    const provider = useProviderStore.getState().providers.find((p) => p.id === providerId);
+    if (!provider || provider.kind === "anthropic-official") return "Claude Code";
+    return provider.name;
+  } catch {
+    return "Claude Code";
+  }
+}
+
 export const useChatStore = create<ChatState>()(
   persist(
     (set) => ({
@@ -115,6 +131,7 @@ export const useChatStore = create<ChatState>()(
           role: "assistant" as const,
           content: "",
           timestamp: Date.now(),
+          senderName: assistantSenderName(),
         },
       ],
       currentAssistantId: id,
@@ -146,6 +163,7 @@ export const useChatStore = create<ChatState>()(
           role: "assistant" as const,
           content: "",
           timestamp: Date.now(),
+          senderName: assistantSenderName(),
         },
       ],
       currentAssistantId: id,

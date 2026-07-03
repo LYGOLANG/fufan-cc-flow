@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
-members = ["crates/cc-core", "crates/cc-app"]
+members = ["crates/cc-core"]
+# crates/_archived_cc-app: 原生 egui 界面层,已废弃(改用 Tauri + 复用现有 client/ React 前端)。
+# 保留代码但摘出 workspace,不参与构建。
 
 [workspace.package]
 version = "0.1.0"

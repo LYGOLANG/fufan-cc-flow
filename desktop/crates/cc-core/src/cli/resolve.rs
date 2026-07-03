@@ -10,6 +10,11 @@ use std::path::{Path, PathBuf};
 
 const IS_WIN: bool = cfg!(target_os = "windows");
 
+/// Windows 上不给子进程分配新控制台——不然桌面壳(无控制台的 GUI 程序)每次
+/// spawn 一个控制台子进程(这里是 where.exe),都会弹一个黑框窗口。
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 use crate::util::home_dir;
 
 /// 各包管理器的 bin/shim 目录,按平台区分。
@@ -44,7 +49,14 @@ fn known_dirs() -> Vec<PathBuf> {
 /// 用 where(win)/which(posix) 在 PATH 中查找,优先 .exe,其次 .cmd/.bat,跳过 .ps1。
 fn resolve_on_path(name: &str) -> Option<PathBuf> {
     let finder = if IS_WIN { "where" } else { "which" };
-    let out = std::process::Command::new(finder).arg(name).output().ok()?;
+    let mut cmd = std::process::Command::new(finder);
+    cmd.arg(name);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let out = cmd.output().ok()?;
     if !out.status.success() {
         return None;
     }

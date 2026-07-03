@@ -130,6 +130,8 @@ export interface ChatMessage {
   compactData?: { tokensBefore: number; tokensAfter: number; summary?: string };
   /** True if this message was part of a rolled-back segment */
   rolledBack?: boolean;
+  /** 产生这条 assistant 消息的供应商显示名(发送时盖章,切换供应商后历史署名不变) */
+  senderName?: string;
 }
 
 export interface TaskResult {

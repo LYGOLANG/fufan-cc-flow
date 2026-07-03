@@ -39,6 +39,48 @@ router.get("/content", async (req, res) => {
   }
 });
 
+// GET /api/files/raw?path=<abs-or-rel>&base=<projectRoot>
+// 以原始字节流返回本地图片文件,供聊天界面内联展示会话中生成的图片。
+// 仅允许图片扩展名;相对路径按 base(项目根)解析。
+const IMAGE_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".bmp": "image/bmp",
+  ".avif": "image/avif",
+  ".ico": "image/x-icon",
+};
+const RAW_IMAGE_MAX_BYTES = 50 * 1024 * 1024;
+
+router.get("/raw", async (req, res) => {
+  const reqPath = req.query.path as string;
+  const base = req.query.base as string | undefined;
+  if (!reqPath) {
+    return res.status(400).json({ error: { code: "INVALID_REQUEST", message: "path required" } });
+  }
+  try {
+    const resolved = path.isAbsolute(reqPath)
+      ? path.normalize(reqPath)
+      : path.resolve(base || process.cwd(), reqPath);
+    const type = IMAGE_TYPES[path.extname(resolved).toLowerCase()];
+    if (!type) {
+      return res.status(415).json({ error: { code: "UNSUPPORTED_TYPE", message: "仅支持图片文件" } });
+    }
+    const stat = await fs.stat(resolved);
+    if (!stat.isFile() || stat.size > RAW_IMAGE_MAX_BYTES) {
+      return res.status(413).json({ error: { code: "TOO_LARGE", message: "文件过大或不是常规文件" } });
+    }
+    res.setHeader("Content-Type", type);
+    res.setHeader("Cache-Control", "no-cache");
+    res.send(await fs.readFile(resolved));
+  } catch {
+    res.status(404).json({ error: { code: "FILE_NOT_FOUND", message: "图片不存在" } });
+  }
+});
+
 // GET /api/files/browse?path=<absolutePath>
 // Returns immediate children (dirs first) of the given path.
 // Without path, returns logical root entries (drives on Windows, / on Unix).

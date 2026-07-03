@@ -147,6 +147,7 @@ export default function MessageList() {
                     timestamp={msg.timestamp}
                     isStreaming={isCurrentAssistant}
                     statusText={isCurrentAssistant ? statusText : undefined}
+                    senderName={msg.senderName}
                   />
                 )}
               </div>
@@ -208,6 +209,7 @@ function RolledBackGroup({
                   toolCalls={msg.toolCalls}
                   taskResult={msg.taskResult}
                   timestamp={msg.timestamp}
+                  senderName={msg.senderName}
                 />
               )}
             </div>
@@ -409,6 +411,7 @@ function AssistantBubble({
   isStreaming,
   timestamp,
   statusText,
+  senderName,
 }: {
   content: string;
   streamingText?: string;
@@ -418,13 +421,15 @@ function AssistantBubble({
   isStreaming?: boolean;
   timestamp?: number;
   statusText?: string;
+  /** 产生该消息的供应商显示名(历史消息无盖章时回退 Claude Code) */
+  senderName?: string;
 }) {
   return (
     <div className="flex gap-4">
       <AiAvatar />
       <div className="flex flex-col gap-2 flex-1 min-w-0">
         <div className="flex items-baseline gap-3">
-          <span className="text-sm font-bold text-white">Claude Code</span>
+          <span className="text-sm font-bold text-white">{senderName || "Claude Code"}</span>
           {timestamp && !isStreaming && (
             <span className="text-xs text-slate-500">{formatTime(timestamp)}</span>
           )}
@@ -434,7 +439,7 @@ function AssistantBubble({
           {/* Committed text */}
           {content && (
             <div className="text-slate-300 leading-relaxed text-sm">
-              <MarkdownRenderer content={content} />
+              <MarkdownRenderer content={content} detectImages />
             </div>
           )}
           {/* Live streaming text — also rendered as markdown for consistent formatting */}
@@ -510,11 +515,11 @@ function WelcomeScreen() {
       </div>
 
       <h1 className="font-display text-2xl font-bold text-white mb-2 tracking-tight">
-        Fufan-CC Flow
+        Agent Flow
       </h1>
       <p className="text-sm text-slate-400 max-w-md leading-relaxed mb-6">
-        Claude Code 的强大能力，尽在可视化呈现。描述你想构建的内容，<br />
-        或让 Claude 协助你完成项目开发。
+        多模型 Agent 的强大能力，尽在可视化呈现。描述你想构建的内容，<br />
+        或让 AI 协助你完成项目开发。
       </p>
 
       {/* Resume recent session */}

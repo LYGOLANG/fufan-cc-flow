@@ -49,6 +49,17 @@ export class CodexAgentService extends EventEmitter {
   private activeProcs = new Map<string, ChildProcess>();
   private idCounter = 0;
 
+  // EventEmitter 的 "error" 事件在无监听器时会抛异常。WS 断开时 chatHandler 会
+  // removeAllListeners,而子进程可能之后才退出并发射 error —— 曾因此炸掉整个
+  // server 进程(ERR_UNHANDLED_ERROR)。这里兜底:无监听器时降级为日志。
+  override emit(event: string | symbol, ...args: unknown[]): boolean {
+    if (event === "error" && this.listenerCount("error") === 0) {
+      logger.warn(`[codex] dropped error event (no listeners): ${JSON.stringify(args[0]).slice(0, 300)}`);
+      return false;
+    }
+    return super.emit(event, ...args);
+  }
+
   async start(options: CodexAgentOptions): Promise<string> {
     if (!options.projectPath?.trim()) {
       throw new Error("projectPath 不能为空，请先选择项目文件夹");

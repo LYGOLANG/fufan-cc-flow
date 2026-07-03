@@ -3,6 +3,7 @@ import { ClaudeAgentService } from "../services/claudeAgentService.js";
 import { CodexAgentService } from "../services/codexAgentService.js";
 import { registerAgent, unregisterAgent } from "../services/agentRegistry.js";
 import { readProxy } from "../services/proxyConfig.js";
+import { getProvider } from "../services/providerService.js";
 import { cleanupFiles } from "../services/attachmentService.js";
 import { serverMsg } from "./protocol.js";
 import { logger } from "../utils/logger.js";
@@ -23,6 +24,9 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
   // 引擎，需要丢弃跨引擎的 sessionId（Claude 的 session id 传给 codex exec resume
   // 会直接报错，反之亦然），改为开一个全新会话。
   let activeEngine: "claude" | "codex" | null = null;
+  // 当前会话使用的 Anthropic 兼容端点(第三方供应商)。/compact 等后续请求
+  // 必须复用同一端点,否则 resume 会把请求发回官方 API。
+  let activeCompat: { baseUrl: string; authToken?: string; model?: string } | null = null;
 
   const forward = (event: string, data: Record<string, unknown>) => {
     if (ws.readyState === ws.OPEN) {
@@ -163,11 +167,32 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
             prompt += " (附件：" + refs + ")";
           }
 
-          const engine = (p.engine as string) === "codex" ? "codex" : "claude";
+          // ── 供应商解析 ──
+          // 新客户端传 providerId(anthropic/openai/deepseek/minimax/kimi/glm/custom-*);
+          // 旧客户端只传 engine("claude"|"codex"),向后兼容。
+          const providerId = (p.providerId as string) || "";
+          const provider = providerId ? await getProvider(providerId) : null;
+          if (providerId && !provider) {
+            forward("error", { code: "UNKNOWN_PROVIDER", message: `未知供应商: ${providerId}` });
+            break;
+          }
+          const isCompat = provider?.kind === "anthropic-compat";
+          if (isCompat && !provider?.apiKey) {
+            forward("error", {
+              code: "PROVIDER_NOT_CONFIGURED",
+              message: `${provider?.name ?? providerId} 尚未配置 API Key,请到「设置 → 模型供应商」填写`,
+            });
+            break;
+          }
+          const engine: "claude" | "codex" = provider
+            ? (provider.kind === "codex" ? "codex" : "claude")
+            : ((p.engine as string) === "codex" ? "codex" : "claude");
           // 用户中途切换了引擎：Claude 的 session id 传给 codex exec resume 会
           // 直接报错（反之亦然），丢弃客户端带来的 sessionId/forkSession，开新会话。
           const crossEngineSwitch = activeEngine !== null && activeEngine !== engine;
-          const clientSessionId = crossEngineSwitch ? undefined : (p.sessionId as string) || undefined;
+          // 历史遗留防护:opencode 时期产生的 "ses_" 前缀会话 id 对 Claude/Codex 无效,丢弃
+          let clientSessionId = crossEngineSwitch ? undefined : (p.sessionId as string) || undefined;
+          if (clientSessionId?.startsWith("ses_")) clientSessionId = undefined;
 
           if (engine === "codex") {
             const codexEffort = (p.codexEffort as string) || undefined;
@@ -175,7 +200,11 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               prompt,
               projectPath,
               sessionId: clientSessionId,
-              model: (p.codexModel as string) || undefined,
+              // 新客户端(带 providerId)统一用 model 字段;旧客户端仍用 codexModel,
+              // 此时 p.model 是 Claude 侧别名(opus/sonnet),不能误传给 Codex。
+              model: provider
+                ? ((p.model as string) || provider.defaultModel || undefined)
+                : ((p.codexModel as string) || undefined),
               effort: ["low", "medium", "high", "xhigh"].includes(codexEffort ?? "")
                 ? (codexEffort as "low" | "medium" | "high" | "xhigh")
                 : undefined,
@@ -183,6 +212,7 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
             });
             activeSessionId = sid;
             activeEngine = "codex";
+            activeCompat = null;
           } else {
             // 推理力度：前端可能传六档之一。第六档 "ultracode" 不是 API 真实 effort 值，
             // 需翻译为 effort:"xhigh" + ultracode:true（= xhigh + 动态工作流编排）。
@@ -194,23 +224,30 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
                   ? (rawEffort as "low" | "medium" | "high" | "xhigh" | "max")
                   : undefined);
 
+            const model = (p.model as string) || (isCompat ? provider?.defaultModel : undefined) || undefined;
             const sid = await claude.start({
               prompt,
               projectPath,
               sessionId: clientSessionId,
               forkSession: crossEngineSwitch ? undefined : (p.forkSession as boolean) || undefined,
-              model: (p.model as string) || undefined,
+              model,
               effort,
               ultracode: ultracode || undefined,
               permissionMode,
               maxBudget: (p.maxBudget as number) || undefined,
-              apiKey: (p.apiKey as string) || undefined,
+              // 第三方兼容供应商:注入 baseUrl + authToken,不再使用官方 apiKey
+              baseUrl: isCompat ? provider?.baseUrl : undefined,
+              authToken: isCompat ? provider?.apiKey : undefined,
+              apiKey: isCompat ? undefined : (p.apiKey as string) || undefined,
               httpProxy: proxy.httpProxy || undefined,
               httpsProxy: proxy.httpsProxy || undefined,
               socksProxy: proxy.socksProxy || undefined,
             });
             activeSessionId = sid;
             activeEngine = "claude";
+            activeCompat = isCompat && provider?.baseUrl
+              ? { baseUrl: provider.baseUrl, authToken: provider.apiKey, model }
+              : null;
           }
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
@@ -263,6 +300,10 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
             prompt: compactPrompt,
             projectPath,
             sessionId: clientSessionId || activeSessionId || undefined,
+            // 会话在第三方端点上跑时,压缩请求也必须发往同一端点
+            baseUrl: activeCompat?.baseUrl,
+            authToken: activeCompat?.authToken,
+            model: activeCompat?.model,
             httpProxy: proxy.httpProxy || undefined,
             httpsProxy: proxy.httpsProxy || undefined,
             socksProxy: proxy.socksProxy || undefined,
