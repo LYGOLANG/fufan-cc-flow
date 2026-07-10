@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db
+target/
+client/src-tauri/target/
+client/src-tauri/gen/
+client/src-tauri/binaries/
+client/src-tauri/server-dist/
+.claude/
+.engram/
+**/.engram/
+
+# 构建/发布产物(含安装包,体积大且可重新生成)
+release/
+*.exe
+
+# 与项目无关的本地文件
+duojiao-yutou-recipe.png
+*.tsbuildinfo
