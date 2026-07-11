@@ -33,7 +33,6 @@ const RUN_MODE_LABEL: Record<RunMode, string> = {
   bypassPermissions: "自动",
 };
 
-const ACCEPTED_FILE_TYPES = "image/*,.txt,.md,.json,.js,.ts,.jsx,.tsx,.py,.css,.html,.xml,.yaml,.yml,.toml,.csv,.sh,.bat,.rs,.go,.java,.c,.cpp,.h,.hpp,.rb,.php,.sql,.log,.cfg,.ini,.env";
 const MAX_ATTACHMENTS = 5;
 
 export default function InputBar() {
@@ -539,7 +538,6 @@ export default function InputBar() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept={ACCEPTED_FILE_TYPES}
               onChange={handleFileSelect}
               className="hidden"
             />

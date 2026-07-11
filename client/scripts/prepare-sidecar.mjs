@@ -52,15 +52,38 @@ execSync(
 // 项目初始化模板(.claude/.codex/.agents/AGENTS.md)随包分发:projectInitService
 // 沿 serviceDir 向上扫描模板根,把模板放进 server-dist 根即可被打包后的 sidecar 命中。
 // 不带上它们的话,桌面端"初始化项目"会报 TEMPLATE_ITEM_MISSING(模板源缺失)。
+//
+// 隐私底线:模板只带框架文件,开发期个人数据一律不随包分发——
+// 会话附件、个人工作流、本地设置、进化运行时状态(signals/proposals)。
+// check-evolution.sh 等 hook 均以 [ -f ] 守卫,这些文件缺失不影响模板可用性。
+const TEMPLATE_EXCLUDES = new Set([
+  "attachments", // Claude Code 会话附件(用户上传的图片)
+  "workflows", // 个人工作流配置
+  "settings.local.json", // 本机私有设置
+  "launch.json", // 本仓库开发调试配置,对新项目无意义
+  path.join("evolution", "signals.jsonl"), // 进化信号队列(运行时状态)
+  path.join("evolution", "proposals.md"), // 进化建议(运行时状态)
+]);
+function isTemplateExcluded(root, source) {
+  const rel = path.relative(root, source);
+  if (!rel) return false;
+  return TEMPLATE_EXCLUDES.has(rel) || TEMPLATE_EXCLUDES.has(rel.split(path.sep)[0]);
+}
 console.log("[prepare-sidecar] bundling project templates...");
 for (const item of [".claude", ".codex", ".agents", "AGENTS.md"]) {
   const src = path.join(repoRoot, item);
   if (existsSync(src)) {
-    cpSync(src, path.join(serverDistDir, item), { recursive: true });
+    cpSync(src, path.join(serverDistDir, item), {
+      recursive: true,
+      filter: (source) => !isTemplateExcluded(src, source),
+    });
   } else {
     console.warn(`[prepare-sidecar] template item missing in repo root, skipped: ${item}`);
   }
 }
+
+// pnpm 安装元数据含本机绝对路径(开发者用户名),运行时用不到,不随包分发。
+rmSync(path.join(serverDistDir, "node_modules", ".modules.yaml"), { force: true });
 
 console.log("[prepare-sidecar] copying node runtime as sidecar binary...");
 mkdirSync(binariesDir, { recursive: true });
