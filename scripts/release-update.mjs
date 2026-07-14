@@ -46,12 +46,15 @@ if (!fs.existsSync(bundleDir)) {
   process.exit(1);
 }
 
-const exe = fs.readdirSync(bundleDir).find((f) => f.endsWith("-setup.exe"));
-const sig = fs.readdirSync(bundleDir).find((f) => f.endsWith("-setup.exe.sig"));
+// 必须按「当前版本」精确匹配——bundle 目录可能残留旧版本产物,
+// 用 .find() 裸匹配会把旧版 exe/签名错打进新版 latest.json(踩过)。
+const exe = fs.readdirSync(bundleDir).find((f) => f.endsWith(`_${version}_x64-setup.exe`));
+const sig = fs.readdirSync(bundleDir).find((f) => f.endsWith(`_${version}_x64-setup.exe.sig`));
 if (!exe || !sig) {
   console.error(
-    `产物不全: exe=${exe ?? "缺"} sig=${sig ?? "缺"}\n` +
-      `.sig 缺失说明打包时没带签名私钥。设置 TAURI_SIGNING_PRIVATE_KEY_PATH 后重新 build。`
+    `未找到版本 ${version} 的产物: exe=${exe ?? "缺"} sig=${sig ?? "缺"}\n` +
+      `确认 tauri.conf.json 的 version 与实际打包版本一致;` +
+      `.sig 缺失说明打包时没带签名私钥(TAURI_SIGNING_PRIVATE_KEY)。`
   );
   process.exit(1);
 }
