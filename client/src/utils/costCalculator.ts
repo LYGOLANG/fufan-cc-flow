@@ -25,6 +25,7 @@ export function formatCost(usd: number): string {
  */
 const CONTEXT_CATALOG: Array<{ test: RegExp; window: number }> = [
   // OpenAI Codex 档位
+  { test: /^gpt-5\.6/i, window: 1_000_000 }, // sol/terra/luna 三档统一 1M(2026-07-09 发布)
   { test: /^gpt-5\.3-codex-spark/i, window: 128_000 },
   { test: /^gpt-5\.4-mini/i, window: 200_000 },
   { test: /^gpt-5\.4/i, window: 272_000 },

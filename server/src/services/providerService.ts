@@ -70,9 +70,11 @@ const BUILTIN_PROVIDERS: ProviderConfig[] = [
     id: "openai",
     name: "OpenAI (Codex)",
     kind: "codex",
-    // 与 Codex CLI 实际可用档位对齐(原设置页 CODEX_MODELS 列表)
-    models: ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark"],
-    defaultModel: "gpt-5.5",
+    // 与 Codex CLI 实际可用档位对齐。注意:ChatGPT 订阅(OAuth)登录没有
+    // /v1/models 接口,「刷新模型」只会返回这份内置列表——新档位发布后要手动更新这里
+    // (gpt-5.6 三档 2026-07-09 发布:sol=深度/terra=日常/luna=高吞吐,均 1M 上下文)
+    models: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark"],
+    defaultModel: "gpt-5.6-terra",
     builtin: true,
   },
   {

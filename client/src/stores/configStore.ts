@@ -84,7 +84,7 @@ export const useConfigStore = create<ConfigState>()(
       autoCompactThreshold: 95,
       apiKey: "",
       engine: "claude",
-      codexModel: "gpt-5.5",
+      codexModel: "gpt-5.6-terra",
       codexEffort: "high",
       providerId: "anthropic",
       providerModels: {},
