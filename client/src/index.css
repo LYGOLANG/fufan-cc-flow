@@ -224,7 +224,10 @@ body::before {
 .modal-content  { animation: modal-slide 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* ── Markdown Prose ── */
-.prose-obsidian { line-height: 1.7; }
+/* overflow-wrap: anywhere —— 长串不可断内容(文件路径/URL/长token)在溢出前折行,
+   否则会横向撑出气泡被 overflow-y-auto 容器裁掉("文字被遮住")。
+   继承属性,一条规则覆盖 p/li/code/td 全部后代;正常文本不受影响。 */
+.prose-obsidian { line-height: 1.7; overflow-wrap: anywhere; }
 .prose-obsidian h1, .prose-obsidian h2, .prose-obsidian h3 {
   color: var(--color-obsidian-50);
   font-family: var(--font-display);

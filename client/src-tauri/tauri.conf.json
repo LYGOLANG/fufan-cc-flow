@@ -48,11 +48,10 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdFNDE4NzI4QkE1NjI0NDgKUldSSUpGYTZLSWRCZnV3MXlsM2NCdERycjVXZys1REsyWURaS3h2L25WVEtQQkZXSWV6ZFN0dGsK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZCRDdGMDk2RUY5RDkxOQpSV1FaMmZsdUNYKzlCc2ZnVmhHRWd1VXcyN01sdVpWL0d6NXJsMW5ESXVicU1laGJHalp6ZW9aRAo=",
       "endpoints": [
-        "http://121.15.193.215:3001/updates/latest.json"
+        "https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/latest/download/latest.json"
       ],
-      "dangerousInsecureTransportProtocol": true,
       "windows": {
         "installMode": "passive"
       }

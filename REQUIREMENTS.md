@@ -135,9 +135,10 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 #### F1.14 桌面应用自动升级
 
 - 设置 → 环境标签页新增「应用更新」面板（仅 Tauri 桌面壳显示）：检查更新 → 显示新版本号与更新说明 → 下载安装（进度百分比）→ 自动重启
-- 基于 `tauri-plugin-updater`：更新端点 `http://<服务器>/updates/latest.json`，安装包由打包私钥（`~/.tauri/fufan-ccflow.key`，不入仓库）签名，公钥固化在应用内校验，防篡改
-- 发布流程：带 `TAURI_SIGNING_PRIVATE_KEY_PATH` 打包 → `node scripts/release-update.mjs` 生成 `release/updates/`（latest.json + 安装包）→ 上传服务器 `/updates/` 静态路径
-- Windows 安装模式 passive（静默带进度条）；端点为 http 时显式启用 `dangerousInsecureTransportProtocol`（局域网/自有服务器场景）
+- 基于 `tauri-plugin-updater`：更新端点为 GitHub Releases 公开发布仓 `https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/latest/download/latest.json`（`/latest/` 恒指向最新 release，发新版即被老版本发现），安装包由打包私钥（`~/.tauri/fufan-ccflow.key`，不入仓库）签名，公钥固化在应用内校验，防篡改
+- 发布流程：带 `TAURI_SIGNING_PRIVATE_KEY`（私钥内容，本 CLI 版本不认 `_PATH` 变体）打包 → `node scripts/release-update.mjs` 生成 `release/updates/`（latest.json + 去空格命名的安装包）→ `gh release create v<版本>` 上传到发布仓
+- 发布仓与源码仓分离（源码私有、发布公开）；资产文件名不含空格（GitHub 会把空格改成点，导致 latest.json 的 url 失配）
+- Windows 安装模式 passive（静默带进度条）；端点为 https，无需 `dangerousInsecureTransportProtocol`
 
 #### F1.15 外部拖入路径识别
 
