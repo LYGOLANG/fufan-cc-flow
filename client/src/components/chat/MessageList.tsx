@@ -583,7 +583,9 @@ function WelcomeScreen() {
         ].map((hint) => (
           <button
             key={hint.title}
-            onClick={() => useChatStore.getState().addUserMessage(hint.desc)}
+            // 填进输入框聚焦让用户确认后发送——不直接 addUserMessage(那只会
+            // 塞一条气泡不触发发送,死引导),也不复制 InputBar 的发送链路(会漂移)
+            onClick={() => useUIStore.getState().setPrefillInput(hint.desc)}
             className="text-left p-3.5 rounded-xl border border-white/5 hover:border-purple-glow/25 hover:bg-white/5 transition-all group"
             style={{ background: "rgba(30,27,46,0.4)" }}
           >

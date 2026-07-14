@@ -1,18 +1,5 @@
-// Pricing per million tokens (approximate, 2026)
-const PRICING: Record<string, { input: number; output: number }> = {
-  opus: { input: 15, output: 75 },
-  sonnet: { input: 3, output: 15 },
-  haiku: { input: 0.8, output: 4 },
-};
-
-export function estimateCost(
-  model: string,
-  inputTokens: number,
-  outputTokens: number
-): number {
-  const p = PRICING[model] || PRICING.sonnet;
-  return (inputTokens * p.input + outputTokens * p.output) / 1_000_000;
-}
+// (原 estimateCost/PRICING 已删:从未被调用,且只含 Claude 定价,回退会把
+//  gpt/deepseek 等按 sonnet 单价误算。实际费用一律取 SDK task_complete.costUsd。)
 
 export function formatCost(usd: number): string {
   if (usd < 0.01) return `$${usd.toFixed(4)}`;

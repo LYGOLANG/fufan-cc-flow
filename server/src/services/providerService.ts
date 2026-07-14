@@ -137,7 +137,9 @@ async function readFileData(): Promise<ProvidersFile> {
 
 async function writeFileData(data: ProvidersFile): Promise<void> {
   await fs.mkdir(path.dirname(PROVIDERS_FILE), { recursive: true });
-  await fs.writeFile(PROVIDERS_FILE, JSON.stringify(data, null, 2), "utf-8");
+  // 文件含明文 API Key:限定属主可读写(0o600)。Windows 上 mode 被忽略,
+  // 但用户主目录本身有 ACL 保护;POSIX 系统上生效。
+  await fs.writeFile(PROVIDERS_FILE, JSON.stringify(data, null, 2), { encoding: "utf-8", mode: 0o600 });
 }
 
 function mergeBuiltin(base: ProviderConfig, ov?: ProviderOverride): ProviderConfig {
