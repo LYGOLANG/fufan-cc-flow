@@ -176,10 +176,13 @@ body::before {
 }
 
 /* ── Pulse ring (Agent Active dot) ── */
+/* 扩散上限必须 ≤1.6:圆点距右侧文字仅 8px(gap-2),::before 比点大 4px,
+   scale 1.6 时向外扩 5.6px 不越界;原 2.5 倍会形成 30px 实心圆每次脉冲
+   都盖住相邻文字头一两个字("闪的时候字被遮住")。 */
 @keyframes agent-pulse {
-  0%   { transform: scale(1); opacity: 0.8; }
-  70%  { transform: scale(2); opacity: 0; }
-  100% { transform: scale(2.5); opacity: 0; }
+  0%   { transform: scale(1); opacity: 0.5; }
+  70%  { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
 }
 .agent-pulse-ring {
   position: relative;
