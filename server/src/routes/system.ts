@@ -294,7 +294,13 @@ router.get("/pick-folder", async (_req, res) => {
       // the modern IFileDialog-based picker (Windows Vista+) instead of the
       // old SHBrowseForFolder tree dialog.
       // EnableVisualStyles() ensures native visual themes are applied.
+      //
+      // [Console]::OutputEncoding = UTF8: 中文 Windows 下 PowerShell 非交互/重定向
+      // 场景默认按系统 OEM 代码页(GBK/936)编码 stdout,而 Node 的 execAsync 按 UTF-8
+      // 解码——GBK 字节不是合法 UTF-8 序列,选中文文件夹时路径直接乱码(同 ptyService.ts
+      // 里 cmd.exe 需要 chcp 65001 的道理一样,这里是 PowerShell 自己的输出编码开关)。
       const psScript = [
+        "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8;",
         "Add-Type -AssemblyName System.Windows.Forms;",
         "[System.Windows.Forms.Application]::EnableVisualStyles();",
         "$d = New-Object System.Windows.Forms.FolderBrowserDialog;",
