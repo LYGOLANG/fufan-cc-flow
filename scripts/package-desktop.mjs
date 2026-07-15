@@ -88,7 +88,14 @@ mkdirSync(releaseDir, { recursive: true });
 for (const filePath of readdirSync(releaseDir)) {
   const fullPath = path.join(releaseDir, filePath);
   if (statSync(fullPath).isFile() && isReleaseInstaller(fullPath)) {
-    rmSync(fullPath, { force: true });
+    try {
+      rmSync(fullPath, { force: true });
+    } catch (err) {
+      const code = err && typeof err === "object" && "code" in err ? err.code : "unknown";
+      console.warn(
+        `[package-desktop] warning: could not remove old installer ${path.relative(repoRoot, fullPath)} (${code}); continuing`
+      );
+    }
   }
 }
 
