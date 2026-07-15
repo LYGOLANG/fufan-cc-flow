@@ -135,6 +135,7 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 #### F1.14 桌面应用自动升级
 
 - 设置 → 环境标签页新增「应用更新」面板（仅 Tauri 桌面壳显示）：检查更新 → 显示新版本号与更新说明 → 下载安装（进度百分比）→ 自动重启
+- 启动自动检查 + 更新弹框（v0.1.3 起）：应用启动 8s 后及此后每 4h 静默检查一次更新源，发现新版本即全局弹框（版本号 + 更新说明），用户可「立即更新」（下载进度条 → 安装 → 自动重启）或「稍后」（同版本本次会话不再提示）；静默检查失败不打扰用户。发布新版即触达所有已安装用户，无需手动检查
 - 基于 `tauri-plugin-updater`：更新端点为 GitHub Releases 公开发布仓 `https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/latest/download/latest.json`（`/latest/` 恒指向最新 release，发新版即被老版本发现），安装包由打包私钥（`~/.tauri/fufan-ccflow.key`，不入仓库）签名，公钥固化在应用内校验，防篡改
 - 发布流程：带 `TAURI_SIGNING_PRIVATE_KEY`（私钥内容，本 CLI 版本不认 `_PATH` 变体）打包 → `node scripts/release-update.mjs` 生成 `release/updates/`（latest.json + 去空格命名的安装包）→ `gh release create v<版本>` 上传到发布仓
 - 发布仓与源码仓分离（源码私有、发布公开）；资产文件名不含空格（GitHub 会把空格改成点，导致 latest.json 的 url 失配）
