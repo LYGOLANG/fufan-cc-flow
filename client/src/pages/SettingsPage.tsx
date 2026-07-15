@@ -28,6 +28,7 @@ import { useClaudeStatus } from "../hooks/useClaudeStatus";
 import type { ModelId, EffortLevel } from "../types/claude";
 import { api } from "../services/api";
 import ProvidersPanel from "../components/settings/ProvidersPanel";
+import AppUpdatePanel from "../components/settings/AppUpdatePanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1067,6 +1068,9 @@ export default function SettingsPage() {
             </div>
             <Step1EnvCard done={step1Done} />
           </div>
+
+          {/* ③ 应用更新(仅 Tauri 桌面壳显示;此前误挂在不可达的旧 SettingsModal 里) */}
+          <AppUpdatePanel />
 
         </div>
       </div>
