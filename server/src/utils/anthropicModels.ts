@@ -28,6 +28,21 @@ function isLegacyModel(id: string): boolean {
   return /^claude-(instant|[123])([.-]|$)/.test(id) || /^claude-(opus|sonnet|haiku)-[123]([.-]|$)/.test(id);
 }
 
+/**
+ * 原生默认 1M 上下文的当代 Claude 模型(2026-06 官方目录):
+ * Fable 5 / Mythos 5 / Sonnet 5 / Opus 4.6~4.8 / Sonnet 4.6。
+ * 这些模型在 Claude Code 里不带 "[1m]" 后缀就是 1M,不需要也不该生成
+ * 200K 基础条目 + "[1m]" 变体的双条目;只有老一代靠 beta 解锁 1M 的
+ * 模型(Sonnet 4 / 4.5 等)才走双条目逻辑。
+ */
+function isNative1M(id: string): boolean {
+  return (
+    /^claude-(fable|mythos|sonnet)-5([.-]|$)/i.test(id) ||
+    /^claude-opus-4-[678]([.-]|$)/i.test(id) ||
+    /^claude-sonnet-4-6([.-]|$)/i.test(id)
+  );
+}
+
 export async function fetchAnthropicModels(opts: {
   baseUrl?: string;
   apiKey?: string;
@@ -105,8 +120,13 @@ export async function fetchAnthropicModels(opts: {
     if (isLegacyModel(m.id)) continue;
     const label = m.display_name || m.id;
     const ctx = typeof m.max_input_tokens === "number" ? m.max_input_tokens : undefined;
-    // 基础条目按标准 200K 窗口暴露(即使模型支持 1M,不带 [1m] 后缀时 CLI 生效的
-    // 也是 200K);1M 需通过独立的 "[1m]" 变体显式解锁。
+    if (isNative1M(m.id)) {
+      // 当代模型:原生默认 1M,单条目直出,不锁 200K、不生成 "[1m]" 变体
+      out.push({ id: m.id, display_name: label, context_window: ctx ?? 1_000_000 });
+      continue;
+    }
+    // 老一代模型:基础条目按标准 200K 窗口暴露(即使模型支持 1M,不带 [1m]
+    // 后缀时 CLI 生效的也是 200K);1M 需通过独立的 "[1m]" 变体显式解锁。
     out.push({
       id: m.id,
       display_name: label,

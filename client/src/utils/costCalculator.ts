@@ -23,8 +23,17 @@ const CONTEXT_CATALOG: Array<{ test: RegExp; window: number }> = [
   { test: /^minimax/i, window: 200_000 },
   { test: /^kimi/i, window: 256_000 },
   { test: /^(glm|chatglm)/i, window: 200_000 },
-  // Claude(别名或完整 id)标准窗口
-  { test: /^(claude-|opus$|sonnet$|haiku$)/i, window: 200_000 },
+  // Claude 当代模型默认 1M(2026-06 官方模型目录核对):
+  // Fable 5 / Mythos 5 / Sonnet 5 / Opus 4.6~4.8 / Sonnet 4.6 上下文窗口均为 1M
+  { test: /^claude-(fable|mythos|sonnet)-5/i, window: 1_000_000 },
+  { test: /^claude-opus-4-[678]/i, window: 1_000_000 },
+  { test: /^claude-sonnet-4-6/i, window: 1_000_000 },
+  // Haiku 系列仍是 200K
+  { test: /^(claude-haiku|claude-3.*haiku|haiku$)/i, window: 200_000 },
+  // 裸别名 opus/sonnet 解析到最新代 → 1M
+  { test: /^(opus|sonnet)$/i, window: 1_000_000 },
+  // 旧 Claude(Opus 4.5/4.1、Sonnet 4.5 及更早)标准窗口 200K 兜底
+  { test: /^claude-/i, window: 200_000 },
 ];
 
 /**

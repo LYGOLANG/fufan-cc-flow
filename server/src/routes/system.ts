@@ -20,9 +20,10 @@ import { listInterrupted, clearInterrupted } from "../services/taskRegistry.js";
 import { logger } from "../utils/logger.js";
 
 /** Static fallback when /v1/models can't be reached (offline / no key yet). */
+// 裸别名解析到当前最新代(2026-06):opus → Opus 4.8、sonnet → Sonnet 5,均原生 1M
 const FALLBACK_MODELS: ModelInfo[] = [
-  { id: "opus", display_name: "Claude Opus 4.8", context_window: 200_000 },
-  { id: "sonnet", display_name: "Claude Sonnet 4.6", context_window: 200_000 },
+  { id: "opus", display_name: "Claude Opus 4.8", context_window: 1_000_000 },
+  { id: "sonnet", display_name: "Claude Sonnet 5", context_window: 1_000_000 },
   { id: "haiku", display_name: "Claude Haiku 4.5", context_window: 200_000 },
 ];
 import { getClaudeHome } from "../utils/pathUtils.js";
