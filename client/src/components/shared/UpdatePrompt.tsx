@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, RefreshCw, Rocket, X } from "lucide-react";
-
-/** 仅在 Tauri 桌面壳内生效(浏览器开发模式下不渲染、不检查) */
-function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
+import { isTauriRuntime } from "../../utils/tauri";
 
 /** 启动后延迟检查,避免和应用初始化抢资源 */
 const STARTUP_DELAY_MS = 8_000;
@@ -30,7 +26,7 @@ export default function UpdatePrompt() {
   const [phase, setPhase] = useState<Phase>({ s: "hidden" });
 
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isTauriRuntime()) return;
     let alive = true;
 
     const runCheck = async () => {

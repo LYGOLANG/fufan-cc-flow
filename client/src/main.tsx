@@ -2,16 +2,16 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { isTauriRuntime } from "./utils/tauri";
 
 declare global {
   interface Window {
     __BACKEND_PORT__?: number;
-    __TAURI_INTERNALS__?: unknown;
   }
 }
 
 async function initDesktopBackendPort() {
-  if (import.meta.env.DEV || typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+  if (import.meta.env.DEV || !isTauriRuntime()) {
     return;
   }
 

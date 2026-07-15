@@ -11,6 +11,7 @@ import SlashCommandMenu, { type SlashCommandMenuHandle, type SlashCommand } from
 import AttachmentPreview from "./AttachmentPreview";
 import ModelSelector from "../manage/ModelSelector";
 import type { Attachment } from "../../types/claude";
+import { isTauriRuntime } from "../../utils/tauri";
 
 const RUN_MODES: { id: RunMode; label: string }[] = [
   { id: "default",           label: "询问权限" },
@@ -98,7 +99,7 @@ export default function InputBar() {
   // 桌面壳里 Tauri 拦截原生文件拖放(HTML5 drop 拿不到路径),必须走 onDragDropEvent;
   // 多个路径空格分隔,含空格的路径加引号,Claude 可直接 Read/Glob。
   useEffect(() => {
-    if (!("__TAURI_INTERNALS__" in window)) return;
+    if (!isTauriRuntime()) return;
     let unlisten: (() => void) | undefined;
     let disposed = false;
     void (async () => {

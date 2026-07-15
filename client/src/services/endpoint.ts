@@ -11,6 +11,8 @@
  *     window.__BACKEND_PORT__ 覆盖(为将来端口动态化预留的接缝)。
  */
 
+import { isTauriRuntime } from "../utils/tauri";
+
 const DEFAULT_BACKEND_PORT = 3001;
 
 declare global {
@@ -31,7 +33,7 @@ function isWebOrigin(): boolean {
   return (
     typeof window !== "undefined" &&
     /^https?:$/.test(window.location.protocol) &&
-    !("__TAURI_INTERNALS__" in window)
+    !isTauriRuntime()
   );
 }
 

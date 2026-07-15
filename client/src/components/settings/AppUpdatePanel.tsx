@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { RefreshCw, Download, CheckCircle2, AlertTriangle, Rocket } from "lucide-react";
-
-/** 仅在 Tauri 桌面壳内可用(浏览器开发模式下隐藏整个面板) */
-function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
+import { isTauriRuntime } from "../../utils/tauri";
 
 type Phase =
   | { s: "idle" }
@@ -23,7 +19,7 @@ type Phase =
 export default function AppUpdatePanel() {
   const [phase, setPhase] = useState<Phase>({ s: "idle" });
 
-  if (!isTauri()) return null;
+  if (!isTauriRuntime()) return null;
 
   const check = async () => {
     setPhase({ s: "checking" });
