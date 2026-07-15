@@ -59,7 +59,9 @@ export default function ChatPanel() {
           <h2 className="text-base font-display font-semibold text-white leading-tight truncate">
             {taskTitle}
           </h2>
-          <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 min-w-0 overflow-hidden whitespace-nowrap">
+          {/* pl-1.5 -ml-1.5: overflow-hidden 会把 agent-pulse-ring 向左扩散的光环裁掉(左半边被遮),
+              padding 在裁剪盒内给光环留 6px 呼吸空间,负 margin 抵消位移,视觉位置不变 */}
+          <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 min-w-0 overflow-hidden whitespace-nowrap pl-1.5 -ml-1.5">
             {isStreaming ? (
               <>
                 <span className="agent-pulse-ring w-2 h-2 rounded-full bg-emerald-ok flex-shrink-0" />
