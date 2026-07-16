@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { RefreshCw, Download, CheckCircle2, AlertTriangle, Rocket } from "lucide-react";
-import { isTauriRuntime } from "../../utils/tauri";
+import { isTauriRuntime, getSystemProxy } from "../../utils/tauri";
 
 type Phase =
   | { s: "idle" }
@@ -25,7 +25,8 @@ export default function AppUpdatePanel() {
     setPhase({ s: "checking" });
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
+      const proxy = await getSystemProxy();
+      const update = await check({ proxy });
       if (update) {
         setPhase({ s: "available", version: update.version, notes: update.body });
       } else {
@@ -40,7 +41,8 @@ export default function AppUpdatePanel() {
     setPhase({ s: "downloading", pct: 0 });
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
+      const proxy = await getSystemProxy();
+      const update = await check({ proxy });
       if (!update) {
         setPhase({ s: "none" });
         return;

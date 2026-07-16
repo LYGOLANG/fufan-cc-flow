@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Download, RefreshCw, Rocket, X } from "lucide-react";
-import { isTauriRuntime } from "../../utils/tauri";
+import { isTauriRuntime, getSystemProxy } from "../../utils/tauri";
 
 /** 启动后延迟检查,避免和应用初始化抢资源 */
 const STARTUP_DELAY_MS = 8_000;
@@ -32,7 +32,8 @@ export default function UpdatePrompt() {
     const runCheck = async () => {
       try {
         const { check } = await import("@tauri-apps/plugin-updater");
-        const update = await check();
+        const proxy = await getSystemProxy();
+        const update = await check({ proxy });
         if (!alive || !update) return;
         if (dismissed.has(update.version)) return;
         setPhase((p) =>
@@ -66,7 +67,8 @@ export default function UpdatePrompt() {
     setPhase({ s: "downloading", pct: 0 });
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
+      const proxy = await getSystemProxy();
+      const update = await check({ proxy });
       if (!update) {
         setPhase({ s: "hidden" });
         return;
