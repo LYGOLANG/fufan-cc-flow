@@ -30,8 +30,20 @@ jobs:
 
       # bundle.targets in tauri.conf.json is "nsis" (Windows); override for macOS
       # bundles, mirroring scripts/package-desktop.mjs which does the same locally.
+      # Updater artifacts need TAURI_SIGNING_PRIVATE_KEY; when the secret is not
+      # configured, disable them (same fallback as scripts/package-desktop.mjs)
+      # so the build still produces an installable .app/.dmg.
       - name: Build Tauri app (bundles the Node sidecar automatically)
-        run: pnpm --filter client exec tauri build --bundles app,dmg
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          extra_args=()
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY secret not set — building without updater artifacts"
+            extra_args=(--config '{"bundle":{"createUpdaterArtifacts":false}}')
+          fi
+          pnpm --filter client exec tauri build --bundles app,dmg "${extra_args[@]}"
 
       - name: Upload dmg
         uses: actions/upload-artifact@v4
