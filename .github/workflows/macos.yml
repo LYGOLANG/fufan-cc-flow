@@ -28,8 +28,10 @@ jobs:
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
+      # bundle.targets in tauri.conf.json is "nsis" (Windows); override for macOS
+      # bundles, mirroring scripts/package-desktop.mjs which does the same locally.
       - name: Build Tauri app (bundles the Node sidecar automatically)
-        run: pnpm --filter client exec tauri build
+        run: pnpm --filter client exec tauri build --bundles app,dmg
 
       - name: Upload dmg
         uses: actions/upload-artifact@v4
