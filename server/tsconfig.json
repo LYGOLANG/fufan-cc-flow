@@ -7,5 +7,8 @@
     "rootDir": "src",
     "composite": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  // 测试文件不进生产构建:dist 会被 prepare-sidecar 原样打进桌面安装包(server-dist),
+  // *.test.ts 编译产物随包分发既占体积,fixture 里的假路径还会触发发布隐私审计告警。
+  "exclude": ["src/**/*.test.ts"]
 }
