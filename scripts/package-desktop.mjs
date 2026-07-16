@@ -69,6 +69,10 @@ try {
   execFileSync(pnpmCommand, buildArgs, {
     cwd: repoRoot,
     stdio: "inherit",
+    // Windows: pnpm.cmd 是批处理脚本,execFileSync 不带 shell:true 直接调用
+    // 会抛 EINVAL(Node 在 Windows 下的已知行为,.cmd/.bat 必须经 shell 转发)。
+    // macOS/Linux 上 pnpm 是真实可执行文件,shell:true 无副作用,统一按平台判断即可。
+    shell: process.platform === "win32",
     env: {
       ...process.env,
       RUSTFLAGS: [inheritedRustFlags, remapHome].filter(Boolean).join(" "),
