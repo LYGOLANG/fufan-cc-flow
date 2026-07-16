@@ -15,7 +15,8 @@ export function isSubPath(parent: string, child: string): boolean {
 }
 
 export function getClaudeHome(): string {
-  return path.join(os.homedir(), ".claude");
+  const configured = process.env.CLAUDE_CONFIG_DIR?.trim();
+  return configured ? normalizePath(configured) : path.join(os.homedir(), ".claude");
 }
 
 /**

@@ -1,149 +1,12 @@
-import { wsChatUrl, httpBase } from "./endpoint";
 import { useUIStore } from "../stores/uiStore";
-
-type Handler = (event: string, payload: Record<string, unknown>) => void;
-
-interface PendingSend {
-  action: string;
-  payload: Record<string, unknown>;
-  timer: ReturnType<typeof setTimeout>;
-}
+import { createChatConnection } from "./transport/chat";
+import type { ChatConnection, ChatHandler } from "./transport/types";
 
 /**
  * 后台项目积压缓冲的硬上限(条)。连续的流式增量已在入缓冲时合并成一条,故正常一轮
  * 远达不到此值;超限时丢弃最旧的条目只保留最近尾部,防止极端情况下内存无界增长。
  */
 const MAX_BUFFER = 2000;
-
-/**
- * 单条物理连接:连后端 /ws/chat,带指数退避重连。一个项目一条。
- * 服务端把 project 作为 spawn cwd 在连接建立时固定,故一个项目对应一条独立连接。
- */
-class WebSocketConnection {
-  private ws: WebSocket | null = null;
-  private handlers = new Set<Handler>();
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private reconnectDelay = 3000;
-  private readonly MAX_RECONNECT_DELAY = 30000;
-  private readonly SEND_TIMEOUT_MS = 15000;
-  private pendingSends: PendingSend[] = [];
-  private closedByUser = false;
-
-  constructor(private readonly projectPath: string) {}
-
-  connect() {
-    this.clearTimer();
-    const query = this.projectPath ? `?project=${encodeURIComponent(this.projectPath)}` : "";
-    const wsUrl = wsChatUrl(query);
-    console.debug("[WS] Connecting to", wsUrl);
-    this.ws = new WebSocket(wsUrl);
-
-    this.ws.onopen = () => {
-      console.debug("[WS] Connected", this.projectPath);
-      this.reconnectDelay = 3000;
-      this.notify("_connected", {});
-      this.flushPendingSends();
-    };
-    this.ws.onmessage = (ev) => {
-      try {
-        const msg = JSON.parse(ev.data);
-        this.notify(msg.event, msg.payload);
-      } catch (err) {
-        console.error("[WS] Failed to parse message:", err, "raw:", ev.data);
-      }
-    };
-    this.ws.onclose = (ev) => {
-      console.debug("[WS] Closed", this.projectPath, ev.code);
-      this.notify("_disconnected", {});
-      if (this.closedByUser) return; // 关闭项目标签:不再重连
-      const delay = this.reconnectDelay;
-      this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.MAX_RECONNECT_DELAY);
-      this.reconnectTimer = setTimeout(() => this.connect(), delay);
-    };
-    this.ws.onerror = (ev) => console.error("[WS] Error:", ev);
-  }
-
-  send(action: string, payload: Record<string, unknown> = {}) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ action, payload }));
-      return true;
-    }
-    if (action !== "send_message") return false;
-
-    const pending: PendingSend = {
-      action,
-      payload,
-      timer: setTimeout(() => {
-        this.pendingSends = this.pendingSends.filter((item) => item !== pending);
-        this.notify("error", {
-          code: "BACKEND_NOT_CONNECTED",
-          message: "本地后端还没连接上，消息没有发出去。请稍等几秒重试；如果一直这样，说明桌面端内置后端启动失败。",
-        });
-      }, this.SEND_TIMEOUT_MS),
-    };
-    this.pendingSends.push(pending);
-    return true;
-  }
-
-  subscribe(handler: Handler): () => void {
-    this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
-  }
-
-  get connected() {
-    return this.ws?.readyState === WebSocket.OPEN;
-  }
-
-  /** 用户显式关闭该项目:停重连并断连(服务端立即收尾其任务,不走寄存宽限期)。 */
-  close() {
-    this.closedByUser = true;
-    this.clearTimer();
-    // 先发显式 shutdown:服务端据此区分"关标签(立即收尾)"和"页面刷新/网络
-    // 闪断(寄存 30s 等重连,常驻进程与后台任务存活)"
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.send("shutdown", {});
-    } else {
-      // WS 正处于重连/未连:send() 会静默丢帧,服务端收不到显式信号会把引擎寄存 30s
-      // (任务多跑一截,甚至被后开的连接复活)。改打 REST 兜底,保证「用户显式关掉」立刻收尾。
-      try {
-        fetch(`${httpBase()}/system/shutdown-project`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectPath: this.projectPath }),
-          keepalive: true,
-        }).catch(() => {});
-      } catch { /* ignore */ }
-    }
-    this.ws?.close();
-    this.ws = null;
-    this.clearPendingSends();
-  }
-
-  private clearTimer() {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-  }
-
-  private flushPendingSends() {
-    if (this.ws?.readyState !== WebSocket.OPEN || this.pendingSends.length === 0) return;
-    const pending = this.pendingSends.splice(0);
-    for (const item of pending) {
-      clearTimeout(item.timer);
-      this.ws.send(JSON.stringify({ action: item.action, payload: item.payload }));
-    }
-  }
-
-  private clearPendingSends() {
-    for (const item of this.pendingSends) clearTimeout(item.timer);
-    this.pendingSends = [];
-  }
-
-  private notify(event: string, payload: Record<string, unknown>) {
-    for (const h of this.handlers) h(event, payload);
-  }
-}
 
 /** 终态事件:任务在服务端结束,可清除 busy 标记。 */
 const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted", "error"]);
@@ -161,9 +24,9 @@ const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted", "e
  * 所有连接的 session_init/终态事件都用于维护 busyProjects(标签"运行中"指示)。
  */
 class WebSocketManager {
-  private conns = new Map<string, WebSocketConnection>();
+  private conns = new Map<string, ChatConnection>();
   private internalUnsubs = new Map<string, () => void>();
-  private appHandlers = new Set<Handler>();
+  private appHandlers = new Set<ChatHandler>();
   private activeProject = "";
   /**
    * 后台项目(以及活动项目在 attach 前)积压的业务事件,切回时按序重放。
@@ -174,10 +37,10 @@ class WebSocketManager {
   /** App 层 handler 是否已就绪:attach() 后才实时转发,期间事件进 buffer 不丢失 */
   private live = false;
 
-  private ensure(projectPath: string): WebSocketConnection {
+  private ensure(projectPath: string): ChatConnection {
     let conn = this.conns.get(projectPath);
     if (!conn) {
-      conn = new WebSocketConnection(projectPath);
+      conn = createChatConnection(projectPath);
       const unsub = conn.subscribe((event, payload) => {
         this.trackBusy(projectPath, event);
         if (projectPath === this.activeProject && this.live) {
@@ -251,12 +114,12 @@ class WebSocketManager {
 
   /** 发送到"活动项目"连接。 */
   send(action: string, payload: Record<string, unknown> = {}) {
-    this.conns.get(this.activeProject)?.send(action, payload);
-    if (action === "send_message") this.setBusy(this.activeProject, true);
+    const accepted = this.conns.get(this.activeProject)?.send(action, payload) ?? false;
+    if (action === "send_message" && accepted) this.setBusy(this.activeProject, true);
     else if (action === "abort") this.setBusy(this.activeProject, false);
   }
 
-  subscribe(handler: Handler): () => void {
+  subscribe(handler: ChatHandler): () => void {
     this.appHandlers.add(handler);
     return () => this.appHandlers.delete(handler);
   }

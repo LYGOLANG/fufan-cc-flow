@@ -55,7 +55,10 @@ const PARK_GRACE_MS = 30_000;
  * F1.10:按模型家族推导自动降级链(opus→sonnet→haiku;haiku/未知不降级)。
  * 仅官方端点注入——第三方兼容端点不一定有对应模型,降级反而把任务打死。
  */
-function deriveFallbackModel(model: string | undefined, isCompat: boolean): string | undefined {
+function deriveFallbackModel(
+  model: string | undefined,
+  isCompat: boolean,
+): string | undefined {
   if (isCompat || !model) return undefined;
   const base = model.replace(/\[1m\]$/i, "");
   if (base === "opus" || /^claude-opus/i.test(base)) return "sonnet";
@@ -129,11 +132,15 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
       // 寄存中(上一个 socket 已断):认领,常驻进程与后台任务原样接管
       clearTimeout(existing.parkTimer);
       existing.parkTimer = null;
-      logger.info(`认领寄存会话 (${projectPath}) activeSessionId=${existing.activeSessionId}`);
+      logger.info(
+        `认领寄存会话 (${projectPath}) activeSessionId=${existing.activeSessionId}`,
+      );
     } else {
       // 仍活着(半开重连 / 双开标签页):接管其引擎,并 detach 旧 socket 的监听器,
       // 让旧 socket 的 close 成为空操作,运行中的任务转交给本连接不被误杀。
-      logger.info(`接管活跃会话 (${projectPath}) activeSessionId=${existing.activeSessionId}`);
+      logger.info(
+        `接管活跃会话 (${projectPath}) activeSessionId=${existing.activeSessionId}`,
+      );
       existing.detach();
     }
     adopted = true;
@@ -161,7 +168,9 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
     if (ws.readyState === ws.OPEN) {
       ws.send(serverMsg(event, data));
     } else {
-      logger.warn(`[forward] Socket not open (state=${ws.readyState}), dropping event: ${event}`);
+      logger.warn(
+        `[forward] Socket not open (state=${ws.readyState}), dropping event: ${event}`,
+      );
     }
   };
 
@@ -210,7 +219,9 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
   // F1.13:审计时间线事件(SDK 进程内 hooks 只读观察)
   claude.on("hook_event", (d) => forward("hook_event", d));
   // workflow/后台 agent 生命周期(task_started / task_notification / background_tasks_changed)
-  claude.on("background_task_event", (d) => forward("background_task_event", d));
+  claude.on("background_task_event", (d) =>
+    forward("background_task_event", d),
+  );
 
   // ── HIL 权限请求 ──
   // 安全工具(Read/Grep/… )已在服务层自动放行、不会到达这里(见 claudeAgentService
@@ -269,9 +280,16 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
   if (adopted && session.activeEngine === "claude" && claude.isTurnActive()) {
     const sid = claude.getActiveSessionId() ?? session.activeSessionId;
     if (sid) {
-      forward("session_init", { sessionId: sid, model: session.activeModel ?? undefined, resumed: true });
+      forward("session_init", {
+        sessionId: sid,
+        model: session.activeModel ?? undefined,
+        resumed: true,
+      });
       for (const req of claude.getPendingRequests()) {
-        forward("permission_request", req as unknown as Record<string, unknown>);
+        forward(
+          "permission_request",
+          req as unknown as Record<string, unknown>,
+        );
       }
     }
   }
@@ -291,7 +309,10 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
       case "send_message": {
         const p = msg.payload;
         if (!projectPath || !projectPath.trim()) {
-          forward("error", { code: "NO_PROJECT", message: "请先在侧栏选择项目文件夹，再开始对话" });
+          forward("error", {
+            code: "NO_PROJECT",
+            message: "请先在侧栏选择项目文件夹，再开始对话",
+          });
           break;
         }
         try {
@@ -304,7 +325,9 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
           //   bypassPermissions → 全自动放行
           const runMode = (p.runMode as string) || "default";
           const permissionMode = (
-            ["default", "acceptEdits", "plan", "bypassPermissions"].includes(runMode)
+            ["default", "acceptEdits", "plan", "bypassPermissions"].includes(
+              runMode,
+            )
               ? runMode
               : "default"
           ) as "default" | "acceptEdits" | "plan" | "bypassPermissions";
@@ -330,7 +353,10 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
           const providerId = (p.providerId as string) || "";
           const provider = providerId ? await getProvider(providerId) : null;
           if (providerId && !provider) {
-            forward("error", { code: "UNKNOWN_PROVIDER", message: `未知供应商: ${providerId}` });
+            forward("error", {
+              code: "UNKNOWN_PROVIDER",
+              message: `未知供应商: ${providerId}`,
+            });
             break;
           }
           const isCompat = provider?.kind === "anthropic-compat";
@@ -342,13 +368,20 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
             break;
           }
           const engine: "claude" | "codex" = provider
-            ? (provider.kind === "codex" ? "codex" : "claude")
-            : ((p.engine as string) === "codex" ? "codex" : "claude");
+            ? provider.kind === "codex"
+              ? "codex"
+              : "claude"
+            : (p.engine as string) === "codex"
+              ? "codex"
+              : "claude";
           // 用户中途切换了引擎：Claude 的 session id 传给 codex exec resume 会
           // 直接报错（反之亦然），丢弃客户端带来的 sessionId/forkSession，开新会话。
-          const crossEngineSwitch = session.activeEngine !== null && session.activeEngine !== engine;
+          const crossEngineSwitch =
+            session.activeEngine !== null && session.activeEngine !== engine;
           // 历史遗留防护:opencode 时期产生的 "ses_" 前缀会话 id 对 Claude/Codex 无效,丢弃
-          let clientSessionId = crossEngineSwitch ? undefined : (p.sessionId as string) || undefined;
+          let clientSessionId = crossEngineSwitch
+            ? undefined
+            : (p.sessionId as string) || undefined;
           if (clientSessionId?.startsWith("ses_")) clientSessionId = undefined;
           // 客户端发送时正处于流式中 = 这条是对当前活跃会话的续发(哪怕 session_init 还没
           // 回传、拿不到 sessionId)。带此标记让服务层排队复用常驻进程,而不是误杀正在跑的任务。
@@ -359,23 +392,29 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
             // 新客户端(带 providerId)统一用 model 字段;旧客户端仍用 codexModel,
             // 此时 p.model 是 Claude 侧别名(opus/sonnet),不能误传给 Codex。
             const codexModel = provider
-              ? ((p.model as string) || provider.defaultModel || undefined)
-              : ((p.codexModel as string) || undefined);
+              ? (p.model as string) || provider.defaultModel || undefined
+              : (p.codexModel as string) || undefined;
             // 图片附件走 `--image` 原生多模态;Spark 是纯文本模型,回退为路径文本。
             const sparkTextOnly = /spark/i.test(codexModel ?? "");
             const imagePaths = sparkTextOnly
               ? []
               : attachmentPaths.filter((fp) => IMAGE_EXT_RE.test(fp));
-            const promptRefs = attachmentPaths.filter((fp) => !imagePaths.includes(fp));
+            const promptRefs = attachmentPaths.filter(
+              (fp) => !imagePaths.includes(fp),
+            );
             let codexPrompt = prompt;
-            if (promptRefs.length > 0) codexPrompt += " (附件：" + promptRefs.join(" ") + ")";
+            if (promptRefs.length > 0)
+              codexPrompt += " (附件：" + promptRefs.join(" ") + ")";
             const sid = await codex.start({
               prompt: codexPrompt,
               projectPath,
               sessionId: clientSessionId,
               model: codexModel,
-              effort: ["minimal", "low", "medium", "high", "xhigh"].includes(codexEffort ?? "")
-                ? (codexEffort as "minimal" | "low" | "medium" | "high" | "xhigh")
+              effort: ["minimal", "low", "medium", "high", "xhigh"].includes(
+                codexEffort ?? "",
+              )
+                ? (codexEffort as
+                    "minimal" | "low" | "medium" | "high" | "xhigh")
                 : undefined,
               permissionMode,
               images: imagePaths.length > 0 ? imagePaths : undefined,
@@ -397,11 +436,16 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
             const ultracode = rawEffort === "ultracode";
             const effort = ultracode
               ? ("xhigh" as const)
-              : (["low", "medium", "high", "xhigh", "max"].includes(rawEffort ?? "")
-                  ? (rawEffort as "low" | "medium" | "high" | "xhigh" | "max")
-                  : undefined);
+              : ["low", "medium", "high", "xhigh", "max"].includes(
+                    rawEffort ?? "",
+                  )
+                ? (rawEffort as "low" | "medium" | "high" | "xhigh" | "max")
+                : undefined;
 
-            const model = (p.model as string) || (isCompat ? provider?.defaultModel : undefined) || undefined;
+            const model =
+              (p.model as string) ||
+              (isCompat ? provider?.defaultModel : undefined) ||
+              undefined;
             // Claude:全部附件路径拼进 prompt,由 Read 工具读取(图片自动 base64 视觉)
             if (attachmentPaths.length > 0) {
               prompt += " (附件：" + attachmentPaths.join(" ") + ")";
@@ -411,7 +455,9 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               projectPath,
               sessionId: clientSessionId,
               continueActive: continueActive || undefined,
-              forkSession: crossEngineSwitch ? undefined : (p.forkSession as boolean) || undefined,
+              forkSession: crossEngineSwitch
+                ? undefined
+                : (p.forkSession as boolean) || undefined,
               model,
               effort,
               ultracode: ultracode || undefined,
@@ -432,7 +478,6 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               apiKey: isCompat ? undefined : (p.apiKey as string) || undefined,
               httpProxy: proxy.httpProxy || undefined,
               httpsProxy: proxy.httpsProxy || undefined,
-              socksProxy: proxy.socksProxy || undefined,
             });
             session.activeSessionId = sid;
             session.activeEngine = "claude";
@@ -444,9 +489,14 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               promptSnippet: (p.prompt as string).slice(0, 120),
               startedAt: Date.now(),
             });
-            session.activeCompat = isCompat && provider?.baseUrl
-              ? { baseUrl: provider.baseUrl, authToken: provider.apiKey, model }
-              : null;
+            session.activeCompat =
+              isCompat && provider?.baseUrl
+                ? {
+                    baseUrl: provider.baseUrl,
+                    authToken: provider.apiKey,
+                    model,
+                  }
+                : null;
           }
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
@@ -478,7 +528,12 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
         const reason = msg.payload.reason as string | undefined;
         const alwaysAllow = msg.payload.alwaysAllow as boolean | undefined;
         if (reqId) {
-          const resolved = claude.resolvePermission(reqId, decision, reason, !!alwaysAllow);
+          const resolved = claude.resolvePermission(
+            reqId,
+            decision,
+            reason,
+            !!alwaysAllow,
+          );
           if (!resolved) {
             logger.warn(`Permission response for unknown request: ${reqId}`);
           }
@@ -488,7 +543,10 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
 
       case "compact": {
         if (session.activeEngine === "codex") {
-          forward("error", { code: "UNSUPPORTED", message: "Codex 暂不支持 /compact" });
+          forward("error", {
+            code: "UNSUPPORTED",
+            message: "Codex 暂不支持 /compact",
+          });
           break;
         }
         const instructions = (msg.payload.instructions as string) || "";
@@ -498,7 +556,12 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
           ? `/compact ${instructions}`
           : "/compact";
         // 会话有常驻进程时直接把 /compact 推入其输入队列(不重启、不打断后台任务)
-        if (claude.sendMessage(clientSessionId || session.activeSessionId, compactPrompt)) {
+        if (
+          claude.sendMessage(
+            clientSessionId || session.activeSessionId,
+            compactPrompt,
+          )
+        ) {
           break;
         }
         try {
@@ -516,11 +579,10 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
             mcpVersion: getMcpConfigVersion(),
             fallbackModel: deriveFallbackModel(
               session.activeCompat?.model ?? session.activeModel ?? undefined,
-              !!session.activeCompat
+              !!session.activeCompat,
             ),
             httpProxy: proxy.httpProxy || undefined,
             httpsProxy: proxy.httpsProxy || undefined,
-            socksProxy: proxy.socksProxy || undefined,
           });
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
@@ -569,6 +631,8 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
       logger.info(`寄存超时无人认领,收尾引擎 (${projectPath})`);
     }, PARK_GRACE_MS);
     session.parkTimer.unref();
-    logger.info(`WS 断开,会话寄存 ${PARK_GRACE_MS / 1000}s 等待重连 (${projectPath})`);
+    logger.info(
+      `WS 断开,会话寄存 ${PARK_GRACE_MS / 1000}s 等待重连 (${projectPath})`,
+    );
   });
 }

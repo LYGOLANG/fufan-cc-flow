@@ -10,9 +10,14 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,css}\""
   },
   "devDependencies": {
-    "concurrently": "^9.1.0",
-    "prettier": "^3.4.0",
-    "typescript": "^5.7.0"
+    "concurrently": "^9.2.4",
+    "prettier": "^3.9.5",
+    "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "prismjs": "1.30.0"
+    }
   },
   "packageManager": "pnpm@10.33.1+sha512.05ba3c1d5d1c18f68df06470d74055e62d41fc110a0c660db1b2dfb2785327f04cf0f68345d4609bc52089e7fa0343c31593b2f9594e2c5d5da426230acc9820"
 }

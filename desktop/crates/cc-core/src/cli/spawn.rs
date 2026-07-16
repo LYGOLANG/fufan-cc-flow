@@ -19,9 +19,8 @@ fn is_cmd_shim(path: &Path) -> bool {
 
 /// 解析并构造 claude 命令(未 spawn)。调用方可继续配置 stdin/stdout/stderr 再 spawn。
 pub fn build_claude_command(args: &[String]) -> Result<Command> {
-    let bin = resolve_claude_bin().context(
-        "未找到 claude 可执行文件;可设置环境变量 CLAUDE_BIN 指向 claude 可执行文件",
-    )?;
+    let bin = resolve_claude_bin()
+        .context("未找到 claude 可执行文件;可设置环境变量 CLAUDE_BIN 指向 claude 可执行文件")?;
 
     if !bin.exists() {
         bail!("解析到的路径不存在: {}", bin.display());
@@ -45,9 +44,19 @@ pub fn build_claude_command(args: &[String]) -> Result<Command> {
     #[cfg(target_os = "windows")]
     {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        cmd.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP);
     }
 
-    cmd.kill_on_drop(false);
+    // 独立进程组让退出兜底能终止 Claude 以及它启动的 Bash/工具后代，
+    // 而不是只杀直接 Child 后把 `sleep` 等工具进程留给系统。
+    #[cfg(unix)]
+    {
+        cmd.process_group(0);
+    }
+
+    // Tauri 退出会直接丢弃 Tokio runtime；此时必须同步终止仍由 actor 持有的 Claude，
+    // 否则仅发送异步 Shutdown 信号来不及回收，会留下脱离桌面壳的孤儿进程。
+    cmd.kill_on_drop(true);
     Ok(cmd)
 }

@@ -1,7 +1,19 @@
 node_modules/
+client/.cache/
 dist/
 .env
-.env.local
+.env.*
+!.env.example
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+credentials
+credentials.*
+*.pem
+*.key
+*.p12
+*.pfx
 *.log
 .DS_Store
 Thumbs.db
@@ -10,7 +22,8 @@ client/src-tauri/target/
 client/src-tauri/gen/
 client/src-tauri/binaries/
 client/src-tauri/server-dist/
-.claude/
+.claude/*
+!.claude/settings.json
 .engram/
 **/.engram/
 
@@ -21,3 +34,6 @@ release/
 # 与项目无关的本地文件
 duojiao-yutou-recipe.png
 *.tsbuildinfo
+
+# 本地调试工具产物
+.playwright-cli/

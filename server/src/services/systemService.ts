@@ -5,6 +5,7 @@ import {
   hasOAuthCredentials,
   readClaudeSettings,
 } from "./claudeSettingsService.js";
+import { probeClaudeAuth } from "./claudeAuthProbe.js";
 
 export interface AuthStatus {
   installed: boolean;
@@ -159,7 +160,18 @@ export class SystemService {
     if (!info.installed) {
       return { installed: false, authenticated: false, authMethod: "none" };
     }
-    // Check OAuth credentials file
+
+    // Ask Claude itself first. Current native builds store OAuth in the macOS
+    // Keychain / OS credential store, so no portable credential file may exist.
+    const cliProbe = await probeClaudeAuth();
+    if (cliProbe.kind === "status") {
+      return { installed: true, ...cliProbe.status, version: info.version };
+    }
+    if (cliProbe.kind === "failed") {
+      return { installed: true, authenticated: false, authMethod: "none", version: info.version };
+    }
+
+    // Legacy fallbacks for older Claude builds that do not support auth status.
     if (hasOAuthCredentials()) {
       return { installed: true, authenticated: true, authMethod: "oauth", version: info.version };
     }

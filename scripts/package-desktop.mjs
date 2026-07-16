@@ -1,5 +1,6 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,8 +17,11 @@ const version = tauriConfig.version ?? "0.1.0";
 const configuredTargets = Array.isArray(tauriConfig.bundle?.targets)
   ? tauriConfig.bundle.targets
   : [tauriConfig.bundle?.targets ?? "all"];
-const allowNsis = configuredTargets.includes("all") || configuredTargets.includes("nsis");
-const allowMsi = configuredTargets.includes("all") || configuredTargets.includes("msi");
+const allowNsis = process.platform === "win32" &&
+  (configuredTargets.includes("all") || configuredTargets.includes("nsis"));
+const allowMsi = process.platform === "win32" &&
+  (configuredTargets.includes("all") || configuredTargets.includes("msi"));
+const allowDmg = process.platform === "darwin";
 
 function walk(dir) {
   if (!existsSync(dir)) return [];
@@ -31,9 +35,11 @@ function walk(dir) {
 function isInstallerArtifact(filePath) {
   const name = path.basename(filePath).toLowerCase();
   const ext = path.extname(name);
+  if (name.startsWith("rw.")) return false;
   if (ext === ".exe" && !allowNsis) return false;
   if (ext === ".msi" && !allowMsi) return false;
-  if (ext !== ".exe" && ext !== ".msi") return false;
+  if (ext === ".dmg" && !allowDmg) return false;
+  if (ext !== ".exe" && ext !== ".msi" && ext !== ".dmg") return false;
   if (name === "app.exe" || name === "nsis-output.exe") return false;
   return name.includes("agent flow");
 }
@@ -41,7 +47,8 @@ function isInstallerArtifact(filePath) {
 function isReleaseInstaller(filePath) {
   const name = path.basename(filePath).toLowerCase();
   const ext = path.extname(name);
-  if (ext !== ".exe" && ext !== ".msi") return false;
+  if (name.startsWith("rw.")) return false;
+  if (ext !== ".exe" && ext !== ".msi" && ext !== ".dmg") return false;
   if (name === "app.exe" || name === "nsis-output.exe") return false;
   return name.includes("agent flow");
 }
@@ -51,7 +58,22 @@ const buildStartedAt = Date.now();
 console.log("[package-desktop] building Tauri desktop package...");
 let buildError = null;
 try {
-  execSync("pnpm --filter client tauri build", { cwd: repoRoot, stdio: "inherit" });
+  const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+  const buildArgs = ["--filter", "client", "tauri", "build"];
+  if (process.platform === "darwin") buildArgs.push("--bundles", "app,dmg");
+  if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
+    buildArgs.push("--config", JSON.stringify({ bundle: { createUpdaterArtifacts: false } }));
+  }
+  const inheritedRustFlags = process.env.RUSTFLAGS?.trim() ?? "";
+  const remapHome = `--remap-path-prefix=${os.homedir()}=/build`;
+  execFileSync(pnpmCommand, buildArgs, {
+    cwd: repoRoot,
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      RUSTFLAGS: [inheritedRustFlags, remapHome].filter(Boolean).join(" "),
+    },
+  });
 } catch (err) {
   buildError = err;
   console.warn("[package-desktop] tauri build exited non-zero; checking for generated installer artifacts...");
@@ -82,6 +104,9 @@ if (allowNsis && !artifactExtensions.has(".exe")) {
 }
 if (allowMsi && !artifactExtensions.has(".msi")) {
   throw new Error("[package-desktop] MSI target is enabled, but no fresh .msi installer was generated");
+}
+if (allowDmg && !artifactExtensions.has(".dmg")) {
+  throw new Error("[package-desktop] macOS target is enabled, but no fresh .dmg installer was generated");
 }
 
 mkdirSync(releaseDir, { recursive: true });

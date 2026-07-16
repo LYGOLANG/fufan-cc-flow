@@ -1,14 +1,30 @@
-import { homedir } from "os";
 import { join } from "path";
 import { promises as fs, existsSync } from "fs";
 import { logger } from "../utils/logger.js";
+import { writePrivateFile } from "../utils/privateFile.js";
+import { getClaudeHome } from "../utils/pathUtils.js";
 
-const SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
-const CLAUDE_DIR = join(homedir(), ".claude");
+const CLAUDE_DIR = getClaudeHome();
+const SETTINGS_PATH = join(CLAUDE_DIR, "settings.json");
 
 export interface ClaudeSettings {
   env?: Record<string, string>;
   [key: string]: unknown;
+}
+
+export interface PublicClaudeSettings {
+  env: Record<string, string>;
+  secrets: { anthropicApiKeyConfigured: boolean };
+}
+
+/** Never return persisted secrets to the WebView. */
+export function toPublicClaudeSettings(settings: ClaudeSettings): PublicClaudeSettings {
+  const env = { ...(settings.env ?? {}) };
+  const anthropicApiKeyConfigured = !!env.ANTHROPIC_API_KEY;
+  for (const name of Object.keys(env)) {
+    if (/(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)/i.test(name)) delete env[name];
+  }
+  return { env, secrets: { anthropicApiKeyConfigured } };
 }
 
 /** Read ~/.claude/settings.json; returns {} if missing or corrupt */
@@ -29,15 +45,7 @@ export async function writeClaudeSettingsEnv(
   env: Record<string, string | undefined>
 ): Promise<void> {
   const settings = await readClaudeSettings();
-  const existing: Record<string, string> = { ...(settings.env ?? {}) };
-
-  for (const [k, v] of Object.entries(env)) {
-    if (v === undefined || v === "") {
-      delete existing[k];
-    } else {
-      existing[k] = v;
-    }
-  }
+  const existing = mergeClaudeSettingsEnv(settings.env ?? {}, env);
 
   if (Object.keys(existing).length > 0) {
     settings.env = existing;
@@ -45,36 +53,24 @@ export async function writeClaudeSettingsEnv(
     delete settings.env;
   }
 
-  await fs.mkdir(CLAUDE_DIR, { recursive: true });
-  await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2), "utf-8");
+  await writePrivateFile(SETTINGS_PATH, JSON.stringify(settings, null, 2));
   logger.info(`[claudeSettings] env updated: ${Object.keys(existing).join(", ") || "(cleared)"}`);
+}
+
+/** Pure merge used by the writer and regression tests for explicit secret removal. */
+export function mergeClaudeSettingsEnv(
+  current: Record<string, string>,
+  patch: Record<string, string | undefined>,
+): Record<string, string> {
+  const merged = { ...current };
+  for (const [name, value] of Object.entries(patch)) {
+    if (value === undefined || value === "") delete merged[name];
+    else merged[name] = value;
+  }
+  return merged;
 }
 
 /** Check if OAuth credentials file exists */
 export function hasOAuthCredentials(): boolean {
   return existsSync(join(CLAUDE_DIR, ".credentials.json"));
-}
-
-/**
- * Read the Claude.ai OAuth access token (subscription login) from
- * ~/.claude/.credentials.json. Returns undefined if missing/expired/unreadable.
- */
-export async function readOAuthToken(): Promise<string | undefined> {
-  try {
-    const raw = await fs.readFile(join(CLAUDE_DIR, ".credentials.json"), "utf-8");
-    const data = JSON.parse(raw) as {
-      claudeAiOauth?: { accessToken?: string; expiresAt?: number };
-    };
-    const oauth = data.claudeAiOauth;
-    if (!oauth?.accessToken) return undefined;
-    // Skip obviously-expired tokens (expiresAt is epoch ms); let live refresh
-    // happen via the CLI itself — we just fall back to the static list.
-    if (typeof oauth.expiresAt === "number" && oauth.expiresAt < Date.now()) {
-      logger.warn("[oauth] access token expired; using fallback model list");
-      return undefined;
-    }
-    return oauth.accessToken;
-  } catch {
-    return undefined;
-  }
 }

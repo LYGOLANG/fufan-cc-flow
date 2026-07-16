@@ -4,7 +4,7 @@
  * 与 Claude 引擎(systemService + claudeSettingsService)完全对称,但底层能力全部来自
  * `codex` CLI 子进程:
  *   - 安装/版本       codex --version
- *   - 认证状态        读 ~/.codex/auth.json 的 auth_mode(chatgpt=订阅 / apikey)
+ *   - 认证状态        codex login status（旧版回退读 ~/.codex/auth.json）
  *   - 订阅登录        codex login          (前后端同机,自动打开浏览器完成 ChatGPT 授权)
  *   - API Key 登录    codex login --with-api-key  (key 从 stdin 读入,不落日志/命令行)
  *   - 退出登录        codex logout
@@ -12,14 +12,9 @@
  *
  * 跨平台:所有子进程都经 spawnCodex()(mac/linux 直跑、Windows 用 .cmd → cmd /c)。
  */
-import { promises as fs } from "fs";
-import { homedir } from "os";
-import { join } from "path";
 import { spawnCodex } from "../utils/codexBin.js";
 import { logger } from "../utils/logger.js";
-
-const CODEX_HOME = process.env.CODEX_HOME || join(homedir(), ".codex");
-const AUTH_PATH = join(CODEX_HOME, "auth.json");
+import { resolveCodexAuthMethod } from "./codexAuthProbe.js";
 
 export interface CodexInfo {
   installed: boolean;
@@ -87,26 +82,12 @@ export class CodexService {
     });
   }
 
-  /** 读 ~/.codex/auth.json 判断认证方式。 */
-  private async readAuthMode(): Promise<"chatgpt" | "apikey" | "none"> {
-    try {
-      const raw = await fs.readFile(AUTH_PATH, "utf-8");
-      const data = JSON.parse(raw) as { auth_mode?: string; OPENAI_API_KEY?: string | null; tokens?: unknown };
-      const mode = (data.auth_mode || "").toLowerCase();
-      if (mode === "chatgpt" || data.tokens) return "chatgpt";
-      if (mode === "apikey" || data.OPENAI_API_KEY) return "apikey";
-      return "none";
-    } catch {
-      return "none";
-    }
-  }
-
   async getCodexAuthStatus(): Promise<CodexAuthStatus> {
     const info = await this.getCodexInfo();
     if (!info.installed) {
       return { installed: false, authenticated: false, authMethod: "none" };
     }
-    const method = await this.readAuthMode();
+    const method = await resolveCodexAuthMethod();
     return {
       installed: true,
       authenticated: method !== "none",

@@ -71,5 +71,10 @@ async fn main() -> anyhow::Result<()> {
     println!(
         "\n=== summary: text_delta_count={text_delta_count} tool_use_start={tool_use_start} tool_use_result={tool_use_result} task_complete={task_complete} process_close={process_close} ==="
     );
+    anyhow::ensure!(text_delta_count > 1, "未收到真正的多段文本流");
+    anyhow::ensure!(tool_use_start, "未收到 ToolUseStart");
+    anyhow::ensure!(tool_use_result, "未收到 ToolUseResult");
+    anyhow::ensure!(task_complete, "未收到 TaskComplete");
+    anyhow::ensure!(process_close, "未收到 ProcessClose");
     Ok(())
 }

@@ -232,10 +232,8 @@ pub fn load_transcript(path: &Path) -> Vec<ChatEntry> {
                     entries.push(ChatEntry::UserText(plain_text));
                 }
             }
-            "system" => {
-                if v.get("subtype").and_then(|s| s.as_str()) == Some("compact_boundary") {
-                    entries.push(ChatEntry::SystemNote("[已压缩上下文]".to_string()));
-                }
+            "system" if v.get("subtype").and_then(|s| s.as_str()) == Some("compact_boundary") => {
+                entries.push(ChatEntry::SystemNote("[已压缩上下文]".to_string()));
             }
             _ => {}
         }

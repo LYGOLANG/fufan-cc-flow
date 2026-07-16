@@ -31,6 +31,7 @@ import { resolveCliPath } from "../utils/claudeCli.js";
 import { findSessionJsonl } from "../utils/pathUtils.js";
 import type { AgentServiceOptions, ContentBlock } from "../types/claude.js";
 import type { PermissionRequest } from "../types/api.js";
+import { applyClaudeCliProxyEnv } from "./claudeOAuthEnvironment.js";
 
 // 关键：清除嵌套会话检测环境变量
 // Claude Code CLI 检测到 CLAUDECODE 环境变量会拒绝启动（防止嵌套）
@@ -83,16 +84,30 @@ function createInputQueue(): InputQueue {
   const buffer: SDKUserMessage[] = [];
   let notify: (() => void) | null = null;
   let ended = false;
-  const wake = () => { const n = notify; notify = null; n?.(); };
+  const wake = () => {
+    const n = notify;
+    notify = null;
+    n?.();
+  };
   return {
-    push(m) { if (!ended) { buffer.push(m); wake(); } },
-    end() { ended = true; wake(); },
+    push(m) {
+      if (!ended) {
+        buffer.push(m);
+        wake();
+      }
+    },
+    end() {
+      ended = true;
+      wake();
+    },
     iterable: {
       async *[Symbol.asyncIterator]() {
         for (;;) {
           while (buffer.length > 0) yield buffer.shift()!;
           if (ended) return;
-          await new Promise<void>((resolve) => { notify = resolve; });
+          await new Promise<void>((resolve) => {
+            notify = resolve;
+          });
         }
       },
     },
@@ -108,9 +123,17 @@ function createInputQueue(): InputQueue {
  * 由服务层自行放行安全工具,寄存期间也不受影响。
  */
 const AUTO_APPROVE_TOOLS = new Set([
-  "Read", "Glob", "Grep", "WebSearch", "WebFetch",
-  "TodoRead", "Task", "Agent", "TodoWrite",
-  "NotebookRead", "LS",
+  "Read",
+  "Glob",
+  "Grep",
+  "WebSearch",
+  "WebFetch",
+  "TodoRead",
+  "Task",
+  "Agent",
+  "TodoWrite",
+  "NotebookRead",
+  "LS",
 ]);
 
 /**
@@ -136,14 +159,22 @@ function summarizeHookInput(input: Record<string, unknown>): string {
   if (typeof input.tool_name === "string") parts.push(input.tool_name);
   const ti = input.tool_input as Record<string, unknown> | undefined;
   if (ti) {
-    const key = ["file_path", "path", "command", "pattern", "url", "description"].find(
-      (k) => typeof ti[k] === "string"
-    );
+    const key = [
+      "file_path",
+      "path",
+      "command",
+      "pattern",
+      "url",
+      "description",
+    ].find((k) => typeof ti[k] === "string");
     if (key) parts.push(String(ti[key]).slice(0, 80));
   }
-  if (typeof input.file_path === "string") parts.push(String(input.file_path).slice(0, 80));
-  if (typeof input.agent_type === "string") parts.push(String(input.agent_type));
-  if (typeof input.reason === "string") parts.push(String(input.reason).slice(0, 80));
+  if (typeof input.file_path === "string")
+    parts.push(String(input.file_path).slice(0, 80));
+  if (typeof input.agent_type === "string")
+    parts.push(String(input.agent_type));
+  if (typeof input.reason === "string")
+    parts.push(String(input.reason).slice(0, 80));
   return parts.join(" · ");
 }
 
@@ -179,7 +210,6 @@ function spawnFingerprint(o: AgentServiceOptions): string {
     o.baseUrl ? (o.model ?? "") : "",
     o.httpProxy ?? "",
     o.httpsProxy ?? "",
-    o.socksProxy ?? "",
   ]);
 }
 
@@ -198,19 +228,31 @@ async function sanitizeSessionJsonlForResume(sessionId: string): Promise<void> {
   const lines = raw.split("\n").map((line) => {
     if (!line.includes('"assistant"')) return line; // 快速跳过非 assistant 行
     try {
-      const rec = JSON.parse(line) as { type?: string; message?: { id?: unknown } };
+      const rec = JSON.parse(line) as {
+        type?: string;
+        message?: { id?: unknown };
+      };
       const msg = rec?.message;
-      if (rec?.type === "assistant" && typeof msg?.id === "string" && msg.id && !msg.id.startsWith("msg_")) {
+      if (
+        rec?.type === "assistant" &&
+        typeof msg?.id === "string" &&
+        msg.id &&
+        !msg.id.startsWith("msg_")
+      ) {
         msg.id = `msg_${msg.id}`;
         changed++;
         return JSON.stringify(rec);
       }
-    } catch { /* 非法 JSON 行原样保留 */ }
+    } catch {
+      /* 非法 JSON 行原样保留 */
+    }
     return line;
   });
   if (changed > 0) {
     await fs.writeFile(file, lines.join("\n"), "utf-8");
-    logger.info(`[${sessionId}] resume 净化:已为 ${changed} 条 assistant 消息 id 补上 msg_ 前缀(第三方端点历史)`);
+    logger.info(
+      `[${sessionId}] resume 净化:已为 ${changed} 条 assistant 消息 id 补上 msg_ 前缀(第三方端点历史)`,
+    );
   }
 }
 
@@ -219,7 +261,9 @@ export class ClaudeAgentService extends EventEmitter {
   // server),兜底降级为日志。
   override emit(event: string | symbol, ...args: unknown[]): boolean {
     if (event === "error" && this.listenerCount("error") === 0) {
-      logger.warn(`[claude] dropped error event (no listeners): ${JSON.stringify(args[0]).slice(0, 300)}`);
+      logger.warn(
+        `[claude] dropped error event (no listeners): ${JSON.stringify(args[0]).slice(0, 300)}`,
+      );
       return false;
     }
     return super.emit(event, ...args);
@@ -280,7 +324,11 @@ export class ClaudeAgentService extends EventEmitter {
   private pendingPermissions = new Map<
     string,
     {
-      resolve: (decision: { behavior: "allow"; updatedPermissions?: PermissionUpdate[] } | { behavior: "deny"; message: string }) => void;
+      resolve: (
+        decision:
+          | { behavior: "allow"; updatedPermissions?: PermissionUpdate[] }
+          | { behavior: "deny"; message: string },
+      ) => void;
       suggestions?: PermissionUpdate[];
       /** 原始请求负载:断线重连收养后重放给新客户端,不让危险工具确认卡在无人看的缓冲里 */
       request: PermissionRequest;
@@ -293,7 +341,9 @@ export class ClaudeAgentService extends EventEmitter {
    * F1.13:构建审计 hooks——每个关注事件注册一个只读回调,把事件转成
    * "hook_event" 发射(chatHandler 转发前端时间线)。恒返回 {} 不干预执行。
    */
-  private buildAuditHooks(sessionId: string): Partial<Record<HookEvent, HookCallbackMatcher[]>> {
+  private buildAuditHooks(
+    sessionId: string,
+  ): Partial<Record<HookEvent, HookCallbackMatcher[]>> {
     const entries = AUDIT_HOOK_EVENTS.map((event) => [
       event,
       [
@@ -318,7 +368,9 @@ export class ClaudeAgentService extends EventEmitter {
         },
       ],
     ]);
-    return Object.fromEntries(entries) as Partial<Record<HookEvent, HookCallbackMatcher[]>>;
+    return Object.fromEntries(entries) as Partial<
+      Record<HookEvent, HookCallbackMatcher[]>
+    >;
   }
 
   /**
@@ -331,7 +383,7 @@ export class ClaudeAgentService extends EventEmitter {
   async start(options: AgentServiceOptions): Promise<string> {
     const run = this.startLock.then(
       () => this._start(options),
-      () => this._start(options)
+      () => this._start(options),
     );
     // 吞掉本次结果/异常仅用于串联下一次,真正的结果/异常仍由 run 抛给调用方
     this.startLock = run.catch(() => {});
@@ -362,7 +414,18 @@ export class ClaudeAgentService extends EventEmitter {
     // 关键：必须继承 process.env（PATH / SystemRoot 等），否则 SDK 用
     // 仅含 API Key 的环境去 spawn "node"，在 Windows 上会因找不到 PATH
     // 报 ENOENT，被 SDK 误报为 "Claude Code executable not found"。
-    const env: Record<string, string | undefined> = { ...process.env };
+    // Normal chat must preserve the exact auth environment detected by
+    // `claude auth status` (including official setup-token auth). Only proxy
+    // variables are made authoritative here; OAuth refresh performs its own
+    // stricter auth isolation before it initializes the local credential store.
+    const env: Record<string, string | undefined> = applyClaudeCliProxyEnv(
+      process.env,
+      {
+        httpProxy: options.httpProxy || "",
+        httpsProxy: options.httpsProxy || "",
+        socksProxy: "",
+      },
+    );
     if (options.baseUrl) {
       // 第三方 Anthropic 兼容端点(DeepSeek/MiniMax/Kimi/GLM/自定义):
       // 各家文档统一约定用 ANTHROPIC_AUTH_TOKEN(Bearer)鉴权,必须清掉
@@ -388,17 +451,6 @@ export class ClaudeAgentService extends EventEmitter {
       delete env["ANTHROPIC_API_KEY"];
       delete env["ANTHROPIC_AUTH_TOKEN"];
     }
-    if (options.httpProxy) {
-      env["HTTP_PROXY"] = options.httpProxy;
-      env["http_proxy"] = options.httpProxy;
-    }
-    if (options.httpsProxy) {
-      env["HTTPS_PROXY"] = options.httpsProxy;
-      env["https_proxy"] = options.httpsProxy;
-    }
-    if (options.socksProxy) {
-      env["ALL_PROXY"] = options.socksProxy;
-    }
     if (options.effort) {
       env["CLAUDE_CODE_EFFORT_LEVEL"] = options.effort;
     }
@@ -410,28 +462,37 @@ export class ClaudeAgentService extends EventEmitter {
       hasResume: !!options.sessionId,
     });
     logger.debug(
-      `[${sessionId}] prompt: ${options.prompt.slice(0, 200)}${options.prompt.length > 200 ? "..." : ""}`
+      `[${sessionId}] prompt: ${options.prompt.slice(0, 200)}${options.prompt.length > 200 ? "..." : ""}`,
     );
 
     // resume 会锁定会话首轮的模型/推理力度。若本轮请求的值与该会话上次请求的不同,
     // 自动 forkSession:从原历史分叉出新会话并应用新设置,使「换模型/换力度」立即生效且保留上下文。
-    const prevModel = options.sessionId ? sessionModelCache.get(options.sessionId) : undefined;
+    const prevModel = options.sessionId
+      ? sessionModelCache.get(options.sessionId)
+      : undefined;
     const modelChanged =
-      !!options.sessionId && !!options.model && prevModel !== undefined && prevModel !== options.model;
+      !!options.sessionId &&
+      !!options.model &&
+      prevModel !== undefined &&
+      prevModel !== options.model;
 
     const effortKey = `${options.effort ?? ""}:${options.ultracode ? 1 : 0}`;
-    const prevEffort = options.sessionId ? sessionEffortCache.get(options.sessionId) : undefined;
+    const prevEffort = options.sessionId
+      ? sessionEffortCache.get(options.sessionId)
+      : undefined;
     const effortChanged =
-      !!options.sessionId && prevEffort !== undefined && prevEffort !== effortKey;
+      !!options.sessionId &&
+      prevEffort !== undefined &&
+      prevEffort !== effortKey;
 
     if (modelChanged) {
       logger.info(
-        `[${sessionId}] 模型变更(${prevModel} → ${options.model}),对 resume 会话启用 forkSession`
+        `[${sessionId}] 模型变更(${prevModel} → ${options.model}),对 resume 会话启用 forkSession`,
       );
     }
     if (effortChanged) {
       logger.info(
-        `[${sessionId}] 推理力度变更(${prevEffort} → ${effortKey}),对 resume 会话启用 forkSession`
+        `[${sessionId}] 推理力度变更(${prevEffort} → ${effortKey}),对 resume 会话启用 forkSession`,
       );
     }
     const forkSession = options.forkSession || modelChanged || effortChanged;
@@ -439,7 +500,7 @@ export class ClaudeAgentService extends EventEmitter {
     // resume 前净化历史里第三方端点写入的非 msg_ 消息 id,避免官方 API 400
     if (options.sessionId) {
       await sanitizeSessionJsonlForResume(options.sessionId).catch((e) =>
-        logger.warn(`[${sessionId}] resume 净化失败(忽略,继续启动): ${e}`)
+        logger.warn(`[${sessionId}] resume 净化失败(忽略,继续启动): ${e}`),
       );
     }
 
@@ -461,7 +522,12 @@ export class ClaudeAgentService extends EventEmitter {
         fallbackModel: options.fallbackModel,
         // F1.11:扩展思考预算。未设 = SDK 默认 adaptive
         ...(options.thinkingBudget
-          ? { thinking: { type: "enabled" as const, budgetTokens: options.thinkingBudget } }
+          ? {
+              thinking: {
+                type: "enabled" as const,
+                budgetTokens: options.thinkingBudget,
+              },
+            }
           : {}),
         // ultracode（effort 第六档）：xhigh + 动态多智能体工作流编排。
         // 通过 flag 层 settings 注入；effort 已在上游被置为 "xhigh"。
@@ -535,13 +601,16 @@ export class ClaudeAgentService extends EventEmitter {
    * 模型/permissionMode 变化通过 setModel/setPermissionMode 热切,失败则退回换进程。
    * 返回 sessionId 表示已入队;返回 null 表示需走完整 spawn 流程。
    */
-  private async tryReuseLive(options: AgentServiceOptions): Promise<string | null> {
+  private async tryReuseLive(
+    options: AgentServiceOptions,
+  ): Promise<string | null> {
     const live = this.live;
     if (!live) return null;
     // 复用判定:①客户端指回的 sessionId 正是活着的会话;或 ②客户端在流式中续发
     //  (continueActive)但 session_init 还没回传、拿不到 sessionId——此时也是对当前活跃
     //  会话的续发,必须排队而不是另起进程把正在跑的任务杀掉。
-    const sameSession = !!options.sessionId && options.sessionId === live.sessionId;
+    const sameSession =
+      !!options.sessionId && options.sessionId === live.sessionId;
     const continueActive = !options.sessionId && !!options.continueActive;
     if (!sameSession && !continueActive) return null;
     if (options.forkSession) return null;
@@ -553,7 +622,9 @@ export class ClaudeAgentService extends EventEmitter {
       try {
         await live.stream.setModel(options.model);
         live.model = options.model;
-        logger.info(`[${live.sessionId}] setModel 热切换 → ${options.model}(进程保留)`);
+        logger.info(
+          `[${live.sessionId}] setModel 热切换 → ${options.model}(进程保留)`,
+        );
       } catch (e) {
         logger.warn(`[${live.sessionId}] setModel 失败,退回换进程: ${e}`);
         return null;
@@ -565,7 +636,9 @@ export class ClaudeAgentService extends EventEmitter {
         await live.stream.setPermissionMode(pm);
         live.permissionMode = pm;
       } catch (e) {
-        logger.warn(`[${live.sessionId}] setPermissionMode 失败,退回换进程: ${e}`);
+        logger.warn(
+          `[${live.sessionId}] setPermissionMode 失败,退回换进程: ${e}`,
+        );
         return null;
       }
     }
@@ -577,7 +650,10 @@ export class ClaudeAgentService extends EventEmitter {
     this.lastMessageId = null;
     this.startOptions.set(live.sessionId, options);
     if (options.model) sessionModelCache.set(live.sessionId, options.model);
-    sessionEffortCache.set(live.sessionId, `${options.effort ?? ""}:${options.ultracode ? 1 : 0}`);
+    sessionEffortCache.set(
+      live.sessionId,
+      `${options.effort ?? ""}:${options.ultracode ? 1 : 0}`,
+    );
     // 【不再】在这里清 interrupted:停止请求发出后紧接着发新消息时,若此刻清掉标记,
     // 被中断那一轮迟到的 is_error result 会失去抑制、被当成真错误上报给刚开始的新一轮。
     // 该标记由被中断轮次自己的 result 处理器消费(dispatch 中 interrupted.delete),
@@ -585,7 +661,9 @@ export class ClaudeAgentService extends EventEmitter {
 
     this.turnActive = true;
     live.queue.push(userMessageOf(options.prompt));
-    logger.info(`[${live.sessionId}] 常驻进程复用:消息已入队(后台 sub-agent 不中断)`);
+    logger.info(
+      `[${live.sessionId}] 常驻进程复用:消息已入队(后台 sub-agent 不中断)`,
+    );
     return live.sessionId;
   }
 
@@ -597,7 +675,9 @@ export class ClaudeAgentService extends EventEmitter {
     const live = this.live;
     if (!live || !sessionId || live.sessionId !== sessionId) return false;
     live.queue.push(userMessageOf(prompt));
-    logger.info(`[${live.sessionId}] 消息入队(常驻进程): ${prompt.slice(0, 60)}`);
+    logger.info(
+      `[${live.sessionId}] 消息入队(常驻进程): ${prompt.slice(0, 60)}`,
+    );
     return true;
   }
 
@@ -618,11 +698,12 @@ export class ClaudeAgentService extends EventEmitter {
       this.interrupted.add(live.consumeId);
       this.turnActive = false;
       live.stream.interrupt().then(
-        () => logger.info(`Interrupted [${sessionId}](进程保留,后台任务不受影响)`),
+        () =>
+          logger.info(`Interrupted [${sessionId}](进程保留,后台任务不受影响)`),
         (e) => {
           logger.warn(`interrupt 失败,退回杀进程 [${sessionId}]: ${e}`);
           this.abort(sessionId);
-        }
+        },
       );
       return true;
     }
@@ -648,7 +729,9 @@ export class ClaudeAgentService extends EventEmitter {
       live.controller.abort();
     }, 2000);
     killTimer.unref?.();
-    await live.done.catch(() => { /* 流错误已在 consumeStream 内处理 */ });
+    await live.done.catch(() => {
+      /* 流错误已在 consumeStream 内处理 */
+    });
     clearTimeout(killTimer);
   }
 
@@ -708,13 +791,23 @@ export class ClaudeAgentService extends EventEmitter {
   async rewindFiles(
     sessionId: string,
     messageUuid: string,
-    dryRun = false
-  ): Promise<{ canRewind: boolean; error?: string; filesChanged?: string[]; insertions?: number; deletions?: number }> {
+    dryRun = false,
+  ): Promise<{
+    canRewind: boolean;
+    error?: string;
+    filesChanged?: string[];
+    insertions?: number;
+    deletions?: number;
+  }> {
     const stream = this.activeStreams.get(sessionId);
     if (!stream) {
-      throw new Error(`No active stream for session ${sessionId}. Use fallback rollback.`);
+      throw new Error(
+        `No active stream for session ${sessionId}. Use fallback rollback.`,
+      );
     }
-    logger.info(`rewindFiles [${sessionId}] messageUuid=${messageUuid} dryRun=${dryRun}`);
+    logger.info(
+      `rewindFiles [${sessionId}] messageUuid=${messageUuid} dryRun=${dryRun}`,
+    );
     const result = await stream.rewindFiles(messageUuid, { dryRun });
     logger.info(`rewindFiles result [${sessionId}]:`, result);
     return result;
@@ -729,17 +822,21 @@ export class ClaudeAgentService extends EventEmitter {
     requestId: string,
     decision: "allow" | "deny",
     reason?: string,
-    alwaysAllow?: boolean
+    alwaysAllow?: boolean,
   ): boolean {
     const pending = this.pendingPermissions.get(requestId);
     if (!pending) return false;
     this.pendingPermissions.delete(requestId);
-    logger.info(`Permission resolved: ${requestId} → ${decision}${alwaysAllow ? " (always)" : ""}`);
+    logger.info(
+      `Permission resolved: ${requestId} → ${decision}${alwaysAllow ? " (always)" : ""}`,
+    );
     if (decision === "allow") {
       pending.resolve({
         behavior: "allow",
         // Pass back SDK suggestions to persist "always allow" rules
-        ...(alwaysAllow && pending.suggestions ? { updatedPermissions: pending.suggestions } : {}),
+        ...(alwaysAllow && pending.suggestions
+          ? { updatedPermissions: pending.suggestions }
+          : {}),
       });
     } else {
       pending.resolve({ behavior: "deny", message: reason || "User denied" });
@@ -764,8 +861,11 @@ export class ClaudeAgentService extends EventEmitter {
       decisionReason?: string;
       blockedPath?: string;
       suggestions?: PermissionUpdate[];
-    }
-  ): Promise<{ behavior: "allow"; updatedPermissions?: PermissionUpdate[] } | { behavior: "deny"; message: string }> {
+    },
+  ): Promise<
+    | { behavior: "allow"; updatedPermissions?: PermissionUpdate[] }
+    | { behavior: "deny"; message: string }
+  > {
     // 安全工具在服务层直接放行(见 AUTO_APPROVE_TOOLS 注释):不 emit、不入 pending,
     // 这样断线寄存期(监听器已摘)里的只读工具也不会挂满 60s 才被拒。
     if (AUTO_APPROVE_TOOLS.has(toolName)) {
@@ -773,14 +873,18 @@ export class ClaudeAgentService extends EventEmitter {
       return Promise.resolve({ behavior: "allow" });
     }
 
-    const requestId = opts?.toolUseID || `perm_${Date.now()}_${++this.permissionIdCounter}`;
+    const requestId =
+      opts?.toolUseID || `perm_${Date.now()}_${++this.permissionIdCounter}`;
 
     // Fix 3: SDK 重新调度同一个 toolUseID 时，链接到已有 Promise
     if (this.pendingPermissions.has(requestId)) {
       return new Promise((resolve) => {
         const existing = this.pendingPermissions.get(requestId)!;
         const orig = existing.resolve;
-        existing.resolve = (d) => { orig(d); resolve(d); };
+        existing.resolve = (d) => {
+          orig(d);
+          resolve(d);
+        };
       });
     }
 
@@ -797,7 +901,11 @@ export class ClaudeAgentService extends EventEmitter {
     return new Promise((resolve) => {
       // Fix 2: 先注册到 Map，再 emit（防止同步 resolvePermission 找不到 entry）
       // request 一并存下:断线重连收养后可重放给新客户端(getPendingRequests)。
-      this.pendingPermissions.set(requestId, { resolve, suggestions: opts?.suggestions, request });
+      this.pendingPermissions.set(requestId, {
+        resolve,
+        suggestions: opts?.suggestions,
+        request,
+      });
 
       // 超时自动拒绝（60s）
       const timer = setTimeout(() => {
@@ -805,7 +913,10 @@ export class ClaudeAgentService extends EventEmitter {
           this.pendingPermissions.delete(requestId);
           logger.warn(`Permission request timed out: ${requestId}`);
           this.emit("permission_timeout", { requestId, sessionId });
-          resolve({ behavior: "deny", message: "Permission request timed out (60s)" });
+          resolve({
+            behavior: "deny",
+            message: "Permission request timed out (60s)",
+          });
         }
       }, 60_000);
       timer.unref();
@@ -912,7 +1023,9 @@ export class ClaudeAgentService extends EventEmitter {
 
     // Debug: log message types to understand SDK output flow
     if (msg.type !== "stream_event") {
-      logger.debug(`[${sessionId}] SDK msg type=${msg.type} subtype=${raw.subtype || "-"}`);
+      logger.debug(
+        `[${sessionId}] SDK msg type=${msg.type} subtype=${raw.subtype || "-"}`,
+      );
     }
 
     // ── system.init ──
@@ -946,7 +1059,7 @@ export class ClaudeAgentService extends EventEmitter {
       if (reqOpts) {
         sessionEffortCache.set(
           realSessionId,
-          `${reqOpts.effort ?? ""}:${reqOpts.ultracode ? 1 : 0}`
+          `${reqOpts.effort ?? ""}:${reqOpts.ultracode ? 1 : 0}`,
         );
       }
       logger.info(`[${realSessionId}] session_init diagnostics`, {
@@ -976,7 +1089,7 @@ export class ClaudeAgentService extends EventEmitter {
         raw.subtype === "background_tasks_changed")
     ) {
       logger.debug(
-        `[${sessionId}] background_task_event ${raw.subtype}: ${JSON.stringify(raw).slice(0, 800)}`
+        `[${sessionId}] background_task_event ${raw.subtype}: ${JSON.stringify(raw).slice(0, 800)}`,
       );
       this.emit("background_task_event", {
         sessionId,
@@ -989,10 +1102,13 @@ export class ClaudeAgentService extends EventEmitter {
     // ── system.compact_boundary（SDK 用 compact_boundary，旧版用 compact） ──
     if (msg.type === "system" && raw.subtype === "compact_boundary") {
       const meta = raw.compact_metadata as Record<string, unknown> | undefined;
-      logger.info(`[${sessionId}] context_compact event (SDK compact_boundary):`, {
-        trigger: meta?.trigger,
-        preTokens: meta?.pre_tokens,
-      });
+      logger.info(
+        `[${sessionId}] context_compact event (SDK compact_boundary):`,
+        {
+          trigger: meta?.trigger,
+          preTokens: meta?.pre_tokens,
+        },
+      );
       // 发送格式兼容旧版前端期望的字段名
       this.emit("context_compact", {
         sessionId,
@@ -1014,11 +1130,11 @@ export class ClaudeAgentService extends EventEmitter {
       if (msgId && msgId !== this.lastMessageId) {
         const hasTextOrTool = content.some(
           (b) =>
-            b.type === "text" || b.type === "tool_use" || b.type === "thinking"
+            b.type === "text" || b.type === "tool_use" || b.type === "thinking",
         );
         if (hasTextOrTool && this.lastMessageId !== null) {
           logger.debug(
-            `[${sessionId}] new_turn: ${this.lastMessageId} → ${msgId}`
+            `[${sessionId}] new_turn: ${this.lastMessageId} → ${msgId}`,
           );
           this.emit("new_turn", { sessionId });
         }
@@ -1029,7 +1145,7 @@ export class ClaudeAgentService extends EventEmitter {
       const usage = message.usage as Record<string, unknown> | undefined;
       if (usage) {
         logger.debug(
-          `[${sessionId}] context_usage: input=${usage.input_tokens} output=${usage.output_tokens}`
+          `[${sessionId}] context_usage: input=${usage.input_tokens} output=${usage.output_tokens}`,
         );
         this.emit("context_usage", { sessionId, usage });
       }
@@ -1068,7 +1184,7 @@ export class ClaudeAgentService extends EventEmitter {
     }
 
     // ── stream_event（部分消息 — includePartialMessages: true 时） ──
-    if (msg.type === "stream_event" as string) {
+    if (msg.type === ("stream_event" as string)) {
       this.handleStreamEvent(sessionId, raw);
       return;
     }
@@ -1094,12 +1210,15 @@ export class ClaudeAgentService extends EventEmitter {
       const usage = raw.usage as Record<string, unknown> | undefined;
       const subtype = raw.subtype as string;
       const numTurns = (raw.num_turns as number) ?? 0;
-      const isExecError = raw.is_error === true || subtype === "error_during_execution";
+      const isExecError =
+        raw.is_error === true || subtype === "error_during_execution";
 
       // ── 用户主动 interrupt 的轮次:its result 不是执行错误,吞掉不上报 ──
       // (前端在发出 abort 动作时已收到 "aborted" 事件并复位了流式状态)
       if (this.interrupted.delete(sessionId) && isExecError) {
-        logger.info(`[${sessionId}] 本轮已被用户中断(进程保留),忽略其 error result`);
+        logger.info(
+          `[${sessionId}] 本轮已被用户中断(进程保留),忽略其 error result`,
+        );
         return;
       }
 
@@ -1109,7 +1228,7 @@ export class ClaudeAgentService extends EventEmitter {
       const opts = this.startOptions.get(sessionId);
       if (isExecError && numTurns === 0 && opts?.sessionId) {
         logger.warn(
-          `[${sessionId}] resume failed (subtype=${subtype}); will restart without resume`
+          `[${sessionId}] resume failed (subtype=${subtype}); will restart without resume`,
         );
         this.pendingRetry.add(sessionId);
         return;
@@ -1118,8 +1237,7 @@ export class ClaudeAgentService extends EventEmitter {
       // ── Fix A：真正的执行错误不再伪装成 task_complete ──
       if (isExecError) {
         const message =
-          (raw.result as string) ||
-          `Claude 执行失败 (${subtype || "error"})`;
+          (raw.result as string) || `Claude 执行失败 (${subtype || "error"})`;
         logger.error(`[${sessionId}] execution error: ${message}`);
         this.turnActive = false;
         this.emit("error", {
@@ -1131,7 +1249,7 @@ export class ClaudeAgentService extends EventEmitter {
       }
 
       logger.info(
-        `[${sessionId}] task_complete: cost=$${costUsd.toFixed(4)} input=${usage?.input_tokens} output=${usage?.output_tokens} turns=${raw.num_turns}`
+        `[${sessionId}] task_complete: cost=$${costUsd.toFixed(4)} input=${usage?.input_tokens} output=${usage?.output_tokens} turns=${raw.num_turns}`,
       );
       // 常驻进程模式:本轮结束但进程存活。清 turnActive,使断线重连时不会误判为「仍在跑」。
       this.turnActive = false;
@@ -1158,10 +1276,7 @@ export class ClaudeAgentService extends EventEmitter {
    * stream_event 包含 Anthropic API 的原始流事件（content_block_delta 等），
    * 我们从中提取文本和 thinking 的增量更新，以实现 token 级流式输出。
    */
-  private handleStreamEvent(
-    sessionId: string,
-    raw: Record<string, unknown>
-  ) {
+  private handleStreamEvent(sessionId: string, raw: Record<string, unknown>) {
     const event = raw.event as Record<string, unknown> | undefined;
     if (!event) return;
 
@@ -1226,7 +1341,7 @@ export class ClaudeAgentService extends EventEmitter {
   private dispatchContentBlock(
     sessionId: string,
     block: ContentBlock,
-    isPartial: boolean
+    isPartial: boolean,
   ) {
     switch (block.type) {
       case "text":
@@ -1256,9 +1371,10 @@ export class ClaudeAgentService extends EventEmitter {
         break;
       case "tool_result": {
         // MCP 工具可能返回内容块数组（含 image 等），需序列化为 JSON 字符串
-        const resultContent = typeof block.content === "string"
-          ? block.content
-          : JSON.stringify(block.content);
+        const resultContent =
+          typeof block.content === "string"
+            ? block.content
+            : JSON.stringify(block.content);
         this.emit("tool_use_result", {
           sessionId,
           toolCallId: block.tool_use_id,

@@ -85,9 +85,12 @@ pub enum PermissionDecision {
     Deny { reason: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Command {
-    PermissionResponse { request_id: String, decision: PermissionDecision },
+    PermissionResponse {
+        request_id: String,
+        decision: PermissionDecision,
+    },
     Interrupt,
     Shutdown,
 }

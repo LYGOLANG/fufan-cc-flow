@@ -6,6 +6,7 @@ import { useAgentStore } from "../stores/agentStore";
 import { useConfigStore } from "../stores/configStore";
 import { useAuditStore } from "../stores/auditStore";
 import { inferContextMax } from "../utils/costCalculator";
+import { permissionEventIds } from "../services/transport/permission";
 import type { SubAgentNode } from "../types/agent";
 
 /**
@@ -579,14 +580,17 @@ export function useWebSocket() {
 
         case "permission_request": {
           // HIL: SDK 要求用户确认工具使用权限
+          const permissionIds = permissionEventIds(payload);
           const permReq = {
-            requestId: payload.requestId as string,
+            ...permissionIds,
             sessionId: payload.sessionId as string,
             toolName: payload.toolName as string,
             toolInput: payload.toolInput as Record<string, unknown>,
             decisionReason: payload.decisionReason as string | undefined,
             blockedPath: payload.blockedPath as string | undefined,
-            hasSuggestions: Array.isArray(payload.suggestions) && payload.suggestions.length > 0,
+            hasSuggestions:
+              payload.hasSuggestions === true ||
+              (Array.isArray(payload.suggestions) && payload.suggestions.length > 0),
           };
           store.getState().addPermissionRequest(permReq);
 
@@ -601,15 +605,16 @@ export function useWebSocket() {
           }
 
           // Bidirectional dedup: tool_use_start may have ALREADY created a card
-          // with the real SDK ID (requestId = toolUseID). If so, just update it
+          // with the real SDK tool-call ID. The permission control request ID is
+          // intentionally separate and is only used when replying to the backend.
           // instead of creating a duplicate perm_ placeholder.
           const permState = store.getState();
           const permMsg = permState.messages.find((m) => m.id === permState.currentAssistantId);
-          const existingCard = permMsg?.toolCalls?.find((tc) => tc.id === permReq.requestId);
+          const existingCard = permMsg?.toolCalls?.find((tc) => tc.id === permReq.toolCallId);
 
           if (existingCard) {
             // tool_use_start arrived first — update existing card to awaiting_permission
-            store.getState().updateToolCall(permReq.requestId, {
+            store.getState().updateToolCall(permReq.toolCallId, {
               status: "awaiting_permission",
               permissionRequestId: permReq.requestId,
               toolInput: permReq.toolInput, // backfill input (may have been empty from stream)
@@ -617,11 +622,11 @@ export function useWebSocket() {
           } else {
             // permission_request arrived first (rare) — create perm_ placeholder
             store.getState().addToolCallToCurrent({
-              id: `perm_${permReq.requestId}`,
+              id: `perm_${permReq.toolCallId}`,
               toolName: permReq.toolName,
               toolInput: permReq.toolInput,
             });
-            store.getState().updateToolCall(`perm_${permReq.requestId}`, {
+            store.getState().updateToolCall(`perm_${permReq.toolCallId}`, {
               status: "awaiting_permission",
               permissionRequestId: permReq.requestId,
             });

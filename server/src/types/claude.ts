@@ -1,4 +1,5 @@
-export type ContentBlock = TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock;
+export type ContentBlock =
+  TextBlock | ThinkingBlock | ToolUseBlock | ToolResultBlock;
 
 export interface TextBlock {
   type: "text";
@@ -20,7 +21,7 @@ export interface ToolUseBlock {
 export interface ToolResultBlock {
   type: "tool_result";
   tool_use_id: string;
-  content: string | unknown[];  // MCP 工具可能返回内容块数组（含 image 等）
+  content: string | unknown[]; // MCP 工具可能返回内容块数组（含 image 等）
   is_error?: boolean;
 }
 
@@ -39,8 +40,8 @@ export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
 export interface AgentServiceOptions {
   prompt: string;
   projectPath: string;
-  sessionId?: string;         // resume 已有 session
-  forkSession?: boolean;      // fork 而非 resume
+  sessionId?: string; // resume 已有 session
+  forkSession?: boolean; // fork 而非 resume
   /**
    * 客户端发送时正处于流式中(有一轮在跑)= 这条消息是对当前活跃会话的续发。
    * 用于修复:新会话首条消息还在流式、session_init 尚未回传时,客户端拿不到 sessionId,
@@ -69,5 +70,4 @@ export interface AgentServiceOptions {
   authToken?: string;
   httpProxy?: string;
   httpsProxy?: string;
-  socksProxy?: string;
 }

@@ -19,6 +19,15 @@ export interface ModelInfo {
   context_window?: number;
 }
 
+const OFFICIAL_ANTHROPIC_ORIGIN = "https://api.anthropic.com";
+
+/** Subscription OAuth Bearer credentials must never be sent to custom hosts. */
+export function assertOfficialAnthropicOAuthUrl(url: URL): void {
+  if (url.origin !== OFFICIAL_ANTHROPIC_ORIGIN) {
+    throw new Error("Claude subscription OAuth is restricted to api.anthropic.com");
+  }
+}
+
 /**
  * Claude Code harness 不支持的旧代模型:claude-1/2/3 系与 instant 系。
  * 这些 id 仍会出现在 /v1/models 里(账号可调 API),但塞给 Agent SDK 的
@@ -53,6 +62,8 @@ export async function fetchAnthropicModels(opts: {
 }): Promise<ModelInfo[]> {
   const baseUrl = (opts.baseUrl || "https://api.anthropic.com").replace(/\/+$/, "");
   const url = new URL(`${baseUrl}/v1/models?limit=1000`);
+  const usesOAuth = !opts.apiKey && !!opts.oauthToken;
+  if (usesOAuth) assertOfficialAnthropicOAuthUrl(url);
   const isHttps = url.protocol === "https:";
   const port = url.port ? parseInt(url.port, 10) : isHttps ? 443 : 80;
   const timeout = opts.timeoutMs ?? 12_000;

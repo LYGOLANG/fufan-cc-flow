@@ -77,6 +77,18 @@ export interface CodexTestResult {
   error?: string;
 }
 
+export interface CodexLogoutResult {
+  success: boolean;
+  output?: string;
+  error?: string;
+}
+
+export function assertCodexLogoutSucceeded(result: CodexLogoutResult): void {
+  if (!result.success) {
+    throw new Error(result.error || result.output || "Codex CLI 未能退出登录");
+  }
+}
+
 interface SystemState {
   claudeInfo: ClaudeInfo | null;
   infoLoading: boolean;
@@ -115,7 +127,7 @@ interface SystemState {
   testProxy: (host: string, port: number) => Promise<void>;
   testClaude: (opts: { apiKey?: string; baseUrl?: string; model?: string; httpProxy?: string; httpsProxy?: string }) => Promise<ClaudeTestResult>;
   loadClaudeSettings: () => Promise<void>;
-  saveClaudeSettings: (env: Record<string, string | undefined>) => Promise<void>;
+  saveClaudeSettings: (env: Record<string, string>) => Promise<void>;
 
   // Available models (live from /v1/models, or static fallback)
   availableModels: ModelOption[];
@@ -398,7 +410,8 @@ export const useSystemStore = create<SystemState>((set) => ({
 
   codexLogout: async () => {
     try {
-      await api.systemApi.codexLogout();
+      const result = await api.systemApi.codexLogout();
+      assertCodexLogoutSucceeded(result);
     } finally {
       await api.systemApi.getCodexAuthStatus().then((s) => set({ codexAuthStatus: s })).catch(() => {});
     }

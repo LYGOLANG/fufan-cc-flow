@@ -19,7 +19,7 @@ type InstallMethod = "powershell" | "winget" | "cmd";
 
 function buildProxyPrefix(
   method: InstallMethod | "curl",
-  httpsProxy: string
+  httpsProxy: string,
 ): string {
   if (!httpsProxy) return "";
   if (method === "powershell") return `$env:HTTPS_PROXY="${httpsProxy}"; `;
@@ -39,8 +39,13 @@ function ProxyBlock({
 }: {
   stepLabel?: string; // e.g. "第 1 步" shown as a badge
 }) {
-  const { proxySettings, proxySaving, proxySaveError, saveProxy, setProxySettings } =
-    useSystemStore();
+  const {
+    proxySettings,
+    proxySaving,
+    proxySaveError,
+    saveProxy,
+    setProxySettings,
+  } = useSystemStore();
   const [proxySaveMsg, setProxySaveMsg] = useState<string | null>(null);
 
   async function handleSaveProxy() {
@@ -70,6 +75,9 @@ function ProxyBlock({
       </div>
 
       <div className="space-y-3">
+        <p className="text-[11px] text-amber-glow/80 leading-relaxed">
+          Claude CLI 支持 HTTP/HTTPS 代理，不支持 SOCKS。
+        </p>
         {/* HTTP Proxy */}
         <div>
           <label className="block text-xs text-slate-400 mb-1">HTTP 代理</label>
@@ -86,7 +94,9 @@ function ProxyBlock({
 
         {/* HTTPS Proxy */}
         <div>
-          <label className="block text-xs text-slate-400 mb-1">HTTPS 代理</label>
+          <label className="block text-xs text-slate-400 mb-1">
+            HTTPS 代理
+          </label>
           <input
             type="text"
             value={proxySettings.httpsProxy}
@@ -94,23 +104,6 @@ function ProxyBlock({
               setProxySettings({ ...proxySettings, httpsProxy: e.target.value })
             }
             placeholder="http://127.0.0.1:7890"
-            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-glow/40 transition-colors font-mono"
-          />
-        </div>
-
-        {/* SOCKS Proxy — optional */}
-        <div>
-          <label className="block text-xs text-slate-400 mb-1">
-            SOCKS 代理
-            <span className="ml-1.5 text-slate-600 font-normal">（可选，大多数情况不需要填）</span>
-          </label>
-          <input
-            type="text"
-            value={proxySettings.socksProxy}
-            onChange={(e) =>
-              setProxySettings({ ...proxySettings, socksProxy: e.target.value })
-            }
-            placeholder="socks5://127.0.0.1:1080"
             className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-glow/40 transition-colors font-mono"
           />
         </div>
@@ -143,7 +136,11 @@ function ProxyBlock({
           </button>
           <button
             onClick={() =>
-              setProxySettings({ httpProxy: "", httpsProxy: "", socksProxy: "" })
+              setProxySettings({
+                httpProxy: "",
+                httpsProxy: "",
+                socksProxy: "",
+              })
             }
             className="px-2.5 py-1 rounded-md text-[11px] border border-white/10 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
           >
@@ -170,9 +167,12 @@ function ProxyBlock({
         </div>
 
         <p className="text-[11px] text-slate-500 leading-relaxed">
-          只需填 HTTP / HTTPS 代理即可（如 <span className="font-mono text-slate-400">http://127.0.0.1:10080</span>）。
-          代理对 Claude Code API 请求和安装命令均生效；
-          安装命令会在已设 HTTPS 代理时自动加入代理前缀。
+          只需填 HTTP / HTTPS 代理即可（如{" "}
+          <span className="font-mono text-slate-400">
+            http://127.0.0.1:10080
+          </span>
+          ）。 代理对 Claude Code API 请求和安装命令均生效； 安装命令会在已设
+          HTTPS 代理时自动加入代理前缀。
         </p>
       </div>
     </section>
@@ -195,10 +195,15 @@ export default function ClaudeEnvPanel() {
     loadProxy,
   } = useSystemStore();
 
-  const { setSettingsModalOpen, setRightPanelOpen, setTerminalOpen, setRightSidebarTab } =
-    useUIStore();
+  const {
+    setSettingsModalOpen,
+    setRightPanelOpen,
+    setTerminalOpen,
+    setRightSidebarTab,
+  } = useUIStore();
 
-  const [installMethod, setInstallMethod] = useState<InstallMethod>("powershell");
+  const [installMethod, setInstallMethod] =
+    useState<InstallMethod>("powershell");
   const [showDoctorOutput, setShowDoctorOutput] = useState(false);
   const [showUpdateOutput, setShowUpdateOutput] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState(false);
@@ -260,7 +265,10 @@ export default function ClaudeEnvPanel() {
             disabled={infoLoading}
             className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 transition-colors disabled:opacity-40"
           >
-            <RefreshCw size={12} className={infoLoading ? "animate-spin" : ""} />
+            <RefreshCw
+              size={12}
+              className={infoLoading ? "animate-spin" : ""}
+            />
             重新检测
           </button>
         </div>
@@ -316,7 +324,11 @@ export default function ClaudeEnvPanel() {
                         : "border-white/5 text-slate-500 hover:bg-white/5"
                     }`}
                   >
-                    {m === "powershell" ? "PowerShell" : m === "winget" ? "WinGet" : "CMD"}
+                    {m === "powershell"
+                      ? "PowerShell"
+                      : m === "winget"
+                        ? "WinGet"
+                        : "CMD"}
                   </button>
                 ))}
               </div>
@@ -348,7 +360,8 @@ export default function ClaudeEnvPanel() {
             </div>
 
             <p className="text-[11px] text-slate-600">
-              保存代理设置后，上方命令已自动加入代理前缀（如已填写 HTTPS 代理）。
+              保存代理设置后，上方命令已自动加入代理前缀（如已填写 HTTPS
+              代理）。
             </p>
           </div>
         </section>
@@ -359,7 +372,6 @@ export default function ClaudeEnvPanel() {
   // ── Installed view ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-
       {/* Status card */}
       <section>
         <div className="flex items-center gap-2 mb-3">
@@ -373,9 +385,13 @@ export default function ClaudeEnvPanel() {
           <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-ok/20 bg-emerald-ok/5">
             <CheckCircle size={16} className="text-emerald-ok flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-slate-200">已安装 Claude Code</div>
+              <div className="text-sm font-medium text-slate-200">
+                已安装 Claude Code
+              </div>
               {claudeInfo.version && (
-                <div className="text-xs text-slate-500 font-mono">v{claudeInfo.version}</div>
+                <div className="text-xs text-slate-500 font-mono">
+                  v{claudeInfo.version}
+                </div>
               )}
             </div>
             <button
@@ -384,13 +400,18 @@ export default function ClaudeEnvPanel() {
               className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors disabled:opacity-40"
               title="重新检测"
             >
-              <RefreshCw size={14} className={infoLoading ? "animate-spin" : ""} />
+              <RefreshCw
+                size={14}
+                className={infoLoading ? "animate-spin" : ""}
+              />
             </button>
           </div>
 
           {/* Update channel */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 flex-shrink-0">更新频道</span>
+            <span className="text-xs text-slate-400 flex-shrink-0">
+              更新频道
+            </span>
             <div className="flex gap-1">
               {(["latest", "stable"] as const).map((ch) => (
                 <button
@@ -415,7 +436,10 @@ export default function ClaudeEnvPanel() {
               disabled={updateLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors disabled:opacity-40"
             >
-              <ArrowUpCircle size={13} className={updateLoading ? "animate-spin" : ""} />
+              <ArrowUpCircle
+                size={13}
+                className={updateLoading ? "animate-spin" : ""}
+              />
               {updateLoading ? "更新中..." : "立即更新"}
             </button>
             <button
@@ -423,7 +447,10 @@ export default function ClaudeEnvPanel() {
               disabled={doctorLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors disabled:opacity-40"
             >
-              <Stethoscope size={13} className={doctorLoading ? "animate-pulse" : ""} />
+              <Stethoscope
+                size={13}
+                className={doctorLoading ? "animate-pulse" : ""}
+              />
               {doctorLoading ? "检查中..." : "运行 doctor"}
             </button>
           </div>
@@ -458,21 +485,30 @@ export default function ClaudeEnvPanel() {
                 doctorResult.map((item, i) => (
                   <div key={i} className="flex items-start gap-2">
                     {item.status === "ok" && (
-                      <CheckCircle size={12} className="text-emerald-ok flex-shrink-0 mt-0.5" />
+                      <CheckCircle
+                        size={12}
+                        className="text-emerald-ok flex-shrink-0 mt-0.5"
+                      />
                     )}
                     {item.status === "error" && (
-                      <XCircle size={12} className="text-rose-err flex-shrink-0 mt-0.5" />
+                      <XCircle
+                        size={12}
+                        className="text-rose-err flex-shrink-0 mt-0.5"
+                      />
                     )}
                     {item.status === "info" && (
-                      <Info size={12} className="text-slate-500 flex-shrink-0 mt-0.5" />
+                      <Info
+                        size={12}
+                        className="text-slate-500 flex-shrink-0 mt-0.5"
+                      />
                     )}
                     <span
                       className={`text-[11px] font-mono leading-relaxed ${
                         item.status === "ok"
                           ? "text-emerald-ok"
                           : item.status === "error"
-                          ? "text-rose-err"
-                          : "text-slate-500"
+                            ? "text-rose-err"
+                            : "text-slate-500"
                       }`}
                     >
                       {item.line}

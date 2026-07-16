@@ -99,6 +99,8 @@ export interface ToolCall {
 /** Pending permission request from backend */
 export interface PermissionRequest {
   requestId: string;
+  /** Tool card ID; distinct from the control-channel request ID. */
+  toolCallId?: string;
   sessionId: string;
   toolName: string;
   toolInput: Record<string, unknown>;

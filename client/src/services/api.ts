@@ -620,8 +620,11 @@ export const api = {
         error?: string;
       }>(`/system/usage${provider ? `?provider=${provider}` : ""}`),
     getClaudeSettings: () =>
-      request<{ env: Record<string, string> }>("/system/claude-settings"),
-    saveClaudeSettings: (env: Record<string, string | undefined>) =>
+      request<{
+        env: Record<string, string>;
+        secrets: { anthropicApiKeyConfigured: boolean };
+      }>("/system/claude-settings"),
+    saveClaudeSettings: (env: Record<string, string>) =>
       request<{ success: boolean }>("/system/claude-settings", {
         method: "POST",
         body: JSON.stringify({ env }),
@@ -642,7 +645,7 @@ export const api = {
         body: JSON.stringify({ apiKey }),
       }),
     codexLogout: () =>
-      request<{ success: boolean }>("/system/codex-logout", { method: "POST" }),
+      request<import("../stores/systemStore").CodexLogoutResult>("/system/codex-logout", { method: "POST" }),
     testCodex: (opts?: { model?: string }) =>
       request<import("../stores/systemStore").CodexTestResult>("/system/codex-test", {
         method: "POST",

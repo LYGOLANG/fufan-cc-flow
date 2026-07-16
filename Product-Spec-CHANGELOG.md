@@ -1,5 +1,33 @@
 # 变更记录
 
+## [v1.13] - 2026-07-16
+### 设置与认证
+- 设置页改为 Provider-first 信息架构：Claude、Codex、兼容端点和自定义供应商同层管理，不再以 Claude Code 安装授权流程作为全局主线。
+- 每个供应商独立展示安装、登录/配置和就绪状态；网络代理、应用更新拆为独立分类。
+- Claude/Codex 终端登录状态以 CLI 官方状态命令为权威，自动复用系统终端的持久登录或 Claude `setup-token` 认证，不再依赖旧凭证文件存在性，也不要求重复登录。
+- 已保存的 Provider Key/Token 不再回传 WebView；界面只显示是否已配置，替换时输入新值，清除需显式确认。
+- 代理能力按实际支持范围展示：Claude CLI 只复用 HTTP/HTTPS 代理，不再把 SOCKS 设置伪装成 CLI 可用能力。
+
+---
+
+## [v1.12] - 2026-07-16
+### 架构
+- 桌面运行时迁移为 Tauri + Rust 核心，保留 React/TypeScript/HTML/CSS 前端。
+- 桌面请求改用 Tauri commands，流式消息改用 Tauri events，完成后移除 Node/Express sidecar、本地 HTTP/WebSocket 和生产 `node_modules`。
+- Claude 由 Rust 管理 `stream-json` CLI，Codex 由 Rust 管理 `app-server` stdio；终端复用 `portable-pty`。
+- 迁移要求现有功能、文件格式和多项目会话行为保持兼容，实际安装包不再含 Node 且运行时不监听后端 TCP 端口。
+
+---
+
+## [v1.11] - 2026-07-16
+### 安全
+- 发布隐私门禁：仓库和实际安装产物不得包含环境文件、数据库、credentials、私钥/证书或用户数据。
+- 发布前升级 npm 与 Rust 间接依赖，清除 OSV 扫描发现的 Critical/High 漏洞。
+- macOS 桌面 sidecar 改用带 SHA-256 校验的 Node.js 22 LTS 官方独立运行时，避免依赖打包机的 Homebrew 动态库。
+- 发布模板改为显式白名单与隐私过滤，缺少必需模板时构建直接失败，并清理 pnpm 本机路径元数据。
+
+---
+
 ## [v1.10] - 2026-07-09
 ### 新增
 - F1.15 外部拖入路径识别：从资源管理器拖文件/文件夹进窗口自动插入绝对路径（Tauri onDragDropEvent）；浏览器模式回退为附件上传。

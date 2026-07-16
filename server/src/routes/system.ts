@@ -8,9 +8,10 @@ import { CodexService } from "../services/codexService.js";
 import { readProxy, writeProxy } from "../services/proxyConfig.js";
 import {
   readClaudeSettings,
+  toPublicClaudeSettings,
   writeClaudeSettingsEnv,
-  readOAuthToken,
 } from "../services/claudeSettingsService.js";
+import { readOAuthToken, withClaudeOAuthRetry } from "../services/claudeOAuthService.js";
 import { testProxyPort, testProxyConnectivity, testClaudeConnection } from "../services/claudeTestService.js";
 import { fetchAnthropicModels, type ModelInfo } from "../utils/anthropicModels.js";
 import { fetchOAuthUsage } from "../utils/anthropicUsage.js";
@@ -149,14 +150,17 @@ router.get("/models", async (_req, res) => {
     const settingsKey = env.ANTHROPIC_API_KEY;
     const oauthToken = settingsKey ? undefined : await readOAuthToken();
     const apiKey = settingsKey || (oauthToken ? undefined : process.env.ANTHROPIC_API_KEY);
-    const baseUrl = env.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_BASE_URL;
+    const configuredBaseUrl = env.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_BASE_URL;
     const proxy = await readProxy();
-    const models = await fetchAnthropicModels({
-      apiKey,
-      oauthToken,
-      baseUrl,
-      proxy: proxy.httpsProxy || proxy.httpProxy || undefined,
-    });
+    const proxyUrl = proxy.httpsProxy || proxy.httpProxy || undefined;
+    // A Claude subscription Bearer token must only go to Anthropic's official
+    // host. Custom Base URLs belong to API-key/compat providers.
+    const models = oauthToken
+      ? await withClaudeOAuthRetry(
+          (token) => fetchAnthropicModels({ oauthToken: token, proxy: proxyUrl }),
+          oauthToken,
+        )
+      : await fetchAnthropicModels({ apiKey, baseUrl: configuredBaseUrl, proxy: proxyUrl });
     if (models.length === 0) {
       return res.json({ models: FALLBACK_MODELS, source: "fallback" });
     }
@@ -192,10 +196,13 @@ router.get("/usage", async (req, res) => {
     } else {
       const token = await readOAuthToken();
       if (!token) return res.json({ available: false, source: provider });
-      const usage = await fetchOAuthUsage({
+      const usage = await withClaudeOAuthRetry(
+        (oauthToken) => fetchOAuthUsage({
+          token: oauthToken,
+          proxy: proxy.httpsProxy || proxy.httpProxy || undefined,
+        }),
         token,
-        proxy: proxy.httpsProxy || proxy.httpProxy || undefined,
-      });
+      );
       payload = { available: true, source: provider, ...usage };
     }
 
@@ -264,7 +271,7 @@ router.post("/claude-test", async (req, res) => {
 router.get("/claude-settings", async (_req, res) => {
   try {
     const settings = await readClaudeSettings();
-    res.json({ env: settings.env ?? {} });
+    res.json(toPublicClaudeSettings(settings));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

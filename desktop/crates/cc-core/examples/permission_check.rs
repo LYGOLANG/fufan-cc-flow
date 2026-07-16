@@ -73,5 +73,10 @@ async fn main() -> anyhow::Result<()> {
     println!(
         "\n=== summary: allowed_count={allowed_count} tool_use_result={tool_use_result} task_complete={task_complete} process_close={process_close} file_written={file_written} ==="
     );
+    anyhow::ensure!(allowed_count > 0, "未收到 PermissionRequest");
+    anyhow::ensure!(tool_use_result, "允许后未收到 ToolUseResult");
+    anyhow::ensure!(task_complete, "允许后未收到 TaskComplete");
+    anyhow::ensure!(process_close, "权限会话未收到 ProcessClose");
+    anyhow::ensure!(file_written, "允许后目标文件未写入预期内容");
     Ok(())
 }

@@ -287,6 +287,7 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 - **操作系统**：macOS 12+、Windows 10+、Linux（Ubuntu 20.04+）
 - **浏览器**：Chrome 100+、Firefox 100+、Safari 16+、Edge 100+
 - **Node.js**：18.x LTS 及以上
+- **桌面内置运行时**：sidecar 使用带校验和的 Node.js 官方 LTS 独立二进制，不依赖用户机器的 Node/Homebrew 动态库
 
 ### 3.3 安全性
 
@@ -296,6 +297,7 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 | 路径安全 | 文件写操作校验目标路径在项目目录内（isSubPath），拒绝目录穿越 |
 | 费用控制 | `maxBudgetUsd` 限制单次任务最大费用（可在 Settings 配置） |
 | 本地部署 | 后端仅监听 localhost，不对外暴露 |
+| 发布隐私 | 仓库和发布产物不得包含 `.env`、数据库、credentials、私钥/证书或用户数据；构建后必须对实际安装产物执行敏感信息扫描 |
 
 ### 3.4 可维护性
 

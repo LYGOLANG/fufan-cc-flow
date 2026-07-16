@@ -16,9 +16,11 @@ import path from "path";
 import os from "os";
 import { fetchAnthropicModels } from "../utils/anthropicModels.js";
 import { fetchOpenAiModels } from "../utils/openaiModels.js";
-import { readClaudeSettings, readOAuthToken } from "./claudeSettingsService.js";
+import { readClaudeSettings } from "./claudeSettingsService.js";
+import { readOAuthToken, withClaudeOAuthRetry } from "./claudeOAuthService.js";
 import { readProxy } from "./proxyConfig.js";
 import { logger } from "../utils/logger.js";
+import { writePrivateFile } from "../utils/privateFile.js";
 
 const PROVIDERS_FILE = path.join(os.homedir(), ".fufan-cc-flow", "providers.json");
 
@@ -136,10 +138,7 @@ async function readFileData(): Promise<ProvidersFile> {
 }
 
 async function writeFileData(data: ProvidersFile): Promise<void> {
-  await fs.mkdir(path.dirname(PROVIDERS_FILE), { recursive: true });
-  // 文件含明文 API Key:限定属主可读写(0o600)。Windows 上 mode 被忽略,
-  // 但用户主目录本身有 ACL 保护;POSIX 系统上生效。
-  await fs.writeFile(PROVIDERS_FILE, JSON.stringify(data, null, 2), { encoding: "utf-8", mode: 0o600 });
+  await writePrivateFile(PROVIDERS_FILE, JSON.stringify(data, null, 2));
 }
 
 function mergeBuiltin(base: ProviderConfig, ov?: ProviderOverride): ProviderConfig {
@@ -320,10 +319,14 @@ async function resolveOfficialAuth(): Promise<{
   const env = settings.env ?? {};
   const settingsKey = env.ANTHROPIC_API_KEY;
   const oauthToken = settingsKey ? undefined : await readOAuthToken();
+  const apiKey = settingsKey || (oauthToken ? undefined : process.env.ANTHROPIC_API_KEY);
   return {
-    apiKey: settingsKey || (oauthToken ? undefined : process.env.ANTHROPIC_API_KEY),
+    apiKey,
     oauthToken,
-    baseUrl: env.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_BASE_URL || undefined,
+    // Never forward a Claude subscription Bearer token to a custom host.
+    baseUrl: oauthToken
+      ? undefined
+      : env.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_BASE_URL || undefined,
   };
 }
 
@@ -364,13 +367,16 @@ export async function testProvider(id: string): Promise<{ ok: boolean; message: 
     const proxy = await readProxy();
     // 官方供应商没有本地存 Key(认证归 CLI 管),用与 /system/models 相同的凭证链
     const official = p.kind === "anthropic-official" ? await resolveOfficialAuth() : null;
-    const models = await fetchAnthropicModels({
+    const fetchModels = (oauthToken?: string) => fetchAnthropicModels({
       baseUrl: official ? official.baseUrl : p.baseUrl,
       apiKey: official ? official.apiKey : p.apiKey,
-      oauthToken: official?.oauthToken,
+      oauthToken,
       proxy: proxy.httpsProxy || proxy.httpProxy || undefined,
       timeoutMs: 10_000,
     });
+    const models = official?.oauthToken
+      ? await withClaudeOAuthRetry(fetchModels, official.oauthToken)
+      : await fetchModels();
     return { ok: true, message: `连接成功,可用模型 ${models.length} 个`, modelCount: models.length };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -409,13 +415,16 @@ export async function refreshProviderModels(id: string): Promise<string[]> {
   const official = p.kind === "anthropic-official" ? await resolveOfficialAuth() : null;
 
   try {
-    const models = await fetchAnthropicModels({
+    const fetchModels = (oauthToken?: string) => fetchAnthropicModels({
       baseUrl: official ? official.baseUrl : p.baseUrl,
       apiKey: official ? official.apiKey : p.apiKey,
-      oauthToken: official?.oauthToken,
+      oauthToken,
       proxy: proxyUrl,
       timeoutMs: 12_000,
     });
+    const models = official?.oauthToken
+      ? await withClaudeOAuthRetry(fetchModels, official.oauthToken)
+      : await fetchModels();
     const ids = models.map((m) => m.id);
     if (ids.length > 0) {
       await updateProvider(id, { models: ids });

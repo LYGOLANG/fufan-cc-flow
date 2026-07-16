@@ -13,17 +13,46 @@ import SettingsPage from "../../pages/SettingsPage";
 export default function ChatPanel() {
   const { currentSessionId, isStreaming, messages } = useChatStore();
   const { setHistoryModalOpen, wsConnected, setSettingsPageOpen, settingsPageOpen, projectPath, setFolderBrowserOpen } = useUIStore();
-  const { claudeInfo, authStatus } = useSystemStore();
+  const { claudeInfo, authStatus, codexInfo, codexAuthStatus } = useSystemStore();
   const claudeStatus = useClaudeStatus();
   // 状态标签跟随当前供应商:非 Anthropic 时显示对应供应商名,而不是固定 Claude Code
   const providerId = useConfigStore((s) => s.providerId);
   const engine = useConfigStore((s) => s.engine);
   const providers = useProviderStore((s) => s.providers);
+  const providersLoading = useProviderStore((s) => s.loading);
   const currentProvider = providers.find((p) => p.id === providerId);
   const isCodexProvider = engine === "codex" || providerId === "openai" || currentProvider?.kind === "codex";
-  const isNonAnthropic = isCodexProvider || (!!currentProvider && currentProvider.kind !== "anthropic-official");
+  const isNonAnthropic = isCodexProvider
+    || currentProvider?.kind === "anthropic-compat"
+    || (!currentProvider && providerId !== "anthropic");
   const providerName = currentProvider?.name || (isCodexProvider ? "OpenAI (Codex)" : providerId);
-  const providerConfigured = currentProvider?.configured ?? true;
+  const providerConfigured = isCodexProvider
+    ? !!codexAuthStatus?.authenticated
+    : currentProvider?.configured ?? false;
+  const providerInstalled = isCodexProvider
+    ? (codexInfo?.installed ?? codexAuthStatus?.installed ?? true)
+    : true;
+  const providerMissing = isNonAnthropic && !isCodexProvider && !currentProvider && !providersLoading;
+  const providerStatusTone = providersLoading && !currentProvider
+    ? "neutral"
+    : providerMissing || !providerInstalled
+      ? "error"
+      : isCodexProvider && providerConfigured
+        ? "ready"
+        : providerConfigured
+          ? "configured"
+          : "warning";
+  const providerStatusLabel = providersLoading && !currentProvider
+    ? `${providerName} · 检测中`
+    : providerMissing
+      ? `${providerName} · 不可用 →`
+      : !providerInstalled
+    ? `${providerName} · 未安装 →`
+    : isCodexProvider && providerConfigured
+      ? providerName
+      : providerConfigured
+        ? `${providerName} · 已配置`
+      : `${providerName} · ${isCodexProvider ? "未登录" : "未配置"} →`;
 
   // Use last user message as task title
   const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
@@ -77,18 +106,27 @@ export default function ChatPanel() {
               <button
                 onClick={handleOpenSettings}
                 className={`flex items-center gap-2 transition-colors hover:opacity-80 ${
-                  providerConfigured ? "text-slate-400" : "text-amber-glow"
+                  providerStatusTone === "ready"
+                    ? "text-slate-400"
+                    : providerStatusTone === "configured" || providerStatusTone === "neutral"
+                      ? "text-sky-link"
+                    : providerStatusTone === "warning"
+                      ? "text-amber-glow"
+                      : "text-rose-err"
                 }`}
                 title="点击打开设置"
               >
                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                  providerConfigured ? "bg-emerald-ok" : "bg-amber-glow"
+                  providerStatusTone === "ready"
+                    ? "bg-emerald-ok"
+                    : providerStatusTone === "configured" || providerStatusTone === "neutral"
+                      ? "bg-sky-link"
+                    : providerStatusTone === "warning"
+                      ? "bg-amber-glow"
+                      : "bg-rose-err"
                 }`} />
                 <Zap size={11} className="flex-shrink-0" />
-                <span>
-                  {providerName}
-                  {providerConfigured ? "" : " · 未配置 →"}
-                </span>
+                <span>{providerStatusLabel}</span>
               </button>
             ) : (
               <button
