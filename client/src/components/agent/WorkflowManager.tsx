@@ -22,9 +22,11 @@ export default function WorkflowManager() {
     loadWorkflows, saveWorkflow, deleteWorkflow, setEditing, createNew,
   } = useWorkflowStore();
   const { projectAgents, userAgents } = useAgentStore();
-  const runningTasks = useAgentStore((s) =>
-    s.backgroundTasks.filter((t) => t.status === "running")
-  );
+  // 注意:selector 里不能返回 filter/map 产生的新数组——zustand v5 基于
+  // useSyncExternalStore,每次 getSnapshot 引用不同会触发无限重渲染
+  // (生产环境即 React error #185)。取原始数组引用,派生放渲染体(同 BackgroundTasks 先例)。
+  const backgroundTasks = useAgentStore((s) => s.backgroundTasks);
+  const runningTasks = backgroundTasks.filter((t) => t.status === "running");
   const { projectPath, setPrefillInput } = useUIStore();
 
   // Workflow execution: variable input
