@@ -7,6 +7,7 @@ import { useWebSocket } from "./hooks/useWebSocket";
 import { restoreOnBoot } from "./utils/openProject";
 import { installExternalLinkHandler } from "./utils/openExternal";
 import { installHeartbeat } from "./utils/heartbeat";
+import { installCrashReporter } from "./utils/crashReporter";
 
 export default function App() {
   // Connect WebSocket (always, regardless of projectPath)
@@ -22,6 +23,10 @@ export default function App() {
 
   // 心跳:让 Rust 看门狗能感知渲染进程存活,崩溃时自动重载而非留下死屏
   useEffect(() => installHeartbeat(), []);
+
+  // 抓 JS 侧未捕获异常并落盘——渲染进程崩溃前通常先有它们,
+  // 这是目前唯一能拿到「崩溃前发生了什么」的证据来源
+  useEffect(() => installCrashReporter(), []);
 
   return (
     <ErrorBoundary scope="App">

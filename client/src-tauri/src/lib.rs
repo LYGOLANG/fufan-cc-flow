@@ -7,7 +7,7 @@ use commands::chat::{
     abort, permission_response, resolve_project_path, send_message, shutdown_all, shutdown_project,
 };
 use commands::system::system_proxy;
-use watchdog::{webview_heartbeat, Heartbeat};
+use watchdog::{record_frontend_error, webview_heartbeat, Heartbeat};
 use state::AppState;
 use tauri::{Manager, State};
 
@@ -38,7 +38,8 @@ pub fn run() {
             resolve_project_path,
             backend_port,
             system_proxy,
-            webview_heartbeat
+            webview_heartbeat,
+            record_frontend_error
         ])
         .setup(|app| {
             // release 也注册日志(写入 %LOCALAPPDATA%\com.fufan.ccflow\logs),否则 sidecar

@@ -60,6 +60,17 @@ pub fn webview_heartbeat(state: tauri::State<'_, Arc<Heartbeat>>) {
     state.last_beat_ms.store(now_ms(), Ordering::Relaxed);
 }
 
+/// 前端上报 JS 侧未捕获错误(见 utils/crashReporter.ts)。
+///
+/// 渲染进程崩溃前通常先有 JS 异常,而 Crashpad 的 dump 二进制且会被自动清理、
+/// 系统事件日志不记录 WebView 内部崩溃——这条通道是目前唯一能拿到「崩溃前
+/// 发生了什么」的可靠证据来源。
+#[tauri::command]
+pub fn record_frontend_error(app: AppHandle, kind: String, detail: String) {
+    log::error!("[frontend] {kind}: {}", detail.lines().next().unwrap_or(""));
+    record_crash(&app, &format!("[{kind}] {detail}"));
+}
+
 /// 把崩溃现场追加进独立日志文件(与会话日志分开,不被轮转覆盖)。
 fn record_crash(app: &AppHandle, detail: &str) {
     let Ok(dir) = app.path().app_log_dir() else {
