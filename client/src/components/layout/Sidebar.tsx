@@ -20,7 +20,7 @@ export default function Sidebar() {
     sidebarOpen, sidebarWidth, setSidebarWidth, toggleSidebar,
     leftNavPanel, setLeftNavPanel,
     projectPath, setProjectPath,
-    setSettingsModalOpen, setSettingsPageOpen, setFileViewModalOpen,
+    setSettingsPageOpen, setFileViewModalOpen,
     setFolderBrowserOpen,
   } = useUIStore();
 

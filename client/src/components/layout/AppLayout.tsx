@@ -5,7 +5,6 @@ import ProjectTabs from "./ProjectTabs";
 import ChatPanel from "../chat/ChatPanel";
 import HistoryModal from "../modals/HistoryModal";
 import FileViewModal from "../modals/FileViewModal";
-import SettingsModal from "../modals/SettingsModal";
 import FolderBrowserModal from "../modals/FolderBrowserModal";
 import SkillBrowserModal from "../modals/SkillBrowserModal";
 import CreateSkillModal from "../modals/CreateSkillModal";
@@ -73,7 +72,6 @@ export default function AppLayout() {
       {/* Global modals */}
       <HistoryModal />
       <FileViewModal />
-      <SettingsModal />
       <FolderBrowserModal />
       <SkillBrowserModal />
       <CreateSkillModal />

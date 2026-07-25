@@ -7,16 +7,6 @@
   ],
   "permissions": [
     "core:default",
-    {
-      "identifier": "shell:allow-execute",
-      "allow": [
-        {
-          "name": "binaries/node",
-          "sidecar": true,
-          "args": true
-        }
-      ]
-    },
     "updater:default",
     "process:default"
   ]

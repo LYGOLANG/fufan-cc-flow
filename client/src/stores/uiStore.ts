@@ -55,7 +55,6 @@ interface UIState {
   // Modal visibility
   historyModalOpen: boolean;
   fileViewModalOpen: boolean;
-  settingsModalOpen: boolean;
   settingsActiveTab: "model" | "environment";
   folderBrowserOpen: boolean;
   skillBrowserOpen: boolean;
@@ -102,7 +101,6 @@ interface UIState {
 
   setHistoryModalOpen: (open: boolean) => void;
   setFileViewModalOpen: (open: boolean) => void;
-  setSettingsModalOpen: (open: boolean) => void;
   setSettingsActiveTab: (tab: "model" | "environment") => void;
   setFolderBrowserOpen: (open: boolean) => void;
   setSkillBrowserOpen: (open: boolean) => void;
@@ -151,7 +149,6 @@ export const useUIStore = create<UIState>((set) => ({
 
   historyModalOpen: false,
   fileViewModalOpen: false,
-  settingsModalOpen: false,
   settingsActiveTab: "model",
   settingsPageOpen: false,
   folderBrowserOpen: false,
@@ -237,7 +234,6 @@ export const useUIStore = create<UIState>((set) => ({
 
   setHistoryModalOpen: (open) => set({ historyModalOpen: open }),
   setFileViewModalOpen: (open) => set({ fileViewModalOpen: open }),
-  setSettingsModalOpen: (open) => set({ settingsModalOpen: open }),
   setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
   setSettingsPageOpen: (open) => set({ settingsPageOpen: open }),
   setFolderBrowserOpen: (open) => set({ folderBrowserOpen: open }),
