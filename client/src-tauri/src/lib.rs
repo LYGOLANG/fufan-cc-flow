@@ -43,6 +43,9 @@ pub fn run() {
             if cfg!(debug_assertions) {
                 // dev 模式下后端由开发者自己用 `pnpm --filter server dev` 起,不重复拉一份。
             } else {
+                // 先收割上次运行残留的孤儿 sidecar(崩溃/强杀时 ExitRequested 不触发,
+                // 清理逻辑跑不到),否则残留会持续攥着 node.exe 句柄导致安装失败
+                sidecar::reap_orphans(app.handle());
                 let port = sidecar::spawn(app.handle())?;
                 let state = app.state::<AppState>();
                 *state.backend_port.lock().unwrap() = Some(port);

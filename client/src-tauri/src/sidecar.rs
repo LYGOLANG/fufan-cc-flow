@@ -56,10 +56,89 @@ pub fn spawn(app: &tauri::AppHandle) -> Result<u16, Box<dyn std::error::Error>> 
 pub fn kill(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<SidecarProcess>() {
         if let Some(child) = state.0.lock().unwrap().take() {
-            let _ = child.kill();
+            // Windows 上 child.kill() 只终止 sidecar 进程自身,而这个 node 后端会
+            // spawn 自己的子进程(Claude CLI、PTY 终端等)——它们会孤儿化存活并继续
+            // 攥着安装目录里 node.exe 的文件句柄,导致下次安装报
+            // "Error opening file for writing: node.exe"(NSIS 覆盖不了被占用的文件),
+            // 且每装一次就多积一个僵尸。故 Windows 走 taskkill /T 按进程树整棵杀。
+            #[cfg(windows)]
+            {
+                let pid = child.pid();
+                let _ = child.kill();
+                kill_process_tree(pid);
+            }
+            #[cfg(not(windows))]
+            {
+                let _ = child.kill();
+            }
         }
     }
 }
+
+/// Windows: 按 PID 杀掉整棵进程树(/T 含所有后代, /F 强制)。
+/// 用 CREATE_NO_WINDOW 避免退出瞬间闪黑框。
+#[cfg(windows)]
+fn kill_process_tree(pid: u32) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let _ = std::process::Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+}
+
+/// 启动时清理上一次运行残留的孤儿 sidecar。
+///
+/// 兜底 kill() 覆盖不到的场景:进程崩溃、任务管理器强杀、系统断电——这些情况下
+/// Tauri 的 ExitRequested 根本不触发,清理逻辑一次都不跑,残留会持续累积。
+/// 判据严格:只杀「可执行文件路径正是本安装目录下 node.exe」的进程,绝不误伤
+/// 用户自己的 node(开发服务器、其他 Electron 应用等)。
+#[cfg(windows)]
+pub fn reap_orphans(app: &tauri::AppHandle) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    // sidecar 二进制与主程序同目录(Tauri externalBin 的布局)
+    let Ok(exe_dir) = std::env::current_exe().map(|p| p.parent().map(|d| d.to_path_buf())) else {
+        return;
+    };
+    let Some(exe_dir) = exe_dir else { return };
+    let node_path = exe_dir.join("node.exe");
+    let node_path_str = node_path.to_string_lossy().to_string();
+    let node_path_str = node_path_str
+        .strip_prefix(r"\\?\")
+        .map(str::to_string)
+        .unwrap_or(node_path_str);
+
+    let self_pid = std::process::id();
+
+    // WMIC 已在新版 Windows 弃用,用 PowerShell CIM 查询;单引号转义防注入
+    let escaped = node_path_str.replace('\'', "''");
+    let script = format!(
+        "Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | \
+         Where-Object {{ $_.ExecutablePath -eq '{escaped}' -and $_.ProcessId -ne {self_pid} }} | \
+         ForEach-Object {{ $_.ProcessId }}"
+    );
+
+    let Ok(out) = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+    else {
+        return;
+    };
+
+    for line in String::from_utf8_lossy(&out.stdout).lines() {
+        if let Ok(pid) = line.trim().parse::<u32>() {
+            log::warn!("[sidecar] reaping orphan node.exe from previous run: pid {pid}");
+            kill_process_tree(pid);
+        }
+    }
+    let _ = app; // 保持签名一致,非 Windows 分支需要
+}
+
+#[cfg(not(windows))]
+pub fn reap_orphans(_app: &tauri::AppHandle) {}
 
 /// 退出前的优雅收尾:调后端 POST /api/system/shutdown-all,让它中止所有运行中任务
 /// 并把「被中止的任务」同步落盘(下次启动提醒)。用 std TcpStream 手写 HTTP,
