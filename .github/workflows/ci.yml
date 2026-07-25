@@ -66,10 +66,18 @@ jobs:
             libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev
 
-      # 前端产物是 tauri.conf.json 里 frontendDist 指向的目录,
-      # cargo check 需要它存在(哪怕是空的)才能通过配置校验
-      - name: 准备前端产物占位
-        run: mkdir -p client/dist && echo '<!doctype html><title>ci</title>' > client/dist/index.html
+      # Tauri 的 build script 会校验 tauri.conf.json 里声明的资源是否存在:
+      #   - frontendDist 指向的前端产物目录
+      #   - externalBin 声明的 sidecar 二进制(按当前平台 target triple 命名)
+      # 本 job 只做类型检查与单元测试,不产出可运行的包,故用空占位满足校验。
+      # 真实的 sidecar 由 scripts/prepare-sidecar.mjs 在打包时按平台生成。
+      - name: 准备构建占位资源
+        run: |
+          mkdir -p client/dist
+          echo '<!doctype html><title>ci</title>' > client/dist/index.html
+          mkdir -p client/src-tauri/binaries
+          touch client/src-tauri/binaries/node-x86_64-unknown-linux-gnu
+          chmod +x client/src-tauri/binaries/node-x86_64-unknown-linux-gnu
 
       - name: 编译检查
         run: cargo check --manifest-path client/src-tauri/Cargo.toml
