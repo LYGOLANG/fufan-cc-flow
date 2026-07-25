@@ -22,6 +22,10 @@ pub fn run() {
         // 安装完成后经 plugin-process 的 relaunch 重启应用
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // 外链用系统默认浏览器打开:桌面壳里点 http(s) 链接若走 WebView 自身导航,
+        // 会把应用整个变成浏览器且无返回入口(用户视角=应用卡死在网页上)。
+        // 只给"打开 URL"能力,不给 shell 执行权限。
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             send_message,

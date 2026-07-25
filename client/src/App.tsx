@@ -5,6 +5,7 @@ import InterruptedTasksBanner from "./components/shared/InterruptedTasksBanner";
 import UpdatePrompt from "./components/shared/UpdatePrompt";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { restoreOnBoot } from "./utils/openProject";
+import { installExternalLinkHandler } from "./utils/openExternal";
 
 export default function App() {
   // Connect WebSocket (always, regardless of projectPath)
@@ -14,6 +15,9 @@ export default function App() {
   useEffect(() => {
     void restoreOnBoot();
   }, []);
+
+  // 全局兜底:外链一律交给系统浏览器,避免 WebView 被导航走导致应用「回不来」
+  useEffect(() => installExternalLinkHandler(), []);
 
   return (
     <ErrorBoundary scope="App">

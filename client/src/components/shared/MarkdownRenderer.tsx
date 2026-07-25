@@ -162,6 +162,16 @@ export default function MarkdownRenderer({ content, detectImages = false }: Prop
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          // AI 回复里的链接:显式 target=_blank(浏览器形态正确),桌面壳则由
+          // App 的全局处理器改走系统浏览器——两种形态都不会把当前页面导航走。
+          a(props) {
+            const { children, ...rest } = props;
+            return (
+              <a {...rest} target="_blank" rel="noopener noreferrer">
+                {children}
+              </a>
+            );
+          },
           code(props) {
             const { children, className, ...rest } = props;
             const match = /language-(\w+)/.exec(className || "");
