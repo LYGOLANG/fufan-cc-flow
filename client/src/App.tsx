@@ -4,6 +4,7 @@ import ErrorBoundary from "./components/shared/ErrorBoundary";
 import InterruptedTasksBanner from "./components/shared/InterruptedTasksBanner";
 import UpdatePrompt from "./components/shared/UpdatePrompt";
 import { useWebSocket } from "./hooks/useWebSocket";
+import { useAutoCompact } from "./hooks/useAutoCompact";
 import { restoreOnBoot } from "./utils/openProject";
 import { installExternalLinkHandler } from "./utils/openExternal";
 import { installHeartbeat } from "./utils/heartbeat";
@@ -13,6 +14,9 @@ import { useUIStore } from "./stores/uiStore";
 export default function App() {
   // Connect WebSocket (always, regardless of projectPath)
   useWebSocket();
+
+  // 上下文用量达阈值自动压缩(此前 autoCompactThreshold 是死配置,无人消费)
+  useAutoCompact();
 
   // 页面加载后:恢复当前项目会话视图 + 预热所有项目连接(认领寄存的后台任务)
   useEffect(() => {

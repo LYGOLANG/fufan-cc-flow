@@ -66,7 +66,7 @@ function UsageRow({ label, win }: { label: string; win: UsageWindow | null }) {
 
 export default function ContextBar() {
   const { currentSessionId, contextTokens, isStreaming, totalCost } = useChatStore();
-  const { model, providerId, engine } = useConfigStore();
+  const { model, providerId, engine, autoCompactThreshold, setAutoCompactThreshold } = useConfigStore();
   const providers = useProviderStore((s) => s.providers);
   const currentProvider = providers.find((p) => p.id === providerId);
   const isCodexProvider = engine === "codex" || providerId === "openai" || currentProvider?.kind === "codex";
@@ -200,6 +200,30 @@ export default function ContextBar() {
           >
             立即压缩
           </button>
+
+          {/* 自动压缩阈值 —— 此前该配置无任何 UI 入口,设了也没处设 */}
+          <div className="pt-1.5 border-t border-white/5">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] text-slate-400">用量达到时自动压缩</span>
+              <span className="text-[11px] font-mono text-slate-300">
+                {autoCompactThreshold >= 100 ? "关闭" : `${autoCompactThreshold}%`}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={50}
+              max={100}
+              step={5}
+              value={autoCompactThreshold}
+              onChange={(e) => setAutoCompactThreshold(Number(e.target.value))}
+              className="w-full accent-amber-glow"
+            />
+            <p className="text-[10px] text-slate-600 mt-0.5">
+              {autoCompactThreshold >= 100
+                ? "拖到 100% 表示不自动压缩，只手动触发"
+                : `上下文超过 ${autoCompactThreshold}% 时自动执行一次压缩`}
+            </p>
+          </div>
         </div>
       )}
     </div>
