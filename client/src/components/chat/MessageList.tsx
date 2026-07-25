@@ -158,7 +158,15 @@ export default function MessageList() {
             }
 
             return (
-              <div key={msg.id} className={isDimmed ? "opacity-50" : ""}>
+              <div
+                key={msg.id}
+                className={isDimmed ? "opacity-50" : ""}
+                // 长会话优化:视口外的历史消息跳过渲染/布局/绘制(content-visibility),
+                // 几百条消息的会话滚动不再随长度线性变卡。intrinsic-size 只是滚动条
+                // 高度估算,偏差无碍正确性。流式中的当前消息不加,保证实时更新不受
+                // 渲染跳过的影响。
+                style={isCurrentAssistant ? undefined : { contentVisibility: "auto", containIntrinsicSize: "auto 140px" }}
+              >
                 {/* Hint banner at the very first dimmed message */}
                 {isDimmed && idx === 0 && (
                   <div className="text-[10px] text-slate-500 text-center mb-3 px-4 py-1 rounded bg-white/3 border border-white/5">
