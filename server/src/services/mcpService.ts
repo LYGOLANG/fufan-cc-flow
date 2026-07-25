@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { spawnClaude } from "../utils/claudeBin.js";
 import { homedir } from "os";
 import { promises as fs } from "fs";
 import { join } from "path";
@@ -41,10 +41,15 @@ export function bumpMcpConfigVersion(): void {
 export class McpService {
   private async runClaude(args: string[], customEnv?: Record<string, string>): Promise<string> {
     return new Promise((resolve, reject) => {
-      const proc = spawn("claude", args, {
-        shell: true,
-        env: customEnv || { ...process.env },
-      });
+      // 必须 shell:false + 绝对路径 + 数组 argv:args 由请求体拼装(MCP server 名、
+      // url、command、env 值),shell:true 会把 argv 拼成单条 shell 字符串,其中的
+      // `;` `&&` 反引号会被执行 → 命令注入。spawnClaude 内部对 .cmd/.bat 用
+      // cmd /c + 数组参数包装,同样不经 shell 解析。
+      const proc = spawnClaude(args, { env: customEnv || { ...process.env } });
+      if (!proc) {
+        reject(new Error("未找到 claude 可执行文件"));
+        return;
+      }
       let stdout = "";
       let stderr = "";
       proc.stdout?.on("data", (d) => (stdout += d.toString()));

@@ -7,12 +7,32 @@ import { logger } from "./utils/logger.js";
 
 const app: Express = express();
 
-app.use(cors());
+// 只放行本地来源:桌面壳(tauri://localhost / http://tauri.localhost)、
+// Vite dev(localhost:5273)、同端口托管(无 Origin 的同源请求)。
+// 此前是裸 cors() 放行任意 Origin——任何网页都能让访客浏览器打本机 API。
+// 注意这是纵深防御的一层:CORS 拦的是浏览器发起的跨站请求,拦不住 curl,
+// 真正的边界是上面的 127.0.0.1 绑定。
+const LOCAL_ORIGIN = /^(https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?|tauri:\/\/localhost|https?:\/\/tauri\.localhost)$/;
+app.use(
+  cors({
+    origin(origin, callback) {
+      // 无 Origin:同源导航、curl、桌面壳内的部分请求 —— 放行
+      if (!origin) return callback(null, true);
+      if (LOCAL_ORIGIN.test(origin)) return callback(null, true);
+      logger.warn(`[cors] blocked cross-origin request from ${origin}`);
+      callback(null, false);
+    },
+  })
+);
 app.use(express.json());
 
-// Request logger — shows every HTTP request that reaches Express
+// Request logger — 只记录路径,丢弃 query string。
+// query 里可能带敏感值:/system/proxy-save?https=http://user:pass@host 会把
+// 代理凭据明文写进日志文件(每次保存设置一条)。路径本身足够排障。
 app.use((req, _res, next) => {
-  logger.info(`[http] ${req.method} ${req.url}`);
+  const pathOnly = req.url.split("?")[0];
+  const hasQuery = req.url.includes("?");
+  logger.info(`[http] ${req.method} ${pathOnly}${hasQuery ? "?…" : ""}`);
   next();
 });
 

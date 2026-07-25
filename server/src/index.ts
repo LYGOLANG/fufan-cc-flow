@@ -53,7 +53,13 @@ server.on("error", (err: NodeJS.ErrnoException) => {
   }
 });
 
-const HOST = process.env.HOST || "0.0.0.0";
+// 默认只监听回环地址(REQUIREMENTS §3.3「后端仅监听 localhost,不对外暴露」)。
+// 此前默认 0.0.0.0——本应用无任何鉴权中间件,等于把「读写任意文件、跑 Claude CLI、
+// 开 PTY 终端」的全部能力暴露给同局域网所有主机。
+// SSH 隧道部署形态不受影响:隧道终点本就落在服务器的 127.0.0.1。
+// 确需对外监听(如容器内跑、前置反代)的部署,显式设 HOST=0.0.0.0 覆盖,
+// 但必须自行在前面加鉴权/防火墙。
+const HOST = process.env.HOST || "127.0.0.1";
 server.listen(PORT, HOST, () => {
   logger.info(`Agent Flow server running on http://${HOST}:${PORT}`);
   logger.info("WebSocket endpoints: /ws/chat");

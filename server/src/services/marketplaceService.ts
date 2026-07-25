@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { spawnClaude } from "../utils/claudeBin.js";
 import { homedir } from "os";
 import { promises as fs } from "fs";
 import { join } from "path";
@@ -34,10 +34,12 @@ const MARKETPLACES_DIR = join(PLUGINS_DIR, "marketplaces");
 export class MarketplaceService {
   private async runClaude(args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
-      const proc = spawn("claude", args, {
-        shell: true,
-        env: { ...process.env },
-      });
+      // shell:false + 绝对路径 + 数组 argv,防命令注入(args 含请求体传入的 marketplace 名/URL)
+      const proc = spawnClaude(args, { env: { ...process.env } });
+      if (!proc) {
+        reject(new Error("未找到 claude 可执行文件"));
+        return;
+      }
       let stdout = "";
       let stderr = "";
       proc.stdout?.on("data", (d: Buffer) => (stdout += d.toString()));
