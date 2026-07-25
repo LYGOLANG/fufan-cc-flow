@@ -1,11 +1,13 @@
 mod commands;
 mod sidecar;
 mod state;
+mod watchdog;
 
 use commands::chat::{
     abort, permission_response, resolve_project_path, send_message, shutdown_all, shutdown_project,
 };
 use commands::system::system_proxy;
+use watchdog::{webview_heartbeat, Heartbeat};
 use state::AppState;
 use tauri::{Manager, State};
 
@@ -27,6 +29,7 @@ pub fn run() {
         // 只给"打开 URL"能力,不给 shell 执行权限。
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
+        .manage(std::sync::Arc::new(Heartbeat::default()))
         .invoke_handler(tauri::generate_handler![
             send_message,
             abort,
@@ -34,7 +37,8 @@ pub fn run() {
             shutdown_project,
             resolve_project_path,
             backend_port,
-            system_proxy
+            system_proxy,
+            webview_heartbeat
         ])
         .setup(|app| {
             // release 也注册日志(写入 %LOCALAPPDATA%\com.fufan.ccflow\logs),否则 sidecar
@@ -54,6 +58,13 @@ pub fn run() {
                 let state = app.state::<AppState>();
                 *state.backend_port.lock().unwrap() = Some(port);
             }
+
+            // WebView 崩溃自愈看门狗:渲染进程崩了(实测 STATUS_BREAKPOINT)窗口会被
+            // Edge 错误页接管、应用形同死机。Tauri 2.11 拿不到崩溃回调,故用前端心跳
+            // 断流间接探测,超时自动 reload 拉活,并把现场写进独立日志。
+            let hb = app.state::<std::sync::Arc<Heartbeat>>().inner().clone();
+            watchdog::spawn(app.handle().clone(), hb);
+
             Ok(())
         })
         .build(tauri::generate_context!())

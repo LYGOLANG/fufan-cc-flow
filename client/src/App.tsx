@@ -6,6 +6,7 @@ import UpdatePrompt from "./components/shared/UpdatePrompt";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { restoreOnBoot } from "./utils/openProject";
 import { installExternalLinkHandler } from "./utils/openExternal";
+import { installHeartbeat } from "./utils/heartbeat";
 
 export default function App() {
   // Connect WebSocket (always, regardless of projectPath)
@@ -18,6 +19,9 @@ export default function App() {
 
   // 全局兜底:外链一律交给系统浏览器,避免 WebView 被导航走导致应用「回不来」
   useEffect(() => installExternalLinkHandler(), []);
+
+  // 心跳:让 Rust 看门狗能感知渲染进程存活,崩溃时自动重载而非留下死屏
+  useEffect(() => installHeartbeat(), []);
 
   return (
     <ErrorBoundary scope="App">
