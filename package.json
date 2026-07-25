@@ -4,6 +4,8 @@
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"pnpm --filter server dev\" \"pnpm --filter client dev\"",
     "build": "pnpm --filter server build && pnpm --filter client build",
+    "test": "pnpm --filter server test && pnpm --filter client test",
+    "typecheck": "pnpm --filter server exec tsc --noEmit && pnpm --filter client exec tsc -b --noEmit",
     "package:desktop": "node scripts/package-desktop.mjs",
     "start": "pnpm --filter server start",
     "lint": "pnpm --filter \"*\" lint",

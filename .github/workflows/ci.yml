@@ -1,0 +1,78 @@
+name: CI
+
+# 每次推送和 PR 都跑,这是防回归的闸门。
+# 与 macos.yml 分工:那个是按需出 macOS 安装包(手动触发、烧 10x Actions 分钟),
+# 这个只做类型检查 + 测试,跑在便宜的 ubuntu 上,几分钟内出结果。
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch: {}
+
+# 同一分支的新推送取消上一次未完成的运行,不排队浪费额度
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: 类型检查 + 测试 (Node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm 版本取自 package.json 的 packageManager 字段
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      # 类型检查独立成步:类型错误比测试失败更早暴露问题,
+      # 且失败时日志更直白(不用在测试输出里找)
+      - name: 类型检查 (server + client)
+        run: pnpm typecheck
+
+      - name: 单元与契约测试 (server 48 + client 13)
+        run: pnpm test
+
+  rust:
+    name: 编译 + 测试 (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri -> target
+
+      # Tauri 在 Linux 上编译需要 webkit2gtk 等系统库
+      - name: 安装 Linux 系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      # 前端产物是 tauri.conf.json 里 frontendDist 指向的目录,
+      # cargo check 需要它存在(哪怕是空的)才能通过配置校验
+      - name: 准备前端产物占位
+        run: mkdir -p client/dist && echo '<!doctype html><title>ci</title>' > client/dist/index.html
+
+      - name: 编译检查
+        run: cargo check --manifest-path client/src-tauri/Cargo.toml
+
+      - name: Rust 测试 (12 项)
+        run: cargo test --manifest-path client/src-tauri/Cargo.toml
