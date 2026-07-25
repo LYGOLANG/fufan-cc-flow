@@ -295,6 +295,7 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 |----|----------|
 | API Key 保护 | Anthropic 官方 Key 存 `~/.claude/settings.json`；兼容供应商 Key 存 `~/.fufan-cc-flow/providers.json`（0o600，Windows 靠主目录 ACL）。均不写日志、不传前端（列表接口只回掩码 hint） |
 | 路径安全 | 文件写操作校验目标路径在项目目录内（isSubPath），拒绝目录穿越 |
+| WebView CSP | 桌面壳基线 CSP（`default-src 'self'`）：脚本仅自身、连接仅本地后端 http/ws、图片放行 data/blob/https 外链、object 禁用。即使将来引入 HTML 渲染面，注入脚本也无法外联 |
 | 费用控制 | `maxBudgetUsd` 限制单次任务最大费用（可在 Settings 配置） |
 | 本地部署 | 后端仅监听 localhost，不对外暴露 |
 | 发布隐私 | 仓库和发布产物不得包含 `.env`、数据库、credentials、私钥/证书或用户数据；构建后必须对实际安装产物执行敏感信息扫描 |
