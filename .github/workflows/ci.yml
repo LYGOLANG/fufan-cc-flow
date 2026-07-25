@@ -78,6 +78,8 @@ jobs:
           mkdir -p client/src-tauri/binaries
           touch client/src-tauri/binaries/node-x86_64-unknown-linux-gnu
           chmod +x client/src-tauri/binaries/node-x86_64-unknown-linux-gnu
+          # resources 声明的后端产物目录(真实内容由 prepare-sidecar 构建)
+          mkdir -p client/src-tauri/server-dist
 
       - name: 编译检查
         run: cargo check --manifest-path client/src-tauri/Cargo.toml
