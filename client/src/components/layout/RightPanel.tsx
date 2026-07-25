@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, Activity, Puzzle, Bot,
   TerminalSquare, Plus, X, Maximize2, Minimize2, ChevronDown, ChevronUp,
@@ -20,7 +20,8 @@ import AuditLog from "../agent/AuditLog";
 import { useAgentStore } from "../../stores/agentStore";
 import { useChatStore } from "../../stores/chatStore";
 import type { ToolCall, TaskResult } from "../../types/claude";
-import XTerminal from "../shared/XTerminal";
+// xterm.js 体积不小且仅终端标签页用到——懒加载,不进首屏主 chunk
+const XTerminal = lazy(() => import("../shared/XTerminal"));
 
 /* ── Tab config ── */
 const TABS: { id: RightSidebarTab; label: string; icon: typeof Activity }[] = [
@@ -957,7 +958,9 @@ function EmbeddedTerminal({
       <div className="flex-1 min-h-0 overflow-hidden" style={{ position: "relative" }}>
         {activeTab ? (
           <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-            <XTerminal key={activeTab} termId={activeTab} cwd={projectPath} />
+            <Suspense fallback={<div className="flex items-center justify-center h-full text-xs text-slate-600">终端加载中…</div>}>
+              <XTerminal key={activeTab} termId={activeTab} cwd={projectPath} />
+            </Suspense>
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-xs text-slate-600">

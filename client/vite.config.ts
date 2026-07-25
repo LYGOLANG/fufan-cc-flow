@@ -14,6 +14,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // vendor 分组:框架与重量级渲染链各自成 chunk,业务代码更新时用户
+        // 无需重新下载未变化的第三方库(独立 hash 长效缓存)
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-markdown": ["react-markdown", "remark-gfm"],
+          "vendor-highlight": ["react-syntax-highlighter"],
+        },
+      },
+    },
+  },
   server: {
     host: "0.0.0.0",
     port: 5273,

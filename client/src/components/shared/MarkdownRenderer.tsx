@@ -1,7 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { SyntaxHighlighter, oneDark } from "../../utils/syntaxHighlighter";
 import { Copy, Check, X } from "lucide-react";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";

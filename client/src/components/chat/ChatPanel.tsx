@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Clock, Plus, Zap } from "lucide-react";
 import MessageList from "./MessageList";
 import InputBar from "./InputBar";
@@ -8,7 +9,8 @@ import { useConfigStore } from "../../stores/configStore";
 import { useProviderStore } from "../../stores/providerStore";
 import { useClaudeStatus } from "../../hooks/useClaudeStatus";
 import { startNewSession } from "../../utils/openProject";
-import SettingsPage from "../../pages/SettingsPage";
+// 设置整页(1000+行,含大量子面板)仅在用户打开时才需要——懒加载,不进首屏主 chunk
+const SettingsPage = lazy(() => import("../../pages/SettingsPage"));
 
 export default function ChatPanel() {
   const { currentSessionId, isStreaming, messages } = useChatStore();
@@ -191,7 +193,11 @@ export default function ChatPanel() {
       <InputBar />
 
       {/* ── Settings overlay — covers only this center panel ── */}
-      {settingsPageOpen && <SettingsPage />}
+      {settingsPageOpen && (
+        <Suspense fallback={null}>
+          <SettingsPage />
+        </Suspense>
+      )}
     </main>
   );
 }

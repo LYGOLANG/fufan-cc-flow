@@ -1,7 +1,6 @@
 import { X, Copy, Check, FileText, Loader2 } from "lucide-react";
 import { useState, useCallback } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { SyntaxHighlighter, oneDark } from "../../utils/syntaxHighlighter";
 import { useFileStore } from "../../stores/fileStore";
 import { useUIStore } from "../../stores/uiStore";
 
