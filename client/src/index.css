@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* 自托管拉丁字体(仅按需字重的 latin 子集,Vite 打包进 dist)。
+   此前走 Google Fonts 外链,v0.1.8 启用 CSP 白名单后被 style-src/font-src
+   拦截,全站字体静默回退系统栈。自托管同时消除外部依赖与首屏 RTT——
+   国内网络下 fonts.googleapis.com 本就时常拉不动。
+   中文有意不自托管:Noto Sans SC 全量 CJK 数 MB,会显著撑大安装包;
+   系统中文字体(微软雅黑/苹方)是用户最习惯的观感,零体积。 */
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
 /* ══════════════════════════════════════════════════════
    Fufan-CC Flow — "Void Console" Design System v2
    Deep purple-black · Amber-orange actions · Purple AI
@@ -7,7 +20,8 @@
 
 @theme {
   --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-sans:    "Noto Sans SC", "Noto Sans", system-ui, sans-serif;
+  /* 中文走系统字体栈(见文件头注释):Windows 微软雅黑 / macOS 苹方 */
+  --font-sans:    "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
   --font-mono:    "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
   /* ── Void Purple-Black Palette ── */

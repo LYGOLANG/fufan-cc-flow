@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   FileText,
   Pencil,
@@ -202,8 +203,10 @@ function ImagePreview({ src }: { src: string }) {
         />
       </div>
 
-      {/* Lightbox overlay */}
-      {open && (
+      {/* Lightbox overlay —— 必须 portal 到 body:消息气泡带 content-visibility:auto
+          (等价 contain:layout paint),会使 fixed 定位以气泡为包含块并被裁剪成
+          气泡内一个小方块。同项目 MarkdownRenderer 的灯箱正是用 portal 才不受影响。 */}
+      {open && createPortal(
         <div
           className="fixed inset-0 z-[999] flex items-center justify-center bg-black/85 backdrop-blur-sm"
           onClick={close}
@@ -225,7 +228,8 @@ function ImagePreview({ src }: { src: string }) {
               ✕
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
