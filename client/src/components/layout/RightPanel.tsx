@@ -3,8 +3,9 @@ import {
   ChevronLeft, ChevronRight, Activity, Puzzle, Bot,
   TerminalSquare, Plus, X, Maximize2, Minimize2, ChevronDown, ChevronUp,
   CheckCircle2, Loader2, Clock, BarChart2, Coins, RotateCcw, ListChecks, Wrench,
-  Plug, Zap, Package, Brain, Webhook,
+  Plug, Zap, Package, Brain, Webhook, Globe,
 } from "lucide-react";
+import BrowserPanel from "./BrowserPanel";
 import { useUIStore, type RightSidebarTab } from "../../stores/uiStore";
 import McpManager from "../manage/McpManager";
 import SkillsManager from "../manage/SkillsManager";
@@ -28,6 +29,7 @@ const TABS: { id: RightSidebarTab; label: string; icon: typeof Activity }[] = [
   { id: "monitor",    label: "实时监控", icon: Activity },
   { id: "extensions", label: "拓展",          icon: Puzzle },
   { id: "agent",      label: "Agent",         icon: Bot },
+  { id: "browser",    label: "浏览器",        icon: Globe },
 ];
 
 /* ── Terminal tab type ── */
@@ -143,6 +145,7 @@ export default function RightPanel() {
             {rightSidebarTab === "monitor"    && <LiveMonitorPanel />}
             {rightSidebarTab === "extensions" && <ExtensionsPanel />}
             {rightSidebarTab === "agent"      && <AgentPanel />}
+            {rightSidebarTab === "browser"    && <BrowserPanel />}
           </div>
         )}
 

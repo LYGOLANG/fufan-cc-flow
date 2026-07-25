@@ -8,6 +8,7 @@ import { restoreOnBoot } from "./utils/openProject";
 import { installExternalLinkHandler } from "./utils/openExternal";
 import { installHeartbeat } from "./utils/heartbeat";
 import { installCrashReporter } from "./utils/crashReporter";
+import { useUIStore } from "./stores/uiStore";
 
 export default function App() {
   // Connect WebSocket (always, regardless of projectPath)
@@ -18,8 +19,18 @@ export default function App() {
     void restoreOnBoot();
   }, []);
 
-  // 全局兜底:外链一律交给系统浏览器,避免 WebView 被导航走导致应用「回不来」
-  useEffect(() => installExternalLinkHandler(), []);
+  // 外链拦截:桌面端送内置浏览器面板(右侧栏预览、自动切到该标签),
+  // 既不会把主窗口导航走,也不用离开应用去看网页
+  useEffect(
+    () =>
+      installExternalLinkHandler((url) => {
+        const ui = useUIStore.getState();
+        ui.setBrowserUrl(url);
+        ui.setRightSidebarTab("browser");
+        if (!ui.rightPanelOpen) ui.setRightPanelOpen(true);
+      }),
+    []
+  );
 
   // 心跳:让 Rust 看门狗能感知渲染进程存活,崩溃时自动重载而非留下死屏
   useEffect(() => installHeartbeat(), []);

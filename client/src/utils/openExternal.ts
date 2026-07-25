@@ -33,7 +33,10 @@ export function isExternalUrl(url: string | null | undefined): url is string {
  * 动态生成的链接、将来新增的任何 <a href="http...">,不会再漏。
  * 返回清理函数。
  */
-export function installExternalLinkHandler(): () => void {
+export function installExternalLinkHandler(
+  /** 提供时,桌面端的外链交给它(内置浏览器面板);不提供则一律走系统浏览器 */
+  onInternalOpen?: (url: string) => void
+): () => void {
   const onClick = (e: MouseEvent) => {
     // 尊重修饰键(用户可能想用自己的方式打开)与非左键
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
@@ -45,6 +48,13 @@ export function installExternalLinkHandler(): () => void {
     if (!isExternalUrl(href)) return;
 
     e.preventDefault();
+    // 桌面端优先送内置浏览器面板(右侧栏预览,不打断对话);
+    // 面板里另有「用系统浏览器打开」出口,应对拒绝嵌入的站点。
+    // 浏览器形态下没有内置面板的意义,直接开新标签页。
+    if (isTauriRuntime() && onInternalOpen) {
+      onInternalOpen(href);
+      return;
+    }
     void openExternal(href);
   };
 
