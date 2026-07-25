@@ -20,6 +20,25 @@ export interface ProxyTestResult {
   error?: string;
 }
 
+export interface ClaudeTestDependencies {
+  queryFn?: typeof query;
+}
+
+function isExpectedTestResponse(responseText: string): boolean {
+  return responseText.trim().toUpperCase() === "OK";
+}
+
+/**
+ * SDK 可能在已经产出正常回复后,因测试预算上限而以 error result 收尾。
+ * 只有这种明确的预算截断可视为连通成功;模型不存在、无权限等错误即使带有
+ * assistant 文本也必须按失败返回,否则 UI 会把错误说明误报成成功响应。
+ */
+export function canAcceptResponseAfterTestError(responseText: string, errorMessage: string): boolean {
+  // 测试 prompt 明确要求只回复一个词 OK;错误说明文本不能满足这个前提。
+  if (!isExpectedTestResponse(responseText)) return false;
+  return /\breached maximum budget\b/i.test(errorMessage);
+}
+
 /** TCP-only probe: can we reach host:port within 5 s? */
 export function testProxyPort(host: string, port: number): Promise<ProxyTestResult> {
   const start = Date.now();
@@ -107,7 +126,7 @@ export async function testClaudeConnection(opts: {
   model?: string;
   httpProxy?: string;
   httpsProxy?: string;
-}): Promise<ClaudeTestResult> {
+}, dependencies: ClaudeTestDependencies = {}): Promise<ClaudeTestResult> {
   const start = Date.now();
   const testCwd = join(tmpdir(), "fufan-cc-sdk-test");
   // spawn() 的 cwd 必须存在，否则在 Windows 上抛 ENOENT，
@@ -116,6 +135,7 @@ export async function testClaudeConnection(opts: {
 
   let stderrOutput = "";
   let responseText = "";
+  let hardTimeout: ReturnType<typeof setTimeout> | undefined;
   try {
     // 必须继承 process.env（PATH / SystemRoot 等），否则 SDK 在 Windows 上
     // spawn "node" 会 ENOENT，被误报为 "Claude Code executable not found"。
@@ -135,9 +155,9 @@ export async function testClaudeConnection(opts: {
     if (opts.httpsProxy) { env["HTTPS_PROXY"] = opts.httpsProxy; env["https_proxy"] = opts.httpsProxy; }
 
     const controller = new AbortController();
-    const hardTimeout = setTimeout(() => controller.abort(), 30_000);
+    hardTimeout = setTimeout(() => controller.abort(), 30_000);
 
-    const stream = query({
+    const stream = (dependencies.queryFn ?? query)({
       prompt: "Hi! Reply with exactly one word: OK",
       options: {
         pathToClaudeCodeExecutable: resolveCliPath(),
@@ -168,14 +188,23 @@ export async function testClaudeConnection(opts: {
       }
     }
 
-    clearTimeout(hardTimeout);
     const text = responseText.trim();
-    return { success: !!text, responseText: text, latency: Date.now() - start };
+    if (isExpectedTestResponse(text)) {
+      return { success: true, responseText: text, latency: Date.now() - start };
+    }
+    return {
+      success: false,
+      responseText: "",
+      latency: Date.now() - start,
+      error: text
+        ? `连接测试返回非预期响应: ${text.slice(0, 200)}`
+        : "连接测试未返回有效响应",
+    };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    // 模型已回话后才在收尾阶段报错（如预算截断）→ 连接本身是通的，按成功处理。
+    // 模型已正常回话后仅预算截断可按成功处理;模型不存在/无权限等错误文本不能冒充回复。
     const answered = responseText.trim();
-    if (answered) {
+    if (canAcceptResponseAfterTestError(answered, errMsg)) {
       logger.warn(`[claudeTest] non-fatal error after response: ${errMsg}`);
       return { success: true, responseText: answered, latency: Date.now() - start };
     }
@@ -194,5 +223,7 @@ export async function testClaudeConnection(opts: {
           ? `${errMsg}\n${detail}`
           : errMsg,
     };
+  } finally {
+    if (hardTimeout) clearTimeout(hardTimeout);
   }
 }

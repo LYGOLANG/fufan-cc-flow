@@ -1,5 +1,6 @@
 /**
- * 健壮地解析并调用 `codex`(OpenAI Codex CLI)可执行文件 —— **不依赖进程 PATH**。
+ * 健壮地解析并调用 `codex`(OpenAI Codex CLI)可执行文件 —— 先把 PATH 候选解析成
+ * 绝对路径,再显式 spawn,不依赖子进程二次查找 PATH。
  *
  * 设计与 claudeBin.ts 完全对称:服务端是长驻 Node 进程,若它在 codex 安装(或 PATH
  * 更新)之前就启动了,`spawn("codex", ...)` 会找不到 → 检测一直报「未安装」。因此每次
@@ -7,9 +8,8 @@
  *
  * 解析顺序:
  *   1) 环境变量覆盖:CODEX_BIN / CC_CODEX_BIN
- *   2) 已知官方安装位置(Windows: %LOCALAPPDATA%\OpenAI\Codex\bin)
- *   3) PATH 查找:where(win)/ which(posix)
- *   4) 其他安装位置兜底:npm 全局 / winget / scoop / homebrew
+ *   2) PATH 查找:where(win)/ which(posix),尊重用户当前实际使用的安装版本
+ *   3) 已知安装位置兜底:官方安装器 / npm 全局 / winget / scoop / homebrew
  */
 import { spawn, spawnSync, SpawnOptions, ChildProcess } from "child_process";
 import { existsSync } from "fs";
@@ -45,7 +45,21 @@ function knownDirs(): string[] {
       ];
 }
 
-/** 用 where/which 在 PATH 中解析(优先 .exe,其次 .cmd/.bat,跳过无法直接 spawn 的 .ps1)。 */
+/**
+ * 从 where/which 的结果中选出可直接调用的候选。
+ *
+ * Windows 的 `where codex` 会按 PATH 顺序同时返回 npm 的无扩展 shell 脚本、
+ * codex.cmd 与其他目录下的 codex.exe。必须保留 PATH 的目录优先级,只跳过无法由
+ * Node 直接 spawn 的无扩展 shell 脚本 / .ps1;没有可启动候选时返回 undefined,
+ * 让解析器继续检查已知安装目录。
+ */
+export function selectPathCandidate(paths: string[], windows = isWin): string | undefined {
+  if (!windows) return paths[0];
+  // .com 与 .exe 都可由 CreateProcess 直接启动;.cmd/.bat 由 spawnCodex 包装 cmd /c。
+  return paths.find((p) => /\.(exe|com|cmd|bat)$/i.test(p));
+}
+
+/** 用 where/which 在 PATH 中解析。 */
 function resolveOnPath(name: string): string | undefined {
   const finder = isWin ? "where" : "which";
   const r = spawnSync(finder, [name], { encoding: "utf8" });
@@ -54,31 +68,35 @@ function resolveOnPath(name: string): string | undefined {
     .split(/\r?\n/)
     .map((s) => s.trim())
     .filter(Boolean);
-  if (!isWin) return paths[0];
-  const rank = (p: string) => {
-    const l = p.toLowerCase();
-    if (l.endsWith(".exe")) return 0;
-    if (l.endsWith(".cmd") || l.endsWith(".bat")) return 1;
-    return 2;
-  };
-  return paths.filter((p) => !p.toLowerCase().endsWith(".ps1")).sort((a, b) => rank(a) - rank(b))[0] ?? paths[0];
+  return selectPathCandidate(paths.filter((p) => !p.toLowerCase().endsWith(".ps1")));
+}
+
+export interface CodexBinResolutionOptions {
+  env?: NodeJS.ProcessEnv;
+  exists?: (candidate: string) => boolean;
+  pathResolver?: (name: string) => string | undefined;
+  directories?: string[];
 }
 
 /** 解析 codex 可执行文件的绝对路径;找不到返回 undefined。每次实时解析,不缓存。 */
-export function resolveCodexBin(): string | undefined {
-  const override = process.env.CODEX_BIN || process.env.CC_CODEX_BIN;
-  if (override && existsSync(override)) return override;
+export function resolveCodexBin(options: CodexBinResolutionOptions = {}): string | undefined {
+  const env = options.env ?? process.env;
+  const fileExists = options.exists ?? existsSync;
+  const override = env.CODEX_BIN || env.CC_CODEX_BIN;
+  if (override && fileExists(override)) return override;
+
+  // PATH 是用户在终端中实际运行的版本。已知目录里可能残留旧版安装器产物,
+  // 例如旧版无法解析新版 ~/.codex/config.toml,因此不能抢在 PATH 前面。
+  const onPath = (options.pathResolver ?? resolveOnPath)("codex");
+  if (onPath) return onPath;
 
   const names = isWin ? ["codex.exe", "codex.cmd"] : ["codex"];
-  for (const d of knownDirs()) {
+  for (const d of options.directories ?? knownDirs()) {
     for (const n of names) {
       const c = join(d, n);
-      if (existsSync(c)) return c;
+      if (fileExists(c)) return c;
     }
   }
-
-  const onPath = resolveOnPath("codex");
-  if (onPath) return onPath;
 
   return undefined;
 }
