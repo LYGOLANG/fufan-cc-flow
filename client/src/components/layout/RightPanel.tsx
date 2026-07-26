@@ -107,25 +107,29 @@ export default function RightPanel() {
         {/* ── Tab bar (hidden when terminal is maximized) ── */}
         {!termMaximized && (
           <div className="flex items-center gap-0 px-3 border-b border-white/5 flex-shrink-0 pt-1">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setRightSidebarTab(id)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
-                  rightSidebarTab === id
-                    ? "tab-active"
-                    : "tab-inactive"
-                }`}
-              >
-                <Icon size={13} />
-                <span>{label}</span>
-              </button>
-            ))}
+            {/* 标签保持原始宽度不换行;面板窄到挤不下时(约三个可见)横向滚动,
+                而不是把每个标签压瘦到文字竖排 */}
+            <div className="flex items-center flex-1 min-w-0 overflow-x-auto -mb-px">
+              {TABS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setRightSidebarTab(id)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all border-b-2 ${
+                    rightSidebarTab === id
+                      ? "tab-active"
+                      : "tab-inactive"
+                  }`}
+                >
+                  <Icon size={13} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
 
             {/* Collapse button */}
             <button
               onClick={() => setRightPanelOpen(false)}
-              className="ml-auto p-1.5 rounded-md hover:bg-amber-glow/10 text-slate-400 hover:text-amber-glow transition-all"
+              className="flex-shrink-0 p-1.5 rounded-md hover:bg-amber-glow/10 text-slate-400 hover:text-amber-glow transition-all"
               title="收起右侧栏"
             >
               <ChevronRight size={14} />
