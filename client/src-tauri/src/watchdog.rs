@@ -10,10 +10,14 @@
 //! 并把现场写进独立日志(不随会话轮转),供事后定位。
 //!
 //! 设计取舍:
-//! - 判定阈值取「连续 N 次миss」而非单次超时,避免主线程偶发长任务(大列表
+//! - 判定阈值取「连续 N 次 miss」而非单次超时,避免主线程偶发长任务(大列表
 //!   渲染、GC)造成误判把用户正在看的页面刷掉。
-//! - 自愈次数设上限:若重载后仍反复崩溃(说明是启动即崩的确定性 bug),
-//!   继续无限重载只会陷入闪烁循环,不如停手把现场留给用户和日志。
+//! - 恢复预算按「连续失败」计,健康满 HEALTHY_RESET 即清零。曾经用终身计数,
+//!   零星崩溃几天就耗光预算,下一次崩溃直接留死屏——2026-07-26 实录。
+//! - 连败达 SAFE_MODE_AFTER 次进入安全模式(前端启动时查询,跳过会话自动恢复),
+//!   打破「恢复的内容本身就是崩因」的启动即崩循环。
+//! - 永不永久放弃:连败再多也只是退到 SLOW_RETRY_INTERVAL 慢速重试。一分钟
+//!   刷一次死页不构成闪烁骚扰,而放弃 = 用户面对死屏,是最坏结局。
 
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -29,20 +33,34 @@ const MISSED_BEATS_BEFORE_DEAD: u64 = 3;
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
 /// 启动后的宽限期:首屏加载 + JS 初始化期间不判定
 const STARTUP_GRACE: Duration = Duration::from_secs(20);
-/// 最多自动恢复几次——超过说明是确定性崩溃,再刷也是徒劳
-const MAX_RECOVERIES: u32 = 5;
+/// 连续失败达到该次数后,前端启动进入安全模式(跳过会话自动恢复)
+const SAFE_MODE_AFTER: u32 = 3;
+/// 连续失败达到该次数后,重载间隔退到慢速档,避免快速闪烁
+const SLOW_RETRY_AFTER: u32 = 5;
+/// 慢速重试间隔
+const SLOW_RETRY_INTERVAL: Duration = Duration::from_secs(60);
+/// 距上次重载持续健康满该时长,连续失败计数清零(渡过了这一阵)
+const HEALTHY_RESET: Duration = Duration::from_secs(300);
 
-/// 最近一次心跳的 unix 毫秒时间戳
+/// 看门狗共享状态:心跳时间戳 + 恢复统计。
 pub struct Heartbeat {
+    /// 最近一次心跳的 unix 毫秒时间戳
     pub last_beat_ms: AtomicU64,
-    pub recoveries: AtomicU32,
+    /// 本轮不健康期内的连续重载次数;健康满 HEALTHY_RESET 清零
+    pub consecutive_failures: AtomicU32,
+    /// 最近一次重载的 unix 毫秒时间戳(0 = 从未重载)
+    pub last_recovery_ms: AtomicU64,
+    /// 前端心跳捎带的 JS 堆用量(MB),崩溃时写进现场——区分 OOM 与运行时 bug
+    pub last_heap_mb: AtomicU32,
 }
 
 impl Default for Heartbeat {
     fn default() -> Self {
         Self {
             last_beat_ms: AtomicU64::new(now_ms()),
-            recoveries: AtomicU32::new(0),
+            consecutive_failures: AtomicU32::new(0),
+            last_recovery_ms: AtomicU64::new(0),
+            last_heap_mb: AtomicU32::new(0),
         }
     }
 }
@@ -55,9 +73,24 @@ fn now_ms() -> u64 {
 }
 
 /// 前端每 HEARTBEAT_INTERVAL_MS 调用一次,证明渲染进程还活着。
+/// heap_mb 可选携带当前 JS 堆用量,为下一次崩溃留下「是否内存耗尽」的证据。
 #[tauri::command]
-pub fn webview_heartbeat(state: tauri::State<'_, Arc<Heartbeat>>) {
+pub fn webview_heartbeat(state: tauri::State<'_, Arc<Heartbeat>>, heap_mb: Option<u32>) {
     state.last_beat_ms.store(now_ms(), Ordering::Relaxed);
+    if let Some(mb) = heap_mb {
+        state.last_heap_mb.store(mb, Ordering::Relaxed);
+    }
+}
+
+/// 前端启动时查询:是否应进入安全模式(跳过会话自动恢复)。
+/// 连续崩溃说明「恢复的内容可能就是崩因」,先以最小状态活下来。
+#[tauri::command]
+pub fn crash_recovery_state(state: tauri::State<'_, Arc<Heartbeat>>) -> serde_json::Value {
+    let failures = state.consecutive_failures.load(Ordering::Relaxed);
+    serde_json::json!({
+        "consecutiveFailures": failures,
+        "safeMode": failures >= SAFE_MODE_AFTER,
+    })
 }
 
 /// 前端上报 JS 侧未捕获错误(见 utils/crashReporter.ts)。
@@ -78,11 +111,7 @@ fn record_crash(app: &AppHandle, detail: &str) {
     };
     let _ = std::fs::create_dir_all(&dir);
     let path = dir.join("webview-crashes.log");
-    let line = format!(
-        "[{}] {}\n",
-        chrono_like_timestamp(),
-        detail
-    );
+    let line = format!("[{}] {}\n", chrono_like_timestamp(), detail);
     use std::io::Write;
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
@@ -114,34 +143,40 @@ pub fn spawn(app: AppHandle, heartbeat: Arc<Heartbeat>) {
             let last = heartbeat.last_beat_ms.load(Ordering::Relaxed);
             let silence = now_ms().saturating_sub(last);
             if silence < dead_threshold_ms {
+                // 健康。若上一阵曾重载且已持续健康足够久,视为渡过,预算清零。
+                let failures = heartbeat.consecutive_failures.load(Ordering::Relaxed);
+                if failures > 0 {
+                    let recovered_at = heartbeat.last_recovery_ms.load(Ordering::Relaxed);
+                    if now_ms().saturating_sub(recovered_at) >= HEALTHY_RESET.as_millis() as u64 {
+                        log::info!(
+                            "[watchdog] healthy for {}s after {failures} recovery(ies) — resetting counter",
+                            HEALTHY_RESET.as_secs()
+                        );
+                        heartbeat.consecutive_failures.store(0, Ordering::Relaxed);
+                    }
+                }
                 continue;
             }
 
-            let count = heartbeat.recoveries.load(Ordering::Relaxed);
-            if count >= MAX_RECOVERIES {
-                // 已反复恢复无效:停止自愈,把现场留给用户,避免无限刷新闪烁
-                log::error!(
-                    "[watchdog] webview unresponsive for {silence}ms; recovery limit ({MAX_RECOVERIES}) reached, giving up"
-                );
-                record_crash(
-                    &app,
-                    &format!("give-up after {MAX_RECOVERIES} recoveries; silence={silence}ms"),
-                );
-                return;
-            }
-
+            // 判定已死:重载拉活。连续失败越多,越可能是确定性崩溃——
+            // 达阈值后前端会以安全模式启动;再不行退慢速重试,但永不放弃。
+            let failures = heartbeat.consecutive_failures.fetch_add(1, Ordering::Relaxed) + 1;
+            let heap_mb = heartbeat.last_heap_mb.load(Ordering::Relaxed);
             log::error!(
-                "[watchdog] webview silent for {silence}ms (>{dead_threshold_ms}ms) — assuming renderer crash, reloading"
+                "[watchdog] webview silent for {silence}ms (>{dead_threshold_ms}ms) — reloading (consecutive #{failures}, last heap≈{heap_mb}MB)"
             );
             record_crash(
                 &app,
-                &format!("renderer assumed dead: silence={silence}ms, recovery #{}", count + 1),
+                &format!(
+                    "renderer assumed dead: silence={silence}ms, consecutive #{failures}, last heap≈{heap_mb}MB{}",
+                    if failures >= SAFE_MODE_AFTER { ", next boot = safe mode" } else { "" }
+                ),
             );
 
             if let Some(win) = app.get_webview_window("main") {
                 match win.reload() {
                     Ok(()) => {
-                        heartbeat.recoveries.fetch_add(1, Ordering::Relaxed);
+                        heartbeat.last_recovery_ms.store(now_ms(), Ordering::Relaxed);
                         // 重载后给前端重新起心跳的时间,否则会立刻二次误判
                         heartbeat.last_beat_ms.store(now_ms(), Ordering::Relaxed);
                         std::thread::sleep(STARTUP_GRACE);
@@ -151,6 +186,15 @@ pub fn spawn(app: AppHandle, heartbeat: Arc<Heartbeat>) {
                         record_crash(&app, &format!("reload failed: {e}"));
                     }
                 }
+            }
+
+            // 连败过多:退慢速档,防闪烁但不放弃——每分钟仍尝试把页面拉活
+            if failures >= SLOW_RETRY_AFTER {
+                log::error!(
+                    "[watchdog] {failures} consecutive failed recoveries — backing off to {}s retry interval",
+                    SLOW_RETRY_INTERVAL.as_secs()
+                );
+                std::thread::sleep(SLOW_RETRY_INTERVAL);
             }
         }
     });

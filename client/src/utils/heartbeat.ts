@@ -24,9 +24,17 @@ export function installHeartbeat(): () => void {
       const { invoke } = await import("@tauri-apps/api/core");
       if (disposed) return;
       const beat = () => {
-        void invoke("webview_heartbeat").catch(() => {
+        // 捎带 JS 堆用量(Chromium 私有 API,WebView2 必有):崩溃时 Rust 把
+        // 最后一次堆值写进现场,区分「内存耗尽」与「运行时 bug」两类根因
+        const heap = (
+          performance as Performance & {
+            memory?: { usedJSHeapSize: number };
+          }
+        ).memory;
+        const heapMb = heap ? Math.round(heap.usedJSHeapSize / 1048576) : undefined;
+        void invoke("webview_heartbeat", { heapMb }).catch(() => {
           // 后端未就绪或命令缺失时静默:心跳失败不该打扰用户,
-          // 看门狗侧有恢复次数上限兜底
+          // 看门狗侧有自愈兜底
         });
       };
       beat(); // 立即发一次,不等第一个周期

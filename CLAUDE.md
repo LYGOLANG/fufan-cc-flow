@@ -80,7 +80,7 @@ pnpm package:desktop  # 打包 Windows 桌面安装包（NSIS）
 - **Agent SDK 集成**：对话流通过 `@anthropic-ai/claude-agent-sdk` 的 `query()` 实现，支持 HIL 权限回调
 - **双引擎 + 两级供应商**：`engine` 选 Claude / Codex；供应商（Anthropic 官方、Codex、各兼容端点）→ 模型 两级切换，每个项目独立记住自己的选择（`projectSelections`）
 - **通信协议**：WebSocket 处理对话流和终端 I/O，REST API 处理配置管理（MCP/Memory/Settings）
-- **桌面外壳**：Rust 侧负责拉起/回收 Node sidecar（退出时按进程树 kill，启动时清理孤儿）、WebView 心跳看门狗（渲染进程崩溃自动重载）、minisign 签名的自动更新
+- **桌面外壳**：Rust 侧负责拉起/回收 Node sidecar（退出时按进程树 kill，启动时清理孤儿）、WebView 心跳看门狗（渲染进程崩溃自动重载；连续失败 3 次起前端以安全模式启动跳过会话自动恢复，5 次起退 60s 慢速重试但永不放弃）、minisign 签名的自动更新
 - **发送参数收口**：`send_message` 的引擎参数一律由 `client/src/utils/sendPayload.ts` 的 `buildEngineParams()` 组装。后端 `spawnFingerprint` 会把 effort / thinkingBudget / maxBudget 算进常驻进程指纹，少带一个字段就会触发无谓的杀进程重启——不要在调用点手写这组字段
 - **跨平台**：路径统一用 `path.normalize`，Windows 下路径哈希先将 `\` 转换为 `/`
 - **安全**：API Key 仅存本地不写日志，文件写操作校验路径在项目目录内；后端只绑 `127.0.0.1`，CLI 调用一律绝对路径 + 数组 argv（不用 `shell:true`）
@@ -112,3 +112,4 @@ pnpm package:desktop  # 打包 Windows 桌面安装包（NSIS）
 - 上下文达阈值自动压缩在 **上下文栏 → 压缩上下文** 里调（默认 95%，拖到 100% 关闭）。只在一轮对话结束时判定，打开已经很满的旧会话不会被误压
 - 模型显示名在三处各存了一份（`client/src/types/claude.ts` 的 `MODEL_LABELS`、`server/src/routes/system.ts` 的 `FALLBACK_MODELS`、`SlashCommandMenu.tsx` 的 `/model` 子命令），改一处要三处同步——曾经漂移成同一别名两个代次
 - 打包前先确认没有残留的 sidecar `node.exe` 占着 `server-dist`，否则 EBUSY（按命令行精确 kill，别按名字批量杀）
+- `tauri.conf.json` 的 `additionalBrowserArgs` 里 `--disable-renderer-accessibility` 是修 WebView2 渲染进程 STATUS_BREAKPOINT 崩溃的（外部 UIA 客户端激活无障碍即崩，崩溃点 msedge.dll 固定偏移，2026-07-26 两份 dump 实证），不要删；该字段一旦自定义就会覆盖 wry 默认参数，前两组 flag 就是抄的 wry 0.55.1 默认值，升级 wry 时要对照同步

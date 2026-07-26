@@ -7,7 +7,7 @@ use commands::chat::{
     abort, permission_response, resolve_project_path, send_message, shutdown_all, shutdown_project,
 };
 use commands::system::system_proxy;
-use watchdog::{record_frontend_error, webview_heartbeat, Heartbeat};
+use watchdog::{crash_recovery_state, record_frontend_error, webview_heartbeat, Heartbeat};
 use state::AppState;
 use tauri::{Manager, State};
 
@@ -39,6 +39,7 @@ pub fn run() {
             backend_port,
             system_proxy,
             webview_heartbeat,
+            crash_recovery_state,
             record_frontend_error
         ])
         .setup(|app| {
