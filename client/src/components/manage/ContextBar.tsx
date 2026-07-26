@@ -2,8 +2,8 @@ import { Minimize2, Loader2, Cpu } from "lucide-react";
 import { useChatStore } from "../../stores/chatStore";
 import { useConfigStore } from "../../stores/configStore";
 import { useProviderStore } from "../../stores/providerStore";
-import { useUIStore } from "../../stores/uiStore";
 import { useSystemStore, type UsageSource, type UsageWindow } from "../../stores/systemStore";
+import { buildEngineParams } from "../../utils/sendPayload";
 import { formatTokens, formatCost, inferContextMax } from "../../utils/costCalculator";
 import { MODEL_LABELS } from "../../types/claude";
 import { wsService } from "../../services/websocket";
@@ -117,18 +117,11 @@ export default function ContextBar() {
     useChatStore.getState().addUserMessage(prompt);
 
     // Send via normal send_message flow (same path as InputBar.handleSend)
-    const { model, effort, apiKey, engine, codexModel, codexEffort, providerId } = useConfigStore.getState();
-    const { runMode } = useUIStore.getState();
+    // 引擎参数走统一构造:此处原先漏带 thinkingBudget,导致每次手动压缩
+    // 都因常驻进程指纹不一致而白白杀掉进程重启(连带杀掉后台 sub-agent)
     wsService.send("send_message", {
       prompt,
-      model,
-      effort,
-      runMode,
-      engine,
-      codexModel,
-      codexEffort,
-      providerId,
-      apiKey: apiKey || undefined,
+      ...buildEngineParams(),
       sessionId: currentSessionId || undefined,
     });
 

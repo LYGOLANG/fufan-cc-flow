@@ -2,6 +2,7 @@ import { useEffect, useState, type ElementType } from "react";
 import { ArrowUpCircle, Globe, Server, Settings, TerminalSquare, X } from "lucide-react";
 import AnthropicProviderPanel from "../components/settings/anthropic-provider-panel";
 import AppUpdatePanel from "../components/settings/AppUpdatePanel";
+import BudgetPanel from "../components/settings/budget-panel";
 import ClaudeCliPanel from "../components/settings/claude-cli-panel";
 import CodexProviderPanel from "../components/settings/codex-provider-panel";
 import ProvidersPanel, { type ProviderStatusView } from "../components/settings/ProvidersPanel";
@@ -15,7 +16,7 @@ type SettingsSection = "providers" | "network" | "application";
 const NAV_ITEMS: { id: SettingsSection; label: string; description: string; icon: ElementType }[] = [
   { id: "providers", label: "模型服务", description: "供应商与认证", icon: Server },
   { id: "network", label: "网络代理", description: "共享连接设置", icon: Globe },
-  { id: "application", label: "应用", description: "更新与版本", icon: ArrowUpCircle },
+  { id: "application", label: "应用", description: "更新、版本与预算", icon: ArrowUpCircle },
 ];
 
 export default function SettingsPage() {
@@ -167,8 +168,9 @@ export default function SettingsPage() {
 
             {section === "application" && (
               <div className="space-y-5">
-                <SectionHeader title="应用" description="管理 Agent Flow 自身的版本和桌面更新。" />
+                <SectionHeader title="应用" description="管理 Agent Flow 自身的版本、桌面更新与任务预算。" />
                 <AppUpdatePanel />
+                <BudgetPanel />
               </div>
             )}
           </div>

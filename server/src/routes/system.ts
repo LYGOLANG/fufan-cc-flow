@@ -175,7 +175,7 @@ router.get("/models", async (_req, res) => {
 // (5h + weekly). Anthropic uses Claude.ai OAuth; Codex uses ChatGPT OAuth.
 // Cached for 60s, and on upstream failure (e.g. 429) the last good value is
 // served as `stale` so the UI keeps showing it instead of flickering away.
-let usageCache: Record<string, { data: Record<string, unknown>; at: number } | undefined> = {};
+const usageCache: Record<string, { data: Record<string, unknown>; at: number } | undefined> = {};
 const USAGE_TTL_MS = 60_000;
 router.get("/usage", async (req, res) => {
   const provider = req.query.provider === "codex" ? "codex" : "anthropic";

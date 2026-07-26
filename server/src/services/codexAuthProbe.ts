@@ -45,7 +45,10 @@ export function classifyCodexAuthProbe(
 async function probeCodexAuth(): Promise<CodexAuthProbe> {
   return new Promise((resolve) => {
     const proc = spawnCodex(["login", "status"], { stdio: ["ignore", "pipe", "pipe"] });
-    if (!proc) return resolve({ kind: "failed" });
+    if (!proc) {
+      resolve({ kind: "failed" });
+      return;
+    }
     // stdout/stderr 分开收:登录状态是 stdout 的正经输出,stderr 多是升级提示等噪声。
     // 此前两者合流进同一 buffer,先到的 stderr 会污染状态解析。
     let stdout = "";

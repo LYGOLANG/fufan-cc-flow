@@ -24,6 +24,11 @@ export class ClaudeOAuthUnavailableError extends Error {
   }
 }
 
+/**
+ * 刻意为空的 async generator:SDK 要求传入一个 prompt 流,而凭证链初始化
+ * 只是为了触发登录态检查、不需要真的发送任何消息,所以这里立即结束。
+ */
+// eslint-disable-next-line require-yield -- 空流是有意的,见上方注释
 async function* emptyPrompt(): AsyncGenerator<never, void, unknown> {
   return;
 }

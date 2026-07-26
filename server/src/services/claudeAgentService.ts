@@ -966,6 +966,10 @@ export class ClaudeAgentService extends EventEmitter {
         this.live = null;
       }
       // Fix B：若标记了重试，去掉 resume 重新启动一次，对前端无感（不发 close）
+      //
+      // 这里写成 if/else 而不是「if 分支末尾 return」:finally 块里的 return
+      // 会吞掉当前正在传播的异常(例如上面 catch 块中 emit 监听器自己抛的错),
+      // 让故障静默消失。if/else 与原来的控制流完全等价,但没有这个副作用。
       if (this.pendingRetry.has(sessionId)) {
         this.pendingRetry.delete(sessionId);
         const opts = this.startOptions.get(sessionId);
@@ -983,15 +987,15 @@ export class ClaudeAgentService extends EventEmitter {
             this.emit("close", { sessionId, code: 1 });
           });
         }
-        return;
-      }
-      // 清理;若是 endLive 有意收尾的会话,吞掉 close 不发 process_close(见 silentClose)。
-      const silent = this.silentClose.delete(sessionId);
-      this.turnActive = false;
-      this.cleanup(sessionId);
-      this.startOptions.delete(sessionId);
-      if (!silent) {
-        this.emit("close", { sessionId, code: exitCode });
+      } else {
+        // 清理;若是 endLive 有意收尾的会话,吞掉 close 不发 process_close(见 silentClose)。
+        const silent = this.silentClose.delete(sessionId);
+        this.turnActive = false;
+        this.cleanup(sessionId);
+        this.startOptions.delete(sessionId);
+        if (!silent) {
+          this.emit("close", { sessionId, code: exitCode });
+        }
       }
     }
   }

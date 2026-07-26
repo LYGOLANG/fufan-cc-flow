@@ -38,7 +38,10 @@ export function classifyClaudeAuthProbe(stdout: string, stderr: string, exitCode
 export async function probeClaudeAuth(): Promise<ClaudeAuthProbe> {
   return new Promise((resolve) => {
     const proc = spawnClaude(["auth", "status", "--json"]);
-    if (!proc) return resolve({ kind: "failed" });
+    if (!proc) {
+      resolve({ kind: "failed" });
+      return;
+    }
     let stdout = "";
     let stderr = "";
     let settled = false;

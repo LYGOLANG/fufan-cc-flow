@@ -236,10 +236,10 @@ export const useSystemStore = create<SystemState>((set) => ({
 
   saveProxy: async (proxy) => {
     set({ proxySaving: true, proxySaveError: null });
-    // Race against a 10-second timeout so the UI never hangs indefinitely
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("保存超时，请检查后端服务是否正常")), 30_000)
-    );
+    // Race against a 30-second timeout so the UI never hangs indefinitely
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("保存超时，请检查后端服务是否正常")), 30_000);
+    });
     try {
       await Promise.race([api.systemApi.saveProxy(proxy), timeout]);
       set({ proxySettings: proxy });

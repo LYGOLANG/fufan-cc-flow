@@ -62,17 +62,15 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   },
 
   createTeam: async (name) => {
-    try {
-      const team = await api.createTeam(name);
-      set((s) => ({
-        teams: [...s.teams, team],
-        activeTeam: team.name,
-        tasks: team.tasks,
-        messages: [],
-      }));
-    } catch (err) {
-      throw err;
-    }
+    // 不包 try/catch:原先的 `catch (err) { throw err }` 只是原样再抛一次,
+    // 既不改变行为又会截断堆栈,调用方自己处理即可。
+    const team = await api.createTeam(name);
+    set((s) => ({
+      teams: [...s.teams, team],
+      activeTeam: team.name,
+      tasks: team.tasks,
+      messages: [],
+    }));
   },
 
   deleteTeam: async (name) => {

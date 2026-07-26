@@ -12,6 +12,7 @@ import AttachmentPreview from "./AttachmentPreview";
 import ModelSelector from "../manage/ModelSelector";
 import type { Attachment } from "../../types/claude";
 import { isTauriRuntime } from "../../utils/tauri";
+import { buildEngineParams } from "../../utils/sendPayload";
 
 const RUN_MODES: { id: RunMode; label: string }[] = [
   { id: "default",           label: "询问权限" },
@@ -245,13 +246,11 @@ export default function InputBar() {
 
     // If pendingFork is set, this message triggers a session fork
     const forkInfo = useChatStore.getState().pendingFork;
-    // F1.11:扩展思考预算(仅开启扩展思考且选了具体档位时注入)
-    const { thinking: thinkingOn, thinkingBudget } = useConfigStore.getState();
     wsService.send("send_message", {
-      prompt, model, effort, runMode,
-      engine, codexModel, codexEffort, providerId,
-      apiKey: apiKey || undefined,
-      thinkingBudget: thinkingOn && thinkingBudget > 0 ? thinkingBudget : undefined,
+      prompt,
+      // 引擎参数(模型/力度/思考预算/费用上限…)统一由 buildEngineParams 组装,
+      // 见该函数注释:少带字段会让常驻进程指纹不一致,导致无谓的杀进程重启
+      ...buildEngineParams(),
       sessionId: forkInfo?.sessionId || currentSessionId || undefined,
       forkSession: forkInfo ? true : undefined,
       continueActive: continueActive || undefined,
@@ -353,21 +352,14 @@ export default function InputBar() {
     if (cmd.type === "prompt" && cmd.promptText) {
       const prompt = cmd.promptText;
       useChatStore.getState().addUserMessage(prompt);
-      const {
-        model: m, effort: e, apiKey: k, engine: eng,
-        codexModel: cm, codexEffort: ce, providerId: pid,
-        thinking: thk, thinkingBudget: thkBudget,
-      } = useConfigStore.getState();
-      const { runMode: rm } = useUIStore.getState();
       const sid = useChatStore.getState().currentSessionId;
       wsService.send("send_message", {
-        prompt, model: m, effort: e, runMode: rm,
-        engine: eng, codexModel: cm, codexEffort: ce, providerId: pid,
-        // 与主发送路径保持一致:思考预算 + 流式中续发标记,
-        // 缺一不可——否则 slash 调技能会丢预算,且指纹不一致导致杀常驻进程
-        thinkingBudget: thk && thkBudget > 0 ? thkBudget : undefined,
+        prompt,
+        // 与主发送路径共用同一组引擎参数,缺一不可——否则 slash 调技能会丢预算,
+        // 且指纹不一致导致杀常驻进程(这正是当初收口成函数的原因)
+        ...buildEngineParams(),
         continueActive: useChatStore.getState().isStreaming || undefined,
-        apiKey: k || undefined, sessionId: sid || undefined,
+        sessionId: sid || undefined,
       });
       // Instant feedback
       useChatStore.getState().startStreaming();

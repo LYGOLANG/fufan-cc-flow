@@ -437,7 +437,8 @@ export async function refreshProviderModels(id: string): Promise<string[]> {
     // 404 不算失败,保留现有列表;列表为空(自定义供应商)时提示手动填写
     if (/HTTP 404/.test(msg)) {
       if (p.models.length > 0) return p.models;
-      throw new Error("该端点未实现模型列表接口(/v1/models),请手动填写模型列表");
+      // 带上 cause:排障时能看到原始 HTTP 错误,而不只是这句人话
+      throw new Error("该端点未实现模型列表接口(/v1/models),请手动填写模型列表", { cause: err });
     }
     throw err;
   }

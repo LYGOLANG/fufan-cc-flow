@@ -13,7 +13,9 @@ import {
 import type { ChatEventEnvelope } from "../src/services/transport/types";
 
 async function flushPromises() {
-  await new Promise<void>((resolve) => setImmediate(resolve));
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve);
+  });
 }
 
 test("Rust diagnostic flag selects one transport instead of a hybrid", () => {

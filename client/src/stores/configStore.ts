@@ -26,6 +26,14 @@ interface ConfigState {
   /** 扩展思考预算(tokens)。0 = 自适应(SDK adaptive);>0 经 thinking.budgetTokens 注入 */
   thinkingBudget: number;
   autoCompactThreshold: number;
+  /**
+   * 单次任务费用上限(美元)。0 = 不限制。
+   *
+   * 后端一直支持(chatHandler → claudeAgentService 的 maxBudgetUsd),但此前
+   * 前端从没有任何地方给它赋过值,后端收到的永远是 undefined —— 也就是说
+   * 文档里承诺的「防止单次任务费用失控」从未真正生效过。
+   */
+  maxBudget: number;
   // API Key — 仅存内存，不持久化，不写日志（持久化由 ~/.claude/settings.json 负责）
   apiKey: string;
 
@@ -50,6 +58,7 @@ interface ConfigState {
   setThinking: (t: boolean) => void;
   setThinkingBudget: (n: number) => void;
   setAutoCompactThreshold: (v: number) => void;
+  setMaxBudget: (v: number) => void;
   setApiKey: (k: string) => void;
   setEngine: (e: Engine) => void;
   setCodexModel: (m: CodexModel) => void;
@@ -82,6 +91,7 @@ export const useConfigStore = create<ConfigState>()(
       thinking: true,
       thinkingBudget: 0,
       autoCompactThreshold: 95,
+      maxBudget: 0,
       apiKey: "",
       engine: "claude",
       codexModel: "gpt-5.6-terra",
@@ -100,6 +110,7 @@ export const useConfigStore = create<ConfigState>()(
       setThinkingBudget: (thinkingBudget) => set({ thinkingBudget }),
       setAutoCompactThreshold: (autoCompactThreshold) =>
         set({ autoCompactThreshold }),
+      setMaxBudget: (maxBudget) => set({ maxBudget: Math.max(0, maxBudget) }),
       setApiKey: (apiKey) => set({ apiKey }),
       setEngine: (engine) => set({ engine }),
       setCodexModel: (codexModel) => set({ codexModel }),
@@ -147,6 +158,7 @@ export const useConfigStore = create<ConfigState>()(
         thinking: s.thinking,
         thinkingBudget: s.thinkingBudget,
         autoCompactThreshold: s.autoCompactThreshold,
+        maxBudget: s.maxBudget,
         engine: s.engine,
         codexModel: s.codexModel,
         codexEffort: s.codexEffort,

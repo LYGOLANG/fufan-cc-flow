@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useChatStore } from "../stores/chatStore";
 import { useConfigStore } from "../stores/configStore";
-import { useUIStore } from "../stores/uiStore";
 import { wsService } from "../services/websocket";
 import { inferContextMax } from "../utils/costCalculator";
 import { decideAutoCompact } from "../utils/autoCompact";
+import { buildEngineParams } from "../utils/sendPayload";
 
 /**
  * 上下文用量达阈值时自动压缩。
@@ -62,21 +62,14 @@ export function useAutoCompact(): void {
     armed.current = false;
 
     const chat = useChatStore.getState();
-    const cfg = useConfigStore.getState();
-    const { runMode } = useUIStore.getState();
     const prompt = "/compact";
 
     chat.addUserMessage(prompt);
     wsService.send("send_message", {
       prompt,
-      model: cfg.model,
-      effort: cfg.effort,
-      runMode,
-      engine: cfg.engine,
-      codexModel: cfg.codexModel,
-      codexEffort: cfg.codexEffort,
-      providerId: cfg.providerId,
-      apiKey: cfg.apiKey || undefined,
+      // 与手动压缩、正常发送共用同一组引擎参数(含 thinkingBudget / maxBudget),
+      // 少带任何一个都会让常驻进程指纹不一致而触发无谓重启
+      ...buildEngineParams(),
       sessionId: chat.currentSessionId || undefined,
     });
     chat.startStreaming();

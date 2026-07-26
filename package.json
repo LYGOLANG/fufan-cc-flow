@@ -8,13 +8,19 @@
     "typecheck": "pnpm --filter server exec tsc --noEmit && pnpm --filter client exec tsc -b --noEmit",
     "package:desktop": "node scripts/package-desktop.mjs",
     "start": "pnpm --filter server start",
-    "lint": "pnpm --filter \"*\" lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,tsx,json,css}\""
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "concurrently": "^9.2.4",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.7.0",
     "prettier": "^3.9.5",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.65.0"
   },
   "pnpm": {
     "overrides": {

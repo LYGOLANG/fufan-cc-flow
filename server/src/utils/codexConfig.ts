@@ -120,7 +120,7 @@ export function parseCodexMcpServers(raw: string): CodexMcpServer[] {
   let curKind: "server" | "env" | "ignore" = "ignore";
 
   for (let idx = 0; idx < lines.length; idx++) {
-    let line = lines[idx].trim();
+    const line = lines[idx].trim();
     if (!line || line.startsWith("#")) continue;
 
     // 段头:[table] / [[array-of-tables]]
