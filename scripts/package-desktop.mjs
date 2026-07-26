@@ -99,7 +99,7 @@ try {
 } finally {
   if (overrideConfigPath) {
     try {
-      fs.rmSync(overrideConfigPath, { force: true });
+      rmSync(overrideConfigPath, { force: true });
     } catch {
       /* 临时文件清理失败无关紧要 */
     }
