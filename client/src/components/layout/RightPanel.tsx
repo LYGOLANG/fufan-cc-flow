@@ -3,26 +3,20 @@ import {
   ChevronLeft, ChevronRight, Activity, Puzzle, Bot,
   TerminalSquare, Plus, X, Maximize2, Minimize2, ChevronDown, ChevronUp,
   CheckCircle2, Loader2, Clock, BarChart2, Coins, RotateCcw, ListChecks, Wrench,
-  Plug, Zap, Package, Brain, Webhook, Globe,
+  Globe,
 } from "lucide-react";
-import BrowserPanel from "./BrowserPanel";
 import { useUIStore, type RightSidebarTab } from "../../stores/uiStore";
-import McpManager from "../manage/McpManager";
-import SkillsManager from "../manage/SkillsManager";
-import PluginManager from "../manage/PluginManager";
-import MemoryManager from "../manage/MemoryManager";
-import HooksManager from "../manage/HooksManager";
-import AgentManager from "../agent/AgentManager";
-import SubAgentTree from "../agent/SubAgentTree";
-import BackgroundTasks from "../agent/BackgroundTasks";
-import WorkflowManager from "../agent/WorkflowManager";
-import TeamPanel from "../agent/TeamPanel";
-import AuditLog from "../agent/AuditLog";
-import { useAgentStore } from "../../stores/agentStore";
 import { useChatStore } from "../../stores/chatStore";
 import type { ToolCall, TaskResult } from "../../types/claude";
-// xterm.js 体积不小且仅终端标签页用到——懒加载,不进首屏主 chunk
+
+// ── 懒加载:右侧栏默认停在「实时监控」,其余标签页不点开就不该进首屏主 chunk ──
+// xterm.js 体积不小且仅终端标签页用到
 const XTerminal = lazy(() => import("../shared/XTerminal"));
+// 五个管理器约 2800 行
+const ExtensionsPanel = lazy(() => import("./ExtensionsPanel"));
+// 六个 Agent 视图约 1900 行 + 4 个专属 store
+const AgentPanel = lazy(() => import("./AgentPanel"));
+const BrowserPanel = lazy(() => import("./BrowserPanel"));
 
 /* ── Tab config ── */
 const TABS: { id: RightSidebarTab; label: string; icon: typeof Activity }[] = [
@@ -142,10 +136,14 @@ export default function RightPanel() {
         {/* ── Tab content (hidden when terminal is maximized) ── */}
         {!termMaximized && (
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-            {rightSidebarTab === "monitor"    && <LiveMonitorPanel />}
-            {rightSidebarTab === "extensions" && <ExtensionsPanel />}
-            {rightSidebarTab === "agent"      && <AgentPanel />}
-            {rightSidebarTab === "browser"    && <BrowserPanel />}
+            {rightSidebarTab === "monitor" && <LiveMonitorPanel />}
+            {rightSidebarTab !== "monitor" && (
+              <Suspense fallback={<PanelLoading />}>
+                {rightSidebarTab === "extensions" && <ExtensionsPanel />}
+                {rightSidebarTab === "agent" && <AgentPanel />}
+                {rightSidebarTab === "browser" && <BrowserPanel />}
+              </Suspense>
+            )}
           </div>
         )}
 
@@ -697,98 +695,6 @@ function TaskItem({
   );
 }
 
-/* ════════════════════════════════════════════
-   Extensions Panel (5 sub-tabs)
-   ════════════════════════════════════════════ */
-type ExtTab = "mcp" | "skills" | "plugins" | "memory" | "hooks";
-const EXT_TABS: { id: ExtTab; label: string; icon: typeof Plug }[] = [
-  { id: "mcp",     label: "MCP",    icon: Plug },
-  { id: "skills",  label: "技能", icon: Zap },
-  { id: "plugins", label: "插件",    icon: Package },
-  { id: "memory",  label: "记忆", icon: Brain },
-  { id: "hooks",   label: "钩子",  icon: Webhook },
-];
-
-function ExtensionsPanel() {
-  const { extensionsSubTab: tab, setExtensionsSubTab: setTab } = useUIStore();
-
-  return (
-    <div className="flex-1 flex flex-col min-h-0">
-      {/* Sub-tab bar — compact with icons */}
-      <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-2">
-        {EXT_TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex items-center gap-1 px-2 py-2 text-xs font-medium transition-all border-b-2 -mb-px ${
-              tab === id ? "tab-active" : "tab-inactive"
-            }`}
-          >
-            <Icon size={11} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 overflow-y-auto min-h-0">
-        {tab === "mcp"     && <McpManager />}
-        {tab === "skills"  && <SkillsManager />}
-        {tab === "plugins" && <PluginManager />}
-        {tab === "memory"  && <MemoryManager />}
-        {tab === "hooks"   && <HooksManager />}
-      </div>
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════
-   Agent Panel
-   ════════════════════════════════════════════ */
-type AgentTab = "manager" | "tree" | "tasks" | "workflows" | "teams" | "audit";
-const AGENT_TABS: { id: AgentTab; label: string }[] = [
-  { id: "manager",   label: "Agent 管理" },
-  { id: "tree",      label: "执行树" },
-  { id: "tasks",     label: "后台任务" },
-  { id: "workflows", label: "工作流" },
-  { id: "teams",     label: "团队" },
-  { id: "audit",     label: "审计" },
-];
-
-function AgentPanel() {
-  const [tab, setTab] = useState<AgentTab>("manager");
-  const runningTaskCount = useAgentStore((s) => s.backgroundTasks.filter((t) => t.status === "running").length);
-
-  return (
-    <div className="flex-1 flex flex-col min-h-0">
-      {/* Sub-tab bar */}
-      <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-3">
-        {AGENT_TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`px-3 py-2 text-xs font-medium transition-all border-b-2 -mb-px flex items-center gap-1 ${
-              tab === id ? "tab-active" : "tab-inactive"
-            }`}
-          >
-            {label}
-            {id === "tasks" && runningTaskCount > 0 && (
-              <span className="ml-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-glow/20 text-amber-glow text-[9px] font-bold px-1">
-                {runningTaskCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 overflow-y-auto min-h-0">
-        {tab === "manager"   && <AgentManager />}
-        {tab === "tree"      && <SubAgentTree />}
-        {tab === "tasks"     && <BackgroundTasks />}
-        {tab === "workflows" && <WorkflowManager />}
-        {tab === "teams"     && <TeamPanel />}
-        {tab === "audit"     && <AuditLog />}
-      </div>
-    </div>
-  );
-}
 
 /* ════════════════════════════════════════════
    Embedded Terminal  (xterm.js + node-pty, unified header)
@@ -971,6 +877,15 @@ function EmbeddedTerminal({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** 懒加载标签页的占位:保持与面板同高,避免切换时右侧栏高度跳动 */
+function PanelLoading() {
+  return (
+    <div className="flex-1 flex items-center justify-center text-xs text-slate-600">
+      加载中…
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from "react";
+import { lazy, Suspense, useCallback, useRef, useState, useEffect } from "react";
 import {
   FolderOpen, Search, History, Settings, ChevronLeft,
   ChevronRight, Zap, X, FileText, Check, Pencil,
@@ -7,7 +7,8 @@ import { useUIStore, type LeftNavPanel } from "../../stores/uiStore";
 import { useFileStore } from "../../stores/fileStore";
 import ContextBar from "../manage/ContextBar";
 import FileTree from "../ide/FileTree";
-import CheckpointTimeline from "../agent/CheckpointTimeline";
+// 795 行的检查点时间线;左侧栏默认停在「文件」,不切到「检查点」就用不到
+const CheckpointTimeline = lazy(() => import("../agent/CheckpointTimeline"));
 
 const NAV_ITEMS: { id: LeftNavPanel; icon: typeof FolderOpen; label: string; badge?: number }[] = [
   { id: "files",  icon: FolderOpen,  label: "文件" },
@@ -288,7 +289,11 @@ function SearchPanel({ onFileOpen }: { onFileOpen: (path: string) => void }) {
 function CheckpointsPanel() {
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
-      <CheckpointTimeline />
+      <Suspense
+        fallback={<div className="p-4 text-xs text-slate-600">加载中…</div>}
+      >
+        <CheckpointTimeline />
+      </Suspense>
     </div>
   );
 }
