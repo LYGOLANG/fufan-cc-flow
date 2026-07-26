@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -57,12 +57,27 @@ const buildStartedAt = Date.now();
 
 console.log("[package-desktop] building Tauri desktop package...");
 let buildError = null;
+/** 无签名密钥时写的临时覆盖配置,构建结束后清掉 */
+let overrideConfigPath = null;
 try {
   const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
   const buildArgs = ["--filter", "client", "tauri", "build"];
   if (process.platform === "darwin") buildArgs.push("--bundles", "app,dmg");
   if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
-    buildArgs.push("--config", JSON.stringify({ bundle: { createUpdaterArtifacts: false } }));
+    // 没有签名私钥就不生成 updater 产物(没签名的 updater 包对客户端无用)。
+    //
+    // 这里必须把覆盖配置写成临时文件再传路径,不能直接传 JSON 字符串:
+    // Windows 上 pnpm 是 pnpm.cmd,execFileSync 必须带 shell:true 才能调用
+    // (否则 EINVAL),而 shell:true 会让参数过一遍 cmd.exe —— JSON 里的双引号
+    // 被剥光,tauri 收到的是 {bundle:{createUpdaterArtifacts:false}},
+    // 直接报 "key must be a string"。传文件路径没有引号,不受影响。
+    overrideConfigPath = path.join(os.tmpdir(), `agentflow-tauri-config-${process.pid}.json`);
+    writeFileSync(
+      overrideConfigPath,
+      JSON.stringify({ bundle: { createUpdaterArtifacts: false } }),
+      "utf8"
+    );
+    buildArgs.push("--config", overrideConfigPath);
   }
   const inheritedRustFlags = process.env.RUSTFLAGS?.trim() ?? "";
   const remapHome = `--remap-path-prefix=${os.homedir()}=/build`;
@@ -81,6 +96,14 @@ try {
 } catch (err) {
   buildError = err;
   console.warn("[package-desktop] tauri build exited non-zero; checking for generated installer artifacts...");
+} finally {
+  if (overrideConfigPath) {
+    try {
+      fs.rmSync(overrideConfigPath, { force: true });
+    } catch {
+      /* 临时文件清理失败无关紧要 */
+    }
+  }
 }
 
 const bundledArtifacts = walk(bundleDir)

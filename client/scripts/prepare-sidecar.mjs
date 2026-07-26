@@ -108,19 +108,34 @@ execSync(
 // 沿 serviceDir 向上扫描模板根,把模板放进 server-dist 根即可被打包后的 sidecar 命中。
 // 不带上它们的话,桌面端"初始化项目"会报 TEMPLATE_ITEM_MISSING(模板源缺失)。
 // 模板只带框架文件；开发期个人数据、调试配置和进化运行时状态不随包分发。
+//
+// 这份包会分发给所有用户,所以排除规则宁可过严:漏掉一个含对话片段的文件
+// (进化信号里就存着用户原话)就是随安装包外泄。原先逐个文件名列举,
+// 新增一个运行时文件就会漏 —— 现在整目录排除 + 按模式兜底。
 const TEMPLATE_EXCLUDES = new Set([
   "attachments",
   "workflows",
   "settings.local.json",
   "launch.json",
-  path.join("evolution", "signals.jsonl"),
-  path.join("evolution", "proposals.md"),
+  // evolution 整个目录都是运行时状态(signals.jsonl 存用户原话、
+  // proposals.md 存待办建议),没有一个文件属于"模板框架"
+  "evolution",
 ]);
+
+/** 无论出现在哪一层,都不该随包分发的文件名模式 */
+const TEMPLATE_EXCLUDE_PATTERNS = [
+  /\.local\.[^/\\]+$/i, // settings.local.json 之类的本机覆盖
+  /^\.env($|\.)/i,
+  /\.log$/i,
+  /\.jsonl$/i, // 各类追加式运行记录
+];
 
 function isTemplateExcluded(root, source) {
   const rel = path.relative(root, source);
   if (!rel) return false;
-  return TEMPLATE_EXCLUDES.has(rel) || TEMPLATE_EXCLUDES.has(rel.split(path.sep)[0]);
+  if (TEMPLATE_EXCLUDES.has(rel) || TEMPLATE_EXCLUDES.has(rel.split(path.sep)[0])) return true;
+  const base = path.basename(source);
+  return TEMPLATE_EXCLUDE_PATTERNS.some((re) => re.test(base));
 }
 
 console.log("[prepare-sidecar] bundling project templates...");
