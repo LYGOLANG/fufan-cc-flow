@@ -122,7 +122,7 @@ function getBuiltinCommands(): SlashCommand[] {
       action: () => {},
       subCommands: [
         { id: "model-opus",   label: "opus",   description: "Claude Opus 4.8 — 最强推理", icon: <Cpu size={14} />, type: "action", action: () => setModel("opus" as ModelId) },
-        { id: "model-sonnet", label: "sonnet", description: "Claude Sonnet 4.6 — 均衡",   icon: <Cpu size={14} />, type: "action", action: () => setModel("sonnet" as ModelId) },
+        { id: "model-sonnet", label: "sonnet", description: "Claude Sonnet 5 — 均衡",   icon: <Cpu size={14} />, type: "action", action: () => setModel("sonnet" as ModelId) },
         { id: "model-haiku",  label: "haiku",  description: "Claude Haiku 4.5 — 轻快",    icon: <Cpu size={14} />, type: "action", action: () => setModel("haiku" as ModelId) },
       ],
     },

@@ -75,7 +75,9 @@ export interface ProjectInitResult {
 
 export const api = {
   // ── Config ──
-  getConfig: () => request<Record<string, unknown>>("/config"),
+  // 注:没有 getConfig。前端配置的真相源是 configStore(localStorage 持久化),
+  // 不从后端读回;PATCH 是为了把少数几项(如 autoUpdatesChannel)写进
+  // ~/.claude/settings.json 供 CLI 使用。
   updateConfig: (data: Record<string, unknown>) =>
     request("/config", { method: "PATCH", body: JSON.stringify(data) }),
 

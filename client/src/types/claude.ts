@@ -78,10 +78,18 @@ export interface ModelOption {
   contextWindow?: number;
 }
 
-/** Static labels for the CLI aliases, mirroring Claude Code CLI's /model list. */
+/**
+ * Static labels for the CLI aliases, mirroring Claude Code CLI's /model list.
+ *
+ * 改这里时必须同步改另外两处,否则同一个别名会在 UI 的不同角落显示成不同代次:
+ *   - server/src/routes/system.ts 的 FALLBACK_MODELS(离线时 UI 走它)
+ *   - client/src/components/chat/SlashCommandMenu.tsx 的 /model 子命令描述
+ * (曾经就漂移过:这里写 Sonnet 4.6、服务端写 Sonnet 5,而两条 fallback 路径
+ *  会同时出现在界面上。)
+ */
 export const MODEL_LABELS: Record<string, string> = {
   opus: "Claude Opus 4.8",
-  sonnet: "Claude Sonnet 4.6",
+  sonnet: "Claude Sonnet 5",
   haiku: "Claude Haiku 4.5",
 };
 

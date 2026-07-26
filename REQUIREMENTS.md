@@ -161,7 +161,7 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 #### F2.2 代码查看器
 
 - 点击文件树节点在右侧打开文件内容
-- CodeMirror 6 语法高亮（支持 50+ 语言）
+- react-syntax-highlighter（Prism）语法高亮，按需注册 20 种常用语言
 - Tab 式多文件切换
 - Diff 视图：对比文件修改前后内容
 
@@ -465,8 +465,7 @@ client/src/
 │   │   └── PermissionModal.tsx  # HIL 权限确认弹窗
 │   ├── ide/
 │   │   ├── FileTree.tsx         # 文件树（含创建/重命名/删除）
-│   │   ├── CodeViewer.tsx       # CodeMirror 6 代码查看器
-│   │   └── DiffViewer.tsx       # Diff 对比视图
+│   │   └── CodeViewer.tsx       # 代码查看器（react-syntax-highlighter / Prism）
 │   └── manage/
 │       ├── McpPanel.tsx         # MCP 管理面板
 │       ├── MemoryPanel.tsx      # Memory 管理

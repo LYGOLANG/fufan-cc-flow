@@ -1,8 +1,10 @@
 # Fufan-CC Flow
 
-> 基于 Web 的 Claude Code 图形化前端，让 AI 编程工作流可视化。
+> 基于 Tauri 2 的 Claude Code 图形化桌面应用（发布名 **Agent Flow**），让 AI 编程工作流可视化。
 
-Fufan-CC Flow 将 Claude Code CLI 的全部能力封装为友好的 Web 界面，支持实时对话流、工具调用可视化、权限确认（HIL）、会话管理、MCP 扩展、终端集成等功能，适合个人开发者、团队协作以及 AI 编程教学场景。
+Fufan-CC Flow 将 Claude Code CLI / Codex CLI 的全部能力封装为友好的图形界面，支持实时对话流、工具调用可视化、权限确认（HIL）、会话管理、MCP 扩展、终端集成等功能，适合个人开发者、团队协作以及 AI 编程教学场景。
+
+应用外壳是 Tauri 2（Rust + 系统 WebView2），Node 后端服务以 sidecar 二进制形式随安装包一起分发，装完即用。开发调试时同一套 React 前端也可以直接以 Web 模式跑在浏览器里（`pnpm dev`）。
 
 ---
 
@@ -16,7 +18,8 @@ Fufan-CC Flow 将 Claude Code CLI 的全部能力封装为友好的 Web 界面�
 | **会话管理** | 历史会话列表、分支（Fork）、会话恢复 |
 | **上下文压缩感知** | 实时显示 Token 用量，压缩事件可视化 |
 | **模型切换** | 支持 Claude Opus / Sonnet / Haiku 及国产基座模型 |
-| **文件树 + 代码查看** | CodeMirror 6 语法高亮，Diff 视图 |
+| **Claude / Codex 双引擎** | 一键切换 Claude Agent SDK 与 OpenAI Codex CLI 两套执行引擎 |
+| **文件树 + 代码查看** | react-syntax-highlighter (Prism) 语法高亮，Diff 视图 |
 | **集成终端** | xterm.js + node-pty，完整 Shell 体验 |
 | **MCP 管理** | 图形化添加/删除 MCP Server（stdio / HTTP / SSE） |
 | **Memory 管理** | Auto Memory 和 CLAUDE.md 双体系统一管理 |
@@ -27,11 +30,12 @@ Fufan-CC Flow 将 Claude Code CLI 的全部能力封装为友好的 Web 界面�
 
 ## 技术栈
 
+- **桌面外壳**：Tauri 2（Rust + 系统 WebView2）· Node 后端以 sidecar 二进制随包分发
 - **前端**：React 19 · Vite · TypeScript · Tailwind CSS v4 · Zustand
 - **后端**：Node.js · Express · WebSocket (ws) · TypeScript
-- **AI 集成**：`@anthropic-ai/claude-agent-sdk`
+- **AI 集成**：`@anthropic-ai/claude-agent-sdk` · Codex CLI（`codex exec --json`）
 - **终端**：node-pty · xterm.js
-- **代码查看**：CodeMirror 6
+- **代码查看**：react-syntax-highlighter（Prism）
 - **包管理**：pnpm workspace（Monorepo）
 
 ---
@@ -103,7 +107,7 @@ pnpm install
 
 ```bash
 pnpm dev
-# 前端: http://localhost:5173
+# 前端: http://localhost:5273
 # 后端: http://localhost:3001
 ```
 
@@ -179,7 +183,7 @@ pnpm install
 pnpm dev
 ```
 
-打开浏览器访问 http://localhost:5173
+打开浏览器访问 http://localhost:5273
 
 > **Windows 特别说明**：应用会自动检测 Git Bash 路径（`C:\Program Files\Git\bin\bash.exe`）。若安装在其他位置，可在项目根目录创建 `.env` 文件：
 >
@@ -244,13 +248,13 @@ pnpm install
 pnpm dev
 ```
 
-打开浏览器访问 http://localhost:5173
+打开浏览器访问 http://localhost:5273
 
 ---
 
 ## 首次配置
 
-启动后，浏览器打开 http://localhost:5173，若 Claude Code CLI 未认证，会自动跳转到 **Settings 向导**：
+启动后，浏览器打开 http://localhost:5273，若 Claude Code CLI 未认证，会自动跳转到 **Settings 向导**：
 
 1. **Step 1 — 环境检测**：自动检测 Node.js、Claude CLI、网络代理
 2. **Step 2 — 认证配置**：
@@ -292,11 +296,15 @@ fufan-cc-flow-src/
 ## 常用命令
 
 ```bash
-pnpm dev        # 开发模式（前端 :5173 + 后端 :3001 热重载）
-pnpm build      # 生产构建
-pnpm start      # 启动生产后端（需先 build）
-pnpm lint       # ESLint 检查
-pnpm format     # Prettier 格式化
+pnpm dev             # 开发模式（前端 :5273 + 后端 :3001 热重载）
+pnpm build           # 生产构建
+pnpm start           # 启动生产后端（需先 build）
+pnpm typecheck       # TypeScript 类型检查
+pnpm test            # 单元测试（Node 原生 test runner）
+pnpm lint            # ESLint 检查（只抓 bug 类问题，代码风格交给 pnpm format）
+pnpm lint:fix        # ESLint 自动修复
+pnpm format          # Prettier 格式化
+pnpm package:desktop # 打包桌面安装包
 ```
 
 ---
