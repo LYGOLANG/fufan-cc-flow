@@ -4,21 +4,18 @@ import { useConfigStore } from "../stores/configStore";
 import { useUIStore } from "../stores/uiStore";
 import { wsService } from "../services/websocket";
 import { inferContextMax } from "../utils/costCalculator";
+import { decideAutoCompact } from "../utils/autoCompact";
 
 /**
  * 上下文用量达阈值时自动压缩。
  *
  * 此前 autoCompactThreshold 是个「死配置」——类型、存储、setter 都齐,
- * 但没有任何代码消费它,设了也永远不生效。这里补上真正的触发逻辑:
- * 复用与手动 /compact 完全相同的发送路径(见 ContextBar.handleCompact),
- * 保证两条路走出来的行为一致。
+ * 但没有任何代码消费它。这里补上触发逻辑:复用与手动 /compact 完全相同的
+ * 发送路径(见 ContextBar.handleCompact),保证两条路行为一致。
  *
- * 触发纪律(自动动作必须比手动更克制,否则会打断用户):
- * - 流式进行中不触发:正在出话时插一条 /compact 会打断当前回答
- * - 每次「越过阈值」只触发一次:用 armed 标志防抖,回落到阈值下方才重新武装,
- *   否则用量长期贴着阈值会反复压缩、陷入死循环
- * - 换会话/新会话时重置:新会话用量从零开始,旧的触发状态不该延续
- * - 阈值 >= 100 视为关闭:给用户一个明确的「不自动压缩」选项
+ * 触发时机只有一个:**一轮流式对话刚刚结束**。判定逻辑见 utils/autoCompact.ts,
+ * 那里有为什么必须这样限定的说明(简言之:切会话/开机恢复会话时 contextTokens
+ * 会被直接设成历史用量,不限定时机就会「点开旧会话即被压缩」)。
  */
 export function useAutoCompact(): void {
   const contextTokens = useChatStore((s) => s.contextTokens);
@@ -29,32 +26,37 @@ export function useAutoCompact(): void {
 
   /** 是否「已武装」——只有武装状态下越过阈值才触发,触发后解除 */
   const armed = useRef(true);
-  /** 记录上次会话,换会话时重新武装 */
+  /** 上一次渲染时的流式状态,用于识别 true -> false 的那一刻 */
+  const wasStreaming = useRef(false);
+  /** 本 hook 自己发起的压缩所在的会话,避免对同一会话重复自动压缩 */
   const lastSession = useRef<string | null>(null);
 
   useEffect(() => {
+    // 换会话时解除武装:新会话是否需要压缩,要等它自己聊完一轮再判断,
+    // 不能沿用上个会话的武装状态。
     if (lastSession.current !== currentSessionId) {
       lastSession.current = currentSessionId;
-      armed.current = true;
+      armed.current = false;
     }
   }, [currentSessionId]);
 
   useEffect(() => {
-    // 阈值 >= 100 = 用户明确关闭
-    if (!threshold || threshold >= 100) return;
-    if (isStreaming) return;
+    const justFinishedStreaming = wasStreaming.current && !isStreaming;
+    wasStreaming.current = isStreaming;
 
-    const max = inferContextMax(model);
-    if (max <= 0 || contextTokens <= 0) return;
-    const pct = (contextTokens / max) * 100;
+    const decision = decideAutoCompact({
+      contextTokens,
+      contextMax: inferContextMax(model),
+      threshold,
+      armed: armed.current,
+      justFinishedStreaming,
+    });
 
-    // 回落到阈值下方(留 5 个百分点回差,避免在阈值附近抖动反复触发)
-    if (pct < threshold - 5) {
+    if (decision.action === "rearm") {
       armed.current = true;
       return;
     }
-
-    if (pct < threshold || !armed.current) return;
+    if (decision.action !== "compact") return;
 
     // ── 触发压缩:与手动 /compact 同一条发送路径 ──
     armed.current = false;
@@ -78,6 +80,6 @@ export function useAutoCompact(): void {
       sessionId: chat.currentSessionId || undefined,
     });
     chat.startStreaming();
-    chat.setStatusText(`上下文已达 ${Math.round(pct)}%,正在自动压缩...`);
+    chat.setStatusText(`上下文已达 ${Math.round(decision.pct)}%,正在自动压缩...`);
   }, [contextTokens, isStreaming, threshold, model]);
 }
