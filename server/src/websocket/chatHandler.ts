@@ -672,8 +672,11 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               action: "send_message",
               payload: {
                 ...engineParams,
-                // 指定了 Agent 就在提示词里点名，由主会话通过 Task 分派；
-                // 不指定则直接在主会话执行。
+                // ⚠️ 这是「点名」不是「分派」:只是把 Agent 名字写进提示词，
+                // 模型完全可以无视它自己把活干了，填一个不存在的 Agent 名也
+                // 不会报错(已实测确认)。真正的强制分派要在 SDK 的 agents
+                // (AgentDefinition)层面声明并约束调用,属后续改进。
+                // 改这里之前先读 REQUIREMENTS.md F5.3 那条已知限制。
                 prompt: agent ? `请使用 ${agent} 这个 Agent 完成：${prompt}` : prompt,
                 sessionId: session.activeSessionId ?? undefined,
                 // 工作流的后续步骤是同一会话的连续轮次

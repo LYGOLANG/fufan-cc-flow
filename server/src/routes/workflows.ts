@@ -1,5 +1,6 @@
 import { Router, type Router as RouterType } from "express";
 import { WorkflowService } from "../services/workflowService.js";
+import { statusOf, messageOf } from "../utils/httpError.js";
 
 const router: RouterType = Router();
 const service = new WorkflowService();
@@ -25,7 +26,16 @@ router.post("/", async (req, res) => {
     const id = await service.saveWorkflow(project, req.body);
     res.json({ id });
   } catch (err) {
-    res.status(500).json({ error: { code: "PROCESS_ERROR", message: String(err) } });
+    // 校验错误(assertValidWorkflow / assertSafeName)自带 400，透传出去；
+    // 原先一律按 500 + String(err) 返回，界面只能显示「Error: 第 1 步引用了…」
+    // 这种带 Error 前缀的内部文案，且看起来像服务器故障而非用户可纠正的问题。
+    const status = statusOf(err);
+    res.status(status).json({
+      error: {
+        code: status === 500 ? "PROCESS_ERROR" : "INVALID_WORKFLOW",
+        message: messageOf(err, "保存工作流失败"),
+      },
+    });
   }
 });
 
