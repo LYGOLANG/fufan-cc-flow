@@ -6,6 +6,9 @@ import { readProxy } from "../services/proxyConfig.js";
 import { getProvider } from "../services/providerService.js";
 import { getMcpConfigVersion } from "../services/mcpService.js";
 import { cleanupFiles } from "../services/attachmentService.js";
+import { WorkflowService } from "../services/workflowService.js";
+import { WorkflowEngine } from "../services/workflow/engine.js";
+import { ClaudeStepRunner } from "../services/workflow/claudeStepRunner.js";
 import {
   registerRunning,
   markDone,
@@ -43,6 +46,11 @@ interface ProjectSession {
   /** 当前会话生效的模型(短别名):断线重连补发 session_init 时用于推断上下文窗口。 */
   activeModel: string | null;
   pendingAttachmentIds: string[];
+  /**
+   * 当前正在跑的工作流编排。同一项目同时只允许一个 —— 会话本身是串行的，
+   * 两个编排交替往同一个会话发消息只会互相打断。
+   */
+  workflowRun: WorkflowEngine | null;
   /** 解除当前 socket 与本 session 的绑定(摘监听器 + 把该 socket 的 close 变空操作)。 */
   detach: () => void;
   /** 寄存宽限计时器;非 null 表示当前无 socket 绑定、正等待重连认领。 */
@@ -71,6 +79,14 @@ function teardownSession(projectPath: string, session: ProjectSession) {
   if (session.parkTimer) {
     clearTimeout(session.parkTimer);
     session.parkTimer = null;
+  }
+  // 会话都要拆了,编排不能继续往里发消息。放在这里而不是 close 回调里,
+  // 是因为收尾有多条路径(关标签、寄存超时无人认领、进程退出),
+  // teardownSession 是它们唯一的汇合点 —— 漏一条就会留下一个对着已死会话
+  // 空转的编排,还在按步骤计费。
+  if (session.workflowRun) {
+    session.workflowRun.abort("会话已结束");
+    session.workflowRun = null;
   }
   if (session.activeSessionId) {
     if (session.activeEngine === "codex") {
@@ -154,6 +170,7 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
     activeCompat: null,
     activeModel: null,
     pendingAttachmentIds: [],
+    workflowRun: null,
     detach: () => {},
     parkTimer: null,
   };
@@ -301,15 +318,25 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
     }
   }
 
-  ws.on("message", async (raw) => {
-    let msg: ClientMessage;
-    try {
-      msg = JSON.parse(raw.toString());
-    } catch {
-      forward("error", { code: "INVALID_JSON", message: "Invalid JSON" });
-      return;
-    }
+  // 工作流在断线期间会继续跑(与运行中任务的寄存语义一致),但期间推送的状态
+  // 都被丢弃了。重连时补发一次当前状态,否则用户看到的是一个永远停在旧进度、
+  // 或干脆空白的面板 —— 而后台其实正跑着。
+  if (adopted && session.workflowRun) {
+    forward(
+      "workflow_state",
+      session.workflowRun.getState() as unknown as Record<string, unknown>,
+    );
+  }
 
+  /**
+   * 处理一条客户端消息。
+   *
+   * 提取成命名函数是为了让工作流编排能**走完全相同的入口**执行每一步 ——
+   * send_message 分支里那两百行(代理、供应商解析、附件、进程指纹、resume 判定)
+   * 一旦被复制一份出来，两边就会各自漂移；而漏带任何一个字段都会让常驻进程
+   * 指纹对不上，白白杀进程重启。所以编排不复制它，直接复用。
+   */
+  const handleClientMessage = async (msg: ClientMessage): Promise<void> => {
     logger.info(`WS action: ${msg.action}`);
 
     switch (msg.action) {
@@ -604,12 +631,128 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
         break;
       }
 
+      // ── 工作流编排 ──
+
+      case "workflow_start": {
+        const p = msg.payload as Record<string, unknown>;
+        if (!projectPath?.trim()) {
+          forward("error", { code: "NO_PROJECT", message: "请先选择项目" });
+          break;
+        }
+        if (session.workflowRun) {
+          forward("error", {
+            code: "WORKFLOW_BUSY",
+            message: "已有工作流在运行，请先停止它",
+          });
+          break;
+        }
+
+        const workflowId = typeof p.workflowId === "string" ? p.workflowId : "";
+        if (!workflowId) {
+          forward("error", { code: "INVALID_REQUEST", message: "缺少 workflowId" });
+          break;
+        }
+
+        const workflow = await new WorkflowService().getWorkflow(projectPath, workflowId);
+        if (!workflow) {
+          forward("error", { code: "NOT_FOUND", message: "工作流不存在" });
+          break;
+        }
+
+        // 引擎参数由前端按 buildEngineParams() 传来，与手动发消息完全同源。
+        // 每一步都用这同一组参数，避免中途换参数导致常驻进程指纹变化、白白重启。
+        const engineParams = (p.engineParams ?? {}) as Record<string, unknown>;
+        const inputs = (p.inputs ?? {}) as Record<string, string>;
+
+        const runner = new ClaudeStepRunner({
+          startTurn: async ({ prompt, agent }) => {
+            // 关键:走 handleClientMessage 而不是自己拼 claude.start ——
+            // send_message 分支里的代理/供应商/指纹逻辑一个字都不必复制。
+            await handleClientMessage({
+              action: "send_message",
+              payload: {
+                ...engineParams,
+                // 指定了 Agent 就在提示词里点名，由主会话通过 Task 分派；
+                // 不指定则直接在主会话执行。
+                prompt: agent ? `请使用 ${agent} 这个 Agent 完成：${prompt}` : prompt,
+                sessionId: session.activeSessionId ?? undefined,
+                // 工作流的后续步骤是同一会话的连续轮次
+                continueActive: undefined,
+              },
+            } as ClientMessage);
+          },
+          interrupt: () => {
+            if (session.activeSessionId) claude.interrupt(session.activeSessionId);
+          },
+          on: (event: string, handler: (p: never) => void) => {
+            const h = handler as (...args: unknown[]) => void;
+            claude.on(event, h);
+            return () => claude.off(event, h);
+          },
+        });
+
+        const engine = new WorkflowEngine({
+          workflow,
+          inputs,
+          runner,
+          onChange: (state) => forward("workflow_state", state as unknown as Record<string, unknown>),
+        });
+        session.workflowRun = engine;
+        logger.info(`[workflow] 开始运行「${workflow.name}」共 ${workflow.steps.length} 步`);
+
+        // 不 await:编排是长任务，await 会把这条 WS 消息的处理堵死。
+        // 状态经 onChange 持续推送，结束后清空 workflowRun 释放占用。
+        void engine
+          .run()
+          .catch((err) => {
+            logger.error(`[workflow] 运行异常`, err instanceof Error ? err.stack : String(err));
+            forward("error", {
+              code: "WORKFLOW_ERROR",
+              message: err instanceof Error ? err.message : String(err),
+            });
+          })
+          .finally(() => {
+            if (session.workflowRun === engine) session.workflowRun = null;
+          });
+        break;
+      }
+
+      case "workflow_resolve": {
+        const p = msg.payload as Record<string, unknown>;
+        const decision = p.resolution;
+        if (decision !== "retry" && decision !== "skip" && decision !== "abort") {
+          forward("error", { code: "INVALID_REQUEST", message: "无效的处置指令" });
+          break;
+        }
+        if (!session.workflowRun?.resolve(decision)) {
+          // 没有待处置项:多半是用户点了两次，或运行已结束。不算错误。
+          logger.info(`[workflow] 忽略处置指令 ${decision}(当前无待处置步骤)`);
+        }
+        break;
+      }
+
+      case "workflow_abort": {
+        session.workflowRun?.abort();
+        break;
+      }
+
       default:
         forward("error", {
           code: "UNKNOWN_ACTION",
           message: `Unknown action: ${msg.action}`,
         });
     }
+  };
+
+  ws.on("message", async (raw) => {
+    let msg: ClientMessage;
+    try {
+      msg = JSON.parse(raw.toString());
+    } catch {
+      forward("error", { code: "INVALID_JSON", message: "Invalid JSON" });
+      return;
+    }
+    await handleClientMessage(msg);
   });
 
   ws.on("close", () => {
