@@ -16,6 +16,7 @@ import { useAgentStore } from "../../stores/agentStore";
 import { useUIStore } from "../../stores/uiStore";
 import { wsService } from "../../services/websocket";
 import { buildEngineParams } from "../../utils/sendPayload";
+import { validateWorkflowDraft, extractReferencedVars } from "../../utils/workflowValidate";
 import type { Workflow, WorkflowStep } from "../../types/workflow";
 
 export default function WorkflowManager() {
@@ -288,6 +289,18 @@ function WorkflowEditor({
   const [name, setName] = useState(workflow.name);
   const [steps, setSteps] = useState<WorkflowStep[]>(workflow.steps);
 
+  // 变量归类与校验都基于当前编辑中的内容实时算。
+  // 规则与服务端保存时用的是同一套（client/src/utils/workflowValidate.ts
+  // 与 server/.../workflow/validate.ts 保持同步），前端这份只为即时提示，
+  // 真正的闸门在服务端 —— 请求可以绕过界面直接发。
+  const outputVars = steps
+    .map((s) => s.outputVar?.trim())
+    .filter((v): v is string => !!v);
+  const inputVars = [
+    ...new Set(steps.flatMap((s) => extractReferencedVars(s.prompt ?? ""))),
+  ].filter((v) => !outputVars.includes(v));
+  const issues = validateWorkflowDraft({ name, steps, variables: inputVars });
+
   const updateStep = (index: number, updates: Partial<WorkflowStep>) => {
     setSteps((prev) =>
       prev.map((s, i) => (i === index ? { ...s, ...updates } : s))
@@ -351,12 +364,71 @@ function WorkflowEditor({
               value={step.prompt}
               onChange={(e) => updateStep(i, { prompt: e.target.value })}
               rows={2}
-              placeholder="Prompt（支持 $VARIABLE 变量）"
+              placeholder="提示词（可用 $变量 引用前面步骤的产出）"
               className="w-full text-xs font-mono bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-amber-glow/30"
             />
+
+            {/* 编排配置：不填也能用，保持简单场景零配置 */}
+            <div className="flex gap-1.5 mt-1.5">
+              <input
+                value={step.outputVar ?? ""}
+                onChange={(e) => updateStep(i, { outputVar: e.target.value.trim() || undefined })}
+                placeholder="产出存为变量（选填）"
+                title="填了之后，后面的步骤可以用 $名称 引用这一步的结果"
+                className="flex-1 min-w-0 text-[10px] font-mono bg-white/5 border border-white/10 rounded px-2 py-1 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-glow/30"
+              />
+              <select
+                value={step.onFailure ?? "ask"}
+                onChange={(e) =>
+                  updateStep(i, {
+                    onFailure: e.target.value === "ask" ? undefined : (e.target.value as WorkflowStep["onFailure"]),
+                  })
+                }
+                title="这一步失败时怎么办"
+                className="text-[10px] bg-white/5 border border-white/10 rounded px-1.5 py-1 text-slate-300 focus:outline-none"
+              >
+                <option value="ask">失败时询问</option>
+                <option value="retry">失败自动重试</option>
+                <option value="skip">失败自动跳过</option>
+                <option value="abort">失败即中止</option>
+              </select>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* 校验提示：结构上跑不通的问题就地指出，别等运行到一半才发现 */}
+      {issues.length > 0 && (
+        <div className="rounded-md border border-rose-err/25 bg-rose-err/5 p-2 space-y-0.5">
+          {issues.map((it, k) => (
+            <p key={k} className="text-[10px] text-rose-err">
+              {it.message}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* 变量总览：区分「运行前要填的」和「步骤产出的」，避免混淆 */}
+      {(inputVars.length > 0 || outputVars.length > 0) && (
+        <div className="rounded-md border border-white/8 bg-white/[0.02] p-2 space-y-1">
+          {inputVars.length > 0 && (
+            <p className="text-[10px] text-slate-400">
+              运行前需填写：
+              {inputVars.map((v) => (
+                <span key={v} className="font-mono text-amber-glow ml-1">${v}</span>
+              ))}
+            </p>
+          )}
+          {outputVars.length > 0 && (
+            <p className="text-[10px] text-slate-400">
+              步骤产出：
+              {outputVars.map((v) => (
+                <span key={v} className="font-mono text-emerald-ok ml-1">${v}</span>
+              ))}
+            </p>
+          )}
+        </div>
+      )}
 
       <button onClick={addStep}
         className="flex items-center gap-1.5 text-[11px] text-slate-300 hover:text-amber-glow transition-colors">
@@ -366,7 +438,9 @@ function WorkflowEditor({
       <div className="flex gap-2 pt-1">
         <button onClick={onCancel} className="text-xs px-3 py-1.5 text-slate-300">取消</button>
         <button onClick={handleSave}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-amber-glow/10 text-amber-glow hover:bg-amber-glow/20 border border-amber-glow/20 transition-colors">
+          disabled={issues.length > 0}
+          title={issues.length > 0 ? "请先修正上方问题" : undefined}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-amber-glow/10 text-amber-glow hover:bg-amber-glow/20 border border-amber-glow/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-amber-glow/10">
           <Save size={12} /> 保存
         </button>
       </div>

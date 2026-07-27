@@ -3,17 +3,10 @@ import path from "path";
 // 名称来自 HTTP 请求且被直接 path.join 进目录,一律先过 assertSafeName
 import { assertSafeName } from "../utils/pathUtils.js";
 
-interface WorkflowStep {
-  agent: string | null; // null = main session
-  prompt: string;
-}
-
-interface Workflow {
-  id: string;
-  name: string;
-  steps: WorkflowStep[];
-  variables: string[];
-}
+// 类型定义收口在 workflow/types.ts —— 此前这里内联了一份，与前端各存一份，
+// 加字段时容易只改一边。
+import type { Workflow } from "./workflow/types.js";
+import { assertValidWorkflow, extractReferencedVars } from "./workflow/validate.js";
 
 export class WorkflowService {
   private getWorkflowsDir(projectPath: string): string {
@@ -73,15 +66,28 @@ export class WorkflowService {
       workflow.id = `wf_${Date.now()}`;
     }
 
-    // Extract variables from prompts (pattern: $VAR_NAME)
-    const vars = new Set<string>();
+    // 自动推导「运行前需要用户填写的输入变量」。
+    //
+    // 两处此前的问题:
+    // 1. 原正则是 /\$[A-Z_]+/g,只认大写 —— 而引擎的 substituteVariables 支持
+    //    大小写,于是 $sell 这类写法会被替换、却从不出现在变量列表里。
+    // 2. 它把提示词里引用的**全部**变量都当成输入变量。编排上线后这会出错:
+    //    第二步引用第一步的输出变量 $sell,却被当成「运行前要用户填的值」,
+    //    平白多出一个不该填的输入框。
+    //
+    // 正确定义:被引用、且没有任何步骤产出它 —— 那才需要用户提供。
+    const produced = new Set(
+      workflow.steps.map((s) => s.outputVar?.trim()).filter((v): v is string => !!v)
+    );
+    const referenced = new Set<string>();
     for (const step of workflow.steps) {
-      const matches = step.prompt.match(/\$[A-Z_]+/g);
-      if (matches) {
-        matches.forEach((v) => vars.add(v.slice(1)));
-      }
+      for (const name of extractReferencedVars(step.prompt ?? "")) referenced.add(name);
     }
-    workflow.variables = Array.from(vars);
+    workflow.variables = [...referenced].filter((n) => !produced.has(n));
+
+    // 服务端校验:前端的即时提示只是体验，请求可以绕过界面直接发。
+    // 放在变量推导之后 —— 校验依赖 variables 判断「输入变量在第一步即可引用」。
+    assertValidWorkflow(workflow);
 
     const filePath = path.join(dir, `${workflow.id}.json`);
     await fs.writeFile(filePath, JSON.stringify(workflow, null, 2), "utf-8");
