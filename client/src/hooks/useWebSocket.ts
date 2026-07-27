@@ -5,6 +5,7 @@ import { useUIStore } from "../stores/uiStore";
 import { useAgentStore } from "../stores/agentStore";
 import { useConfigStore } from "../stores/configStore";
 import { useAuditStore } from "../stores/auditStore";
+import { useWorkflowStore, type WorkflowRunState } from "../stores/workflowStore";
 import { inferContextMax } from "../utils/costCalculator";
 import { permissionEventIds } from "../services/transport/permission";
 import type { SubAgentNode } from "../types/agent";
@@ -336,6 +337,15 @@ export function useWebSocket() {
 
         // ── workflow/后台 agent 生命周期(task_started 等) ──
         // payload 结构随 CLI 版本演进,防御性取字段;同时进审计时间线保证至少可见。
+        // 工作流编排运行态。整份状态由服务端推送、前端只做展示 ——
+        // 编排的真相在服务端，前端自行推进只会在断线重连后与实际状态打架。
+        case "workflow_state": {
+          const state = payload as unknown as WorkflowRunState;
+          useWorkflowStore.getState().setRun(state);
+          // 运行结束后保留最终状态供用户查看产出，不立即清空
+          break;
+        }
+
         case "background_task_event": {
           const subtype = (payload.subtype as string) || "";
           const p = (payload.payload as Record<string, unknown>) || {};

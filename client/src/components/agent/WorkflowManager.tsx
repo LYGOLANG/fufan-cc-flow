@@ -11,9 +11,11 @@ import {
   Loader2,
   Bot,
 } from "lucide-react";
-import { useWorkflowStore } from "../../stores/workflowStore";
+import { useWorkflowStore, type WorkflowRunState } from "../../stores/workflowStore";
 import { useAgentStore } from "../../stores/agentStore";
 import { useUIStore } from "../../stores/uiStore";
+import { wsService } from "../../services/websocket";
+import { buildEngineParams } from "../../utils/sendPayload";
 import type { Workflow, WorkflowStep } from "../../types/workflow";
 
 export default function WorkflowManager() {
@@ -27,7 +29,8 @@ export default function WorkflowManager() {
   // (生产环境即 React error #185)。取原始数组引用,派生放渲染体(同 BackgroundTasks 先例)。
   const backgroundTasks = useAgentStore((s) => s.backgroundTasks);
   const runningTasks = backgroundTasks.filter((t) => t.status === "running");
-  const { projectPath, setPrefillInput } = useUIStore();
+  const run = useWorkflowStore((s) => s.run);
+  const { projectPath } = useUIStore();
 
   // Workflow execution: variable input
   const [execWorkflow, setExecWorkflow] = useState<Workflow | null>(null);
@@ -63,23 +66,22 @@ export default function WorkflowManager() {
     setVarValues({});
   };
 
+  /**
+   * 真正启动编排。
+   *
+   * 此前这里是把步骤拼成一段提示词塞进输入框（setPrefillInput）—— 不调度、
+   * 不等待、不传数据，界面却用方框加箭头暗示流水线。现在交给服务端的编排
+   * 引擎：它按步执行、每步等上一步真的结束、把产出经变量喂给下一步。
+   *
+   * 引擎参数走 buildEngineParams()，与手动发消息完全同源；少带字段会让常驻
+   * 进程指纹对不上、白白杀进程重启。
+   */
   const composeAndSend = (wf: Workflow, vars: Record<string, string>) => {
-    // Build a structured prompt that describes the workflow steps
-    const lines: string[] = [];
-    lines.push(`请按照以下工作流「${wf.name}」的步骤顺序执行：\n`);
-
-    wf.steps.forEach((step, i) => {
-      let prompt = step.prompt;
-      // Substitute variables
-      for (const [k, v] of Object.entries(vars)) {
-        prompt = prompt.replaceAll(`$${k}`, v);
-      }
-      const agentLabel = step.agent || "主会话（你自己）";
-      lines.push(`**步骤 ${i + 1}**（${agentLabel}）：${prompt}`);
+    wsService.send("workflow_start", {
+      workflowId: wf.id,
+      inputs: vars,
+      engineParams: buildEngineParams(),
     });
-
-    lines.push(`\n请严格按步骤顺序执行，每完成一步后再执行下一步。`);
-    setPrefillInput(lines.join("\n"));
   };
 
   // ── Editor view ──
@@ -173,9 +175,8 @@ export default function WorkflowManager() {
   return (
     <div className="p-3 space-y-3">
       {/* 这里显示的是**后台任务**(SDK 的 task_started / background_tasks_changed 事件),
-          不是下方列表里的工作流 —— 下方的工作流不产生后台任务(见 composeAndSend:
-          它只把步骤拼成 prompt 填进输入框)。原先标题只写「运行中」,又把 agentName
-          显示在右侧,一眼看去像是某个工作流正在跑,实际毫无关系。 */}
+          与工作流编排是两类对象:编排的进度在下方 RunPanel,数据来自 workflow_state。
+          原先标题只写「运行中」、右侧又显示 agentName,一眼看去像是某个工作流在跑。 */}
       {runningTasks.length > 0 && (
         <div className="rounded-lg border border-emerald-ok/20 bg-emerald-ok/5 p-2.5 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-ok">
@@ -199,6 +200,8 @@ export default function WorkflowManager() {
         </div>
       )}
 
+      {run && <RunPanel run={run} />}
+
       <button onClick={createNew}
         className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md bg-amber-glow/10 text-amber-glow hover:bg-amber-glow/20 border border-amber-glow/20 transition-colors">
         <Plus size={12} /> 新建工作流
@@ -212,11 +215,10 @@ export default function WorkflowManager() {
         <div className="text-center py-4">
           <GitMerge size={20} className="mx-auto text-slate-500 mb-2" />
           <p className="text-xs text-slate-400">暂无工作流</p>
-          {/* 不要写成「自动按步骤调用多个 Agent」——那是假承诺。
-              执行按钮只做一件事:把步骤拼成一段提示词填进输入框(见 composeAndSend),
-              真正要不要照步骤走、要不要分派给 Agent,取决于主对话的模型。 */}
+          {/* Phase 13 起这句话是真的了:服务端编排引擎按步执行、每步等上一步
+              真的结束、把产出经变量喂给下一步。改这里前先确认行为仍然如此。 */}
           <p className="text-[10px] text-slate-500 mt-1">
-            把常用的多步指令存成模板，执行时一键填入输入框
+            创建工作流，按步骤依次执行并在步骤间传递结果
           </p>
         </div>
       ) : (
@@ -232,7 +234,7 @@ export default function WorkflowManager() {
                 <div className="flex items-center gap-1">
                   <button onClick={() => handleExecute(wf)}
                     className="p-1 rounded hover:bg-emerald-ok/10 text-slate-400 hover:text-emerald-ok transition-colors"
-                    title="填入输入框（不会自动发送，需要你确认后回车）">
+                    title="执行工作流（按步骤依次运行）">
                     <Play size={11} />
                   </button>
                   <button onClick={() => setEditing(wf)}
@@ -368,6 +370,135 @@ function WorkflowEditor({
           <Save size={12} /> 保存
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════
+   运行态面板
+   ════════════════════════════════════════════ */
+
+const STEP_STYLE: Record<string, { label: string; cls: string }> = {
+  pending: { label: "等待", cls: "text-slate-500 border-white/10" },
+  running: { label: "运行中", cls: "text-amber-glow border-amber-glow/30 bg-amber-glow/5" },
+  succeeded: { label: "完成", cls: "text-emerald-ok border-emerald-ok/25 bg-emerald-ok/5" },
+  failed: { label: "失败", cls: "text-rose-err border-rose-err/30 bg-rose-err/5" },
+  skipped: { label: "已跳过", cls: "text-slate-400 border-white/10" },
+  aborted: { label: "已中止", cls: "text-slate-500 border-white/10" },
+};
+
+function fmtSpan(from?: number, to?: number): string {
+  if (!from) return "";
+  const ms = (to ?? Date.now()) - from;
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * 工作流运行态。
+ *
+ * 整份状态由服务端推送，这里只做展示与回传指令 —— 前端不自行推进步骤，
+ * 否则断线重连后会与服务端的真实进度打架。
+ */
+function RunPanel({ run }: { run: WorkflowRunState }) {
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const done = run.status === "completed" || run.status === "aborted";
+  const failedStep = run.status === "awaiting" ? run.steps.find((s) => s.status === "failed") : null;
+
+  return (
+    <div className="rounded-lg border border-violet-info/25 bg-violet-info/[0.04] p-2.5 space-y-2">
+      <div className="flex items-center gap-1.5">
+        {run.status === "running" ? (
+          <Loader2 size={11} className="animate-spin text-violet-info" />
+        ) : (
+          <GitMerge size={11} className="text-violet-info" />
+        )}
+        <span className="text-[11px] font-medium text-slate-200 truncate flex-1">
+          {run.workflowName}
+        </span>
+        <span className="text-[10px] text-slate-400">
+          {done ? (run.status === "completed" ? "已完成" : "已中止") : `第 ${run.currentStep + 1} / ${run.steps.length} 步`}
+        </span>
+        {!done && (
+          <button
+            onClick={() => wsService.send("workflow_abort", {})}
+            title="停止整个工作流"
+            className="p-1 rounded hover:bg-rose-err/10 text-slate-400 hover:text-rose-err transition-colors"
+          >
+            <X size={11} />
+          </button>
+        )}
+      </div>
+
+      {/* 步骤列表 */}
+      <div className="space-y-1">
+        {run.steps.map((s) => {
+          const style = STEP_STYLE[s.status] ?? STEP_STYLE.pending;
+          const body = s.output || s.error;
+          return (
+            <div key={s.index} className={`rounded border px-2 py-1.5 ${style.cls}`}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono text-slate-500 w-4">{s.index + 1}</span>
+                <span className="text-[10px] font-medium flex-1">{style.label}</span>
+                {s.attempts > 1 && (
+                  <span className="text-[9px] text-slate-500">第 {s.attempts} 次</span>
+                )}
+                {s.startedAt && (
+                  <span className="text-[9px] font-mono text-slate-500">
+                    {fmtSpan(s.startedAt, s.finishedAt)}
+                  </span>
+                )}
+                {body && (
+                  <button
+                    onClick={() => setExpanded(expanded === s.index ? null : s.index)}
+                    className="text-[9px] text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    {expanded === s.index ? "收起" : "查看"}
+                  </button>
+                )}
+              </div>
+              {expanded === s.index && body && (
+                <pre className="mt-1 text-[10px] text-slate-300 whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono">
+                  {body}
+                </pre>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 失败处置 —— 引擎停在这一步等指令，不选就不会继续 */}
+      {failedStep && (
+        <div className="rounded border border-rose-err/30 bg-rose-err/5 p-2 space-y-1.5">
+          <p className="text-[10px] text-rose-err">
+            第 {failedStep.index + 1} 步失败：{failedStep.error || "未知原因"}
+          </p>
+          <div className="flex gap-1.5">
+            {([
+              ["retry", "重试这一步"],
+              ["skip", "跳过继续"],
+              ["abort", "中止工作流"],
+            ] as const).map(([action, label]) => (
+              <button
+                key={action}
+                onClick={() => wsService.send("workflow_resolve", { resolution: action })}
+                className="flex-1 text-[10px] py-1 rounded border border-white/10 text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {done && run.message && <p className="text-[10px] text-slate-400">{run.message}</p>}
+      {done && (
+        <button
+          onClick={() => useWorkflowStore.getState().setRun(null)}
+          className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          关闭结果
+        </button>
+      )}
     </div>
   );
 }
