@@ -116,12 +116,16 @@ export default function ContextBar() {
     // Add as a user message in chat (so user sees it)
     useChatStore.getState().addUserMessage(prompt);
 
-    // Send via normal send_message flow (same path as InputBar.handleSend)
-    // 引擎参数走统一构造:此处原先漏带 thinkingBudget,导致每次手动压缩
-    // 都因常驻进程指纹不一致而白白杀掉进程重启(连带杀掉后台 sub-agent)
-    wsService.send("send_message", {
-      prompt,
-      ...buildEngineParams(),
+    // 走专用的 compact 通道，而不是把 "/compact" 当普通消息发。
+    //
+    // 差别是实质性的：该通道会先尝试把指令推入**现有常驻进程的输入队列**
+    // （不重启进程、不打断正在跑的后台 sub-agent），拿不到进程时才回落到
+    // 新建一轮。当作普通消息发则必然走后者。
+    // 它还带着 Codex 的能力检测——Codex 不支持 /compact，此前当普通消息发
+    // 的结果是：模型把 "/compact" 当成一句提问随便答一句，上下文纹丝不动，
+    // 而状态栏还显示「正在压缩上下文...」。
+    wsService.send("compact", {
+      instructions: compactHint.trim() || undefined,
       sessionId: currentSessionId || undefined,
     });
 

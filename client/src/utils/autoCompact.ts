@@ -18,6 +18,13 @@ export interface AutoCompactInput {
   /** 是否处于「已武装」状态 —— 只有武装时越过阈值才触发 */
   armed: boolean;
   /**
+   * 当前引擎是否支持压缩。
+   *
+   * Codex 没有 /compact。不支持时必须在**触发前**就判掉，而不是发出去再被
+   * 后端拒绝 —— 后者会在每轮对话结束时重复发一次、重复报一次错，变成噪音。
+   */
+  compactSupported?: boolean;
+  /**
    * 是否「刚刚结束一轮流式对话」。
    *
    * 这是最关键的一个条件。自动压缩必须只由「用户在本会话聊完一轮、
@@ -39,6 +46,11 @@ export type AutoCompactDecision =
 
 export function decideAutoCompact(input: AutoCompactInput): AutoCompactDecision {
   const { contextTokens, contextMax, threshold, armed, justFinishedStreaming } = input;
+
+  // 引擎不支持压缩(Codex 没有 /compact)时直接判掉。
+  // 必须在这里挡住而不是发出去让后端拒绝:自动压缩在每轮对话结束时都会评估,
+  // 一旦越过阈值就会轮轮重发、轮轮报错,变成刷屏噪音。
+  if (input.compactSupported === false) return { action: "none" };
 
   // 阈值 >= 100(或非法值)= 用户明确关闭自动压缩
   if (!Number.isFinite(threshold) || threshold <= 0 || threshold >= 100) {

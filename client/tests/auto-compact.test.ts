@@ -86,3 +86,22 @@ test("非法阈值(0 或负数)按关闭处理", () => {
   assert.equal(decideAutoCompact(input({ contextTokens: at(99), threshold: 0 })).action, "none");
   assert.equal(decideAutoCompact(input({ contextTokens: at(99), threshold: -1 })).action, "none");
 });
+
+test("引擎不支持压缩时(Codex)一律不触发", () => {
+  // Codex 没有 /compact。必须在触发前判掉,而不是发出去让后端拒绝 ——
+  // 自动压缩在每轮对话结束时都会评估,越过阈值后会轮轮重发、轮轮报错。
+  const d = decideAutoCompact(input({ contextTokens: at(99), compactSupported: false }));
+  assert.equal(d.action, "none");
+});
+
+test("compactSupported 未指定时按支持处理(不因缺省而静默失效)", () => {
+  const d = decideAutoCompact(input({ contextTokens: at(96) }));
+  assert.equal(d.action, "compact");
+});
+
+test("不支持压缩时连回落重新武装也不做(整体停用)", () => {
+  const d = decideAutoCompact(
+    input({ contextTokens: at(10), armed: false, compactSupported: false })
+  );
+  assert.equal(d.action, "none");
+});
