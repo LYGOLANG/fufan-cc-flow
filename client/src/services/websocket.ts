@@ -112,11 +112,20 @@ class WebSocketManager {
     if (buf) for (const [event, payload] of buf) this.notify(event, payload);
   }
 
-  /** 发送到"活动项目"连接。 */
-  send(action: string, payload: Record<string, unknown> = {}) {
+  /**
+   * 发送到"活动项目"连接。
+   *
+   * @returns 是否真的发出去了。调用方**必须**据此决定要不要更新 UI ——
+   *   连接不在时除 send_message 外的动作会被直接丢弃(见 http-chat.send)。
+   */
+  send(action: string, payload: Record<string, unknown> = {}): boolean {
     const accepted = this.conns.get(this.activeProject)?.send(action, payload) ?? false;
     if (action === "send_message" && accepted) this.setBusy(this.activeProject, true);
-    else if (action === "abort") this.setBusy(this.activeProject, false);
+    // abort 必须看 accepted:连接断开时这一帧会被丢弃,而服务端有 30 秒寄存宽限,
+    // 任务照常在跑、照常计费。原先无条件清 busy,于是「运行中」指示灯灭了、
+    // 用户以为停住了,实际什么都没发生 —— 界面说谎比没反应更糟。
+    else if (action === "abort" && accepted) this.setBusy(this.activeProject, false);
+    return accepted;
   }
 
   subscribe(handler: ChatHandler): () => void {

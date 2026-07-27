@@ -540,6 +540,16 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
       }
 
       case "abort": {
+        // 新会话的第一条消息发出后、session_init 回来之前,session.activeSessionId
+        // 还是 null —— 而 send_message 分支要连过读代理、取供应商、claude.start()
+        // 三个 await(几百毫秒到 2 秒),abort 却是同步的。用户「误发了立刻点停止」
+        // 恰好落在这个窗口里,原先整个分支空转,连 aborted 都不发,任务照常跑起来,
+        // 用户得点第二次才有效。
+        // 服务层自己知道当前活跃会话,拿它兜底即可闭合这个窗口。
+        if (!session.activeSessionId) {
+          const liveId = claude.getActiveSessionId();
+          if (liveId) session.activeSessionId = liveId;
+        }
         markDone(projectPath, session.activeSessionId); // 用户主动中止,不算"被中止"
         if (session.activeSessionId) {
           if (session.activeEngine === "codex") {

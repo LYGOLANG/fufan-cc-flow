@@ -280,7 +280,13 @@ export default function InputBar() {
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   }, [text, model, effort, runMode, engine, codexModel, codexEffort, providerId, apiKey, notInstalled, noProject, currentSessionId, pendingFork, attachments]);
 
-  const handleAbort = useCallback(() => wsService.send("abort", {}), []);
+  const handleAbort = useCallback(() => {
+    // 连接断开时这一帧会被丢弃,而服务端有 30 秒寄存宽限、任务照常在跑。
+    // 必须告诉用户,否则他看到「运行中」还亮着却不知道为什么。
+    if (!wsService.send("abort", {})) {
+      useChatStore.getState().setStatusText("网络未连接，停止指令未送达");
+    }
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // IME 组词防护:中文/日文输入法打拼音按 Enter 确认候选词时,

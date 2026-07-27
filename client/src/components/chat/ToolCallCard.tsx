@@ -535,11 +535,23 @@ export default function ToolCallCard({ toolCall: tc }: Props) {
 
   const handlePermission = (decision: "allow" | "deny", alwaysAllow = false) => {
     if (!tc.permissionRequestId) return;
-    wsService.send("permission_response", {
+    const sent = wsService.send("permission_response", {
       requestId: tc.permissionRequestId,
       decision,
       ...(alwaysAllow ? { alwaysAllow: true } : {}),
     });
+
+    // 发送失败(连接断开)时**不能**动 UI:原先无条件把卡片改成「运行中」并清掉
+    // permissionRequestId,于是这一帧被丢弃后,卡片看着像已批准、按钮也没了,
+    // 而服务端根本没收到,60 秒后自动拒绝 —— 用户只看到工具莫名失败。
+    // 保持原状让用户能重试,比假装成功强。
+    if (!sent) {
+      useChatStore
+        .getState()
+        .setStatusText("网络未连接，授权未送达，请恢复连接后重试");
+      return;
+    }
+
     useChatStore.getState().removePermissionRequest(tc.permissionRequestId);
     useChatStore.getState().updateToolCall(tc.id, {
       status: decision === "allow" ? "running" : "error",
