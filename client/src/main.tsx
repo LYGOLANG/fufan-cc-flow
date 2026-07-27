@@ -28,18 +28,32 @@ async function initDesktopRuntime() {
 
   try {
     const { invoke } = await import("@tauri-apps/api/core");
-    const [port, token] = await Promise.all([
+    // 两项分别容错,不能用 Promise.all —— 那是全有全无:令牌调用失败会连带
+    // 让端口也拿不到,前端回落到默认 3001 而实际端口是随机的,直接连不上后端。
+    const [portResult, tokenResult] = await Promise.allSettled([
       invoke<number | null>("backend_port"),
       invoke<string | null>("backend_auth_token"),
     ]);
-    if (typeof port === "number" && port > 0) {
-      window.__BACKEND_PORT__ = port;
+
+    if (portResult.status === "fulfilled") {
+      if (typeof portResult.value === "number" && portResult.value > 0) {
+        window.__BACKEND_PORT__ = portResult.value;
+      }
+    } else {
+      console.error("[desktop] failed to resolve backend port", portResult.reason);
     }
-    if (typeof token === "string" && token) {
-      window.__AUTH_TOKEN__ = token;
+
+    if (tokenResult.status === "fulfilled") {
+      if (typeof tokenResult.value === "string" && tokenResult.value) {
+        window.__AUTH_TOKEN__ = tokenResult.value;
+      }
+    } else {
+      // 拿不到令牌时后端会把所有请求判 401,界面表现为「打开即空白」。
+      // 这条日志是排查该症状的第一线索。
+      console.error("[desktop] failed to resolve auth token", tokenResult.reason);
     }
   } catch (err) {
-    console.error("[desktop] failed to resolve backend port/token", err);
+    console.error("[desktop] failed to load Tauri API", err);
   }
 }
 
