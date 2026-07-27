@@ -53,6 +53,21 @@ const sessionModelCache = new Map<string, string>();
 const sessionEffortCache = new Map<string, string>();
 
 /**
+ * 传给 SDK 的 settingSources —— **必须列全 SDK 支持的三个源**。
+ *
+ * SDK 的语义是「省略 = 加载全部」,一旦显式传值就变成白名单,漏一项就是静默
+ * 少加载一份设置。曾经漏掉 "local",后果是 `.claude/settings.local.json`
+ * 写得进读不回:
+ *   - Claude Code 的「不再询问 / 始终允许」默认落在 localSettings
+ *     (SDK 的 PermissionUpdateDestination 含 'localSettings'),于是用户每次
+ *     重开应用都要把同一批权限重新确认一遍;
+ *   - Hooks 管理器里「项目本地」scope 配的钩子存得下却永不触发。
+ *
+ * 抽成常量并加测试,是因为这类「白名单漏项」不会报错、只会安静地少干活。
+ */
+export const CLAUDE_SETTING_SOURCES = ["user", "project", "local"] as const;
+
+/**
  * resume 前净化会话 JSONL 里的 assistant 消息 id。
  *
  * 背景:第三方 Anthropic 兼容端点(DeepSeek/GLM/Kimi 等)返回的 message id 不是
@@ -534,7 +549,8 @@ export class ClaudeAgentService extends EventEmitter {
         ...(options.ultracode ? { settings: { ultracode: true } } : {}),
         enableFileCheckpointing: true,
         includePartialMessages: true,
-        settingSources: ["user", "project"],
+        // 见 CLAUDE_SETTING_SOURCES 的注释:显式传值即白名单,必须列全
+        settingSources: [...CLAUDE_SETTING_SOURCES],
         abortController: controller,
         // F1.13:审计时间线 hooks(只读观察者)
         hooks: this.buildAuditHooks(sessionId),

@@ -30,7 +30,14 @@ impl Default for SpawnConfig {
             fork_session: false,
             session_id: None,
             include_partial_messages: true,
-            setting_sources: Some(vec!["user".to_string(), "project".to_string()]),
+            // 必须含 "local":.claude/settings.local.json 是「不再询问 / 始终允许」
+            // 规则的默认落盘位置,漏掉它会让权限确认在每次重启后重来一遍。
+            // 与 server/src/services/claudeAgentService.ts 的 settingSources 保持一致。
+            setting_sources: Some(vec![
+                "user".to_string(),
+                "project".to_string(),
+                "local".to_string(),
+            ]),
             add_dirs: Vec::new(),
             max_turns: None,
             max_budget_usd: None,

@@ -231,6 +231,13 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
     logger.info(`Permission requested for ${d.toolName} (${d.requestId})`);
   });
 
+  // 60s 超时后服务层已自动拒绝并放行流程,必须同步告诉前端,否则权限卡会永远
+  // 停在「等待确认」:后续到达的 tool_use_result 也救不回来(前端那个 handler
+  // 只处理 status === "running" 的卡片,而超时卡片仍是 awaiting_permission),
+  // 用户此时再点「允许」,requestId 早已失效,只会在服务端留一条 unknown request。
+  // 前端 useWebSocket 的 permission_timeout 分支一直是写好的,只差这条转发。
+  claude.on("permission_timeout", (d) => forward("permission_timeout", d));
+
   // ── Codex 引擎事件转发（无 assistant_thinking/new_turn/context_compact/
   //    permission_request —— codex exec 非交互模式不产出这些事件） ──
   codex.on("session_init", (d) => {
