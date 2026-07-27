@@ -58,6 +58,15 @@ export interface AgentServiceOptions {
   maxBudget?: number;
   /** 主模型失败(过载/限流)时自动降级的备用模型;仅官方端点注入 */
   fallbackModel?: string;
+  /**
+   * 扩展思考开关。
+   *
+   * 必须与 thinkingBudget 分开传:此前只有 budget,于是「关掉扩展思考」和
+   * 「开着但用自适应档位」产生的 payload 完全相同 —— 开关拨到关,模型该思考
+   * 还是思考,那个开关实际只是预算档位选择器的显示开关。
+   * false 时显式注入 thinking:{type:"disabled"},SDK 支持该取值。
+   */
+  thinking?: boolean;
   /** 扩展思考预算(tokens)。未设 = SDK 默认 adaptive;设置后经 thinking.budgetTokens 注入 */
   thinkingBudget?: number;
   /** MCP 配置版本号:MCP 面板每次改动自增,纳入进程指纹使改动下一轮生效 */

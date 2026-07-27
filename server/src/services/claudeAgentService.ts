@@ -220,6 +220,10 @@ function spawnFingerprint(o: AgentServiceOptions): string {
     // 官方端点跨家族换模型(opus↔sonnet)会因指纹变化走杀进程重启,
     // 架空 tryReuseLive 的 setModel 热切并连带杀掉后台 sub-agent。
     // 代价:热切后本进程的 fallback 链略陈旧(仅过载时触发、且指向同族,无害)。
+    // thinking 开关必须入指纹:它改变 query 的 thinking 参数,而常驻进程一旦
+    // 起来就不会重读参数。漏了它,用户拨动开关后当前会话毫无变化,要等下次
+    // 换进程才生效 —— 表现为「开关时灵时不灵」。
+    o.thinking !== false,
     o.thinkingBudget ?? 0,
     o.mcpVersion ?? 0,
     o.baseUrl ? (o.model ?? "") : "",
@@ -535,15 +539,21 @@ export class ClaudeAgentService extends EventEmitter {
         maxBudgetUsd: options.maxBudget,
         // F1.10:主模型过载/限流时自动降级备用模型(仅官方端点,由 chatHandler 推导)
         fallbackModel: options.fallbackModel,
-        // F1.11:扩展思考预算。未设 = SDK 默认 adaptive
-        ...(options.thinkingBudget
-          ? {
-              thinking: {
-                type: "enabled" as const,
-                budgetTokens: options.thinkingBudget,
-              },
-            }
-          : {}),
+        // F1.11:扩展思考。三态,缺一不可:
+        //   关闭        → 显式 disabled(否则「关」和「开+自适应」payload 完全相同,
+        //                 开关拨到关模型照样思考 —— 这正是此前的 bug)
+        //   开+指定预算 → enabled + budgetTokens
+        //   开+自适应   → 不传,交给 SDK 默认
+        ...(options.thinking === false
+          ? { thinking: { type: "disabled" as const } }
+          : options.thinkingBudget
+            ? {
+                thinking: {
+                  type: "enabled" as const,
+                  budgetTokens: options.thinkingBudget,
+                },
+              }
+            : {}),
         // ultracode（effort 第六档）：xhigh + 动态多智能体工作流编排。
         // 通过 flag 层 settings 注入；effort 已在上游被置为 "xhigh"。
         ...(options.ultracode ? { settings: { ultracode: true } } : {}),

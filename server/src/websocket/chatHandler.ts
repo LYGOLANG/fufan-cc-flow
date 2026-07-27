@@ -499,7 +499,10 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               maxBudget: (p.maxBudget as number) || undefined,
               // F1.10:自动降级备用模型(仅官方端点)
               fallbackModel: deriveFallbackModel(model, isCompat),
-              // F1.11:扩展思考预算(>0 才注入,0/缺省 = SDK adaptive)
+              // F1.11:扩展思考开关。只有前端显式传 false 才算「关」——
+              // 缺省(旧客户端/内部调用)保持原行为,不因为没传就把思考关掉。
+              thinking: p.thinking === false ? false : undefined,
+              // 扩展思考预算(>0 才注入,0/缺省 = SDK adaptive)
               thinkingBudget:
                 typeof p.thinkingBudget === "number" && p.thinkingBudget > 0
                   ? p.thinkingBudget

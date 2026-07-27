@@ -25,6 +25,8 @@ export interface EngineParams {
   codexEffort: string;
   providerId: string;
   apiKey?: string;
+  /** 扩展思考开关。只在关闭时传 false —— 见下方注释 */
+  thinking?: false;
   thinkingBudget?: number;
   maxBudget?: number;
 }
@@ -42,6 +44,11 @@ export function buildEngineParams(): EngineParams {
     codexEffort: cfg.codexEffort,
     providerId: cfg.providerId,
     apiKey: cfg.apiKey || undefined,
+    // 扩展思考关闭时显式传 false,让后端注入 thinking:{type:"disabled"}。
+    // 此前只传 budget,于是「关掉开关」和「开着但用自适应」的 payload 完全相同,
+    // 拨到关模型照样思考 —— 那个开关实际只是预算档位的显示开关。
+    // 只在关闭时传:开启是默认态,不传可兼容旧后端。
+    thinking: cfg.thinking ? undefined : false,
     // 仅在开启扩展思考且选了具体档位时注入(0 = 交给 SDK 自适应)
     thinkingBudget: cfg.thinking && cfg.thinkingBudget > 0 ? cfg.thinkingBudget : undefined,
     // 单次任务费用上限;0 = 不限制
