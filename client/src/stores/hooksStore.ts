@@ -133,9 +133,13 @@ interface HooksState {
   entries: FlatHookEntry[];
   scope: HooksScope;
   loading: boolean;
+  /** 上一次写盘失败的原因；成功或重新操作时清空 */
+  error: string | null;
 
   loadHooks: (scope?: HooksScope, project?: string) => Promise<void>;
   setScope: (scope: HooksScope, project?: string) => Promise<void>;
+  /** 写入一整份 entries：失败会回滚并记录 error，然后把错误继续抛给调用方 */
+  applyEntries: (next: FlatHookEntry[], project?: string) => Promise<void>;
   addEntry: (entry: FlatHookEntry, project?: string) => Promise<void>;
   removeEntry: (index: number, project?: string) => Promise<void>;
   updateEntry: (index: number, entry: FlatHookEntry, project?: string) => Promise<void>;
@@ -145,6 +149,7 @@ export const useHooksStore = create<HooksState>((set, get) => ({
   entries: [],
   scope: "user",
   loading: false,
+  error: null,
 
   loadHooks: async (scope, project) => {
     const s = scope || get().scope;
@@ -161,22 +166,42 @@ export const useHooksStore = create<HooksState>((set, get) => ({
     await get().loadHooks(scope, project);
   },
 
+  /**
+   * 先改 UI、写盘失败再回滚。
+   *
+   * 三个写入动作共用这一条路径。原先是「set 之后直接 await，失败既不回滚也不
+   * 上报」—— 磁盘满、~/.claude 只读、或后端未连接时，列表里 hook 已经加上/
+   * 删掉了，settings.json 却纹丝未动。用户以为配好了，实际根本没生效。
+   * 界面说谎比操作失败更危险：后者用户会重试，前者他压根不知道要重试。
+   */
+  applyEntries: async (next, project) => {
+    const prev = get().entries;
+    set({ entries: next, error: null });
+    try {
+      await api.saveHooks(unflattenEntries(next), get().scope, project);
+    } catch (err) {
+      set({
+        entries: prev, // 回滚到写盘前的样子，界面与磁盘保持一致
+        error: err instanceof Error ? err.message : "保存 hooks 失败",
+      });
+      throw err;
+    }
+  },
+
   addEntry: async (entry, project) => {
-    const entries = [...get().entries, entry];
-    set({ entries });
-    await api.saveHooks(unflattenEntries(entries), get().scope, project);
+    await get().applyEntries([...get().entries, entry], project);
   },
 
   removeEntry: async (index, project) => {
-    const entries = get().entries.filter((_, i) => i !== index);
-    set({ entries });
-    await api.saveHooks(unflattenEntries(entries), get().scope, project);
+    await get().applyEntries(
+      get().entries.filter((_, i) => i !== index),
+      project
+    );
   },
 
   updateEntry: async (index, entry, project) => {
     const entries = [...get().entries];
     entries[index] = entry;
-    set({ entries });
-    await api.saveHooks(unflattenEntries(entries), get().scope, project);
+    await get().applyEntries(entries, project);
   },
 }));

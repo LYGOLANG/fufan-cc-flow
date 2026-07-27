@@ -3,6 +3,7 @@ import { homedir } from "os";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { logger } from "../utils/logger.js";
+import { runClaudeCommand } from "../utils/runClaudeCommand.js";
 import { parseCodexMcpServers } from "../utils/codexConfig.js";
 
 interface McpServerConfig {
@@ -39,31 +40,9 @@ export function bumpMcpConfigVersion(): void {
 }
 
 export class McpService {
+  /** 委托给共用实现（自带超时与进程清理）；保留本方法以免改动 4 个调用点 */
   private async runClaude(args: string[], customEnv?: Record<string, string>): Promise<string> {
-    return new Promise((resolve, reject) => {
-      // 必须 shell:false + 绝对路径 + 数组 argv:args 由请求体拼装(MCP server 名、
-      // url、command、env 值),shell:true 会把 argv 拼成单条 shell 字符串,其中的
-      // `;` `&&` 反引号会被执行 → 命令注入。spawnClaude 内部对 .cmd/.bat 用
-      // cmd /c + 数组参数包装,同样不经 shell 解析。
-      const proc = spawnClaude(args, { env: customEnv || { ...process.env } });
-      if (!proc) {
-        reject(new Error("未找到 claude 可执行文件"));
-        return;
-      }
-      let stdout = "";
-      let stderr = "";
-      proc.stdout?.on("data", (d) => (stdout += d.toString()));
-      proc.stderr?.on("data", (d) => (stderr += d.toString()));
-      proc.on("close", (code) => {
-        if (code !== 0) {
-          logger.warn(`claude mcp command failed: ${stderr}`);
-          reject(new Error(stderr || `Exit code ${code}`));
-        } else {
-          resolve(stdout.trim());
-        }
-      });
-      proc.on("error", reject);
-    });
+    return runClaudeCommand(args, { env: customEnv, label: "mcp" });
   }
 
   /**

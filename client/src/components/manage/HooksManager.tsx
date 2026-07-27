@@ -65,6 +65,9 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default function HooksManager() {
   const { entries, scope, loading, loadHooks, setScope, addEntry, removeEntry, updateEntry } = useHooksStore();
+  // 写盘失败时 store 会回滚并记下原因，这里把它显示出来 ——
+  // 只回滚不提示的话，用户会看到自己刚加的 hook 凭空消失，更莫名其妙。
+  const saveError = useHooksStore((s) => s.error);
   const projectPath = useUIStore((s) => s.projectPath);
 
   const [showAdd, setShowAdd] = useState(false);
@@ -97,8 +100,12 @@ export default function HooksManager() {
   const handleAdd = () => {
     const handler = buildHandler(addType, addCommand, addUrl, addPrompt, addTimeout, addAsync);
     if (!handler) return;
-    addEntry({ event: addEvent, matcher: addMatcher.trim(), handler }, projectPath);
-    resetAddForm();
+    // 成功才清表单:失败还清掉的话,用户填的内容白没了
+    void addEntry({ event: addEvent, matcher: addMatcher.trim(), handler }, projectPath)
+      .then(() => resetAddForm())
+      .catch(() => {
+        /* 原因已记录在 store.error，界面顶部会显示 */
+      });
   };
 
   const startEdit = (index: number) => {
@@ -109,9 +116,14 @@ export default function HooksManager() {
 
   const handleSaveEdit = () => {
     if (editing === null || !editEntry) return;
-    updateEntry(editing, editEntry, projectPath);
-    setEditing(null);
-    setEditEntry(null);
+    void updateEntry(editing, editEntry, projectPath)
+      .then(() => {
+        setEditing(null);
+        setEditEntry(null);
+      })
+      .catch(() => {
+        /* 保持编辑态,用户可以改完重试;原因见顶部提示 */
+      });
   };
 
   const handleScopeChange = (s: HooksScope) => {
@@ -137,6 +149,17 @@ export default function HooksManager() {
 
   return (
     <div className="p-3 space-y-3">
+      {/* 写盘失败提示。store 已把列表回滚到写盘前的样子，若不给出原因，
+          用户只会看到自己刚加的 hook 凭空消失。 */}
+      {saveError && (
+        <div className="rounded-md border border-rose-err/25 bg-rose-err/5 px-2.5 py-2">
+          <p className="text-[11px] text-rose-err">保存失败：{saveError}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            改动已撤销，settings.json 未被修改。
+          </p>
+        </div>
+      )}
+
       {/* ── Scope tabs ── */}
       <div className="flex gap-1 p-0.5 rounded-lg bg-white/[0.03] border border-white/5">
         {(["user", "project", "project-local"] as HooksScope[]).map((s) => (
@@ -400,7 +423,7 @@ export default function HooksManager() {
                               <Pencil size={10} />
                             </button>
                             <button
-                              onClick={() => removeEntry(globalIdx, projectPath)}
+                              onClick={() => void removeEntry(globalIdx, projectPath).catch(() => {})}
                               className="p-1 rounded-md hover:bg-rose-err/10 text-slate-400 hover:text-rose-err transition-colors"
                             >
                               <Trash2 size={10} />

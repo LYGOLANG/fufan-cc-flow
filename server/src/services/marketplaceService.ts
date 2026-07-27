@@ -3,6 +3,7 @@ import { homedir } from "os";
 import { promises as fs } from "fs";
 import { join } from "path";
 import { logger } from "../utils/logger.js";
+import { runClaudeCommand } from "../utils/runClaudeCommand.js";
 
 export interface MarketplacePlugin {
   name: string;
@@ -32,27 +33,9 @@ const INSTALL_COUNTS_CACHE_PATH = join(PLUGINS_DIR, "install-counts-cache.json")
 const MARKETPLACES_DIR = join(PLUGINS_DIR, "marketplaces");
 
 export class MarketplaceService {
+  /** 委托给共用实现（自带超时与进程清理）；保留本方法以免改动 2 个调用点 */
   private async runClaude(args: string[]): Promise<string> {
-    return new Promise((resolve, reject) => {
-      // shell:false + 绝对路径 + 数组 argv,防命令注入(args 含请求体传入的 marketplace 名/URL)
-      const proc = spawnClaude(args, { env: { ...process.env } });
-      if (!proc) {
-        reject(new Error("未找到 claude 可执行文件"));
-        return;
-      }
-      let stdout = "";
-      let stderr = "";
-      proc.stdout?.on("data", (d: Buffer) => (stdout += d.toString()));
-      proc.stderr?.on("data", (d: Buffer) => (stderr += d.toString()));
-      proc.on("close", (code: number | null) => {
-        if (code !== 0) {
-          reject(new Error(stderr || `Exit code ${code}`));
-        } else {
-          resolve(stdout.trim());
-        }
-      });
-      proc.on("error", reject);
-    });
+    return runClaudeCommand(args, { label: "marketplace" });
   }
 
   async listMarketplaces(): Promise<Marketplace[]> {
