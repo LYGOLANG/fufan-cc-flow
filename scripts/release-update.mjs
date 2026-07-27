@@ -59,6 +59,31 @@ if (!exe || !sig) {
   process.exit(1);
 }
 
+// ── 签名与安装包必须来自同一次构建 ──
+//
+// 版本号相同不代表同批。触发场景很平常:带签名密钥打包出 exe+sig,之后换个
+// 没有 export 环境变量的终端重打同一版本 —— package-desktop 此时会**静默**
+// 关掉 updater 产物(createUpdaterArtifacts:false),NSIS 覆盖了 exe,而上一次
+// 的 .sig 原地不动(tauri 只写新 sig、从不删旧的)。于是新包配旧签名,
+// latest.json 照样生成,发出去所有人验签失败 —— 且发布方毫无察觉。
+//
+// tauri 总是先写 exe、再写 sig,所以 mtime(sig) >= mtime(exe) 是同批的可靠特征。
+// 实测:合法产物的 sig 比 exe 晚 1~3 秒。
+const exeStat = fs.statSync(path.join(bundleDir, exe));
+const sigStat = fs.statSync(path.join(bundleDir, sig));
+if (sigStat.mtimeMs < exeStat.mtimeMs) {
+  const lagSec = Math.round((exeStat.mtimeMs - sigStat.mtimeMs) / 1000);
+  console.error(
+    `签名比安装包旧 ${lagSec} 秒 —— 它们不是同一次构建的产物。\n` +
+      `  exe: ${exeStat.mtime.toISOString()}\n` +
+      `  sig: ${sigStat.mtime.toISOString()}\n` +
+      `多半是最近一次打包没带 TAURI_SIGNING_PRIVATE_KEY:NSIS 覆盖了安装包,\n` +
+      `旧签名却留了下来。这样发出去,所有用户的自动更新都会验签失败。\n` +
+      `请带签名私钥重新打包后再发布。`
+  );
+  process.exit(1);
+}
+
 // GitHub 会把 release 资产文件名中的空格替换成点("Agent Flow_..." → "Agent.Flow_...")，
 // 导致 latest.json 里的 url 与真实下载地址对不上。统一去掉空格,所见即所得。
 const assetName = exe.replace(/\s+/g, "");

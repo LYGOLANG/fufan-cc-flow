@@ -25,9 +25,15 @@ const CONTEXT_CATALOG: Array<{ test: RegExp; window: number }> = [
   { test: /^(glm|chatglm)/i, window: 200_000 },
   // Claude 当代模型默认 1M(2026-06 官方模型目录核对):
   // Fable 5 / Mythos 5 / Sonnet 5 / Opus 4.6~4.8 / Sonnet 4.6 上下文窗口均为 1M
-  { test: /^claude-(fable|mythos|sonnet)-5/i, window: 1_000_000 },
-  { test: /^claude-opus-4-[678]/i, window: 1_000_000 },
-  { test: /^claude-sonnet-4-6/i, window: 1_000_000 },
+  //
+  // 这里刻意把代次写成开区间(5 及以上、4-6 及以上),而不是逐个列举:
+  // 原先是 `(fable|mythos|sonnet)-5` + `opus-4-[678]`,**漏了 opus-5** ——
+  // 一旦 Opus 5 发布,它会掉到最后的 200K 兜底,后果不只是进度条虚高 5 倍,
+  // 而是自动压缩在真实用量约 19% 时就触发(95% 阈值 × 200K/1M),无声吞掉
+  // 用户的对话历史。同类风险对 sonnet-6、opus-4-9 等未来型号一样成立。
+  { test: /^claude-(fable|mythos|sonnet|opus)-(?:[5-9]|\d{2,})/i, window: 1_000_000 },
+  { test: /^claude-opus-4-(?:[6-9]|\d{2,})/i, window: 1_000_000 },
+  { test: /^claude-sonnet-4-(?:[6-9]|\d{2,})/i, window: 1_000_000 },
   // Haiku 系列仍是 200K
   { test: /^(claude-haiku|claude-3.*haiku|haiku$)/i, window: 200_000 },
   // 裸别名 opus/sonnet 解析到最新代 → 1M
