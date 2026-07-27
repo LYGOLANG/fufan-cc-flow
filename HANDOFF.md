@@ -21,28 +21,31 @@ v0.1.20 尚未发布。
 
 ## 下一步（按顺序）
 
-1. **打包 v0.1.20**（若尚未完成）
-   ```bash
-   export TAURI_SIGNING_PRIVATE_KEY="$(cat 'D:/cc-flow-secrets/fufan-ccflow.key')"
-   export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
-   pnpm package:desktop
-   ```
-   必须带签名密钥，否则不生成 updater 产物（`.sig`）。
+1. ~~打包 v0.1.20~~ **已完成**
+   - 产物：`release/Agent Flow_0.1.20_x64-setup.exe`（94.6 MB，2026-07-27 14:55）
+   - 签名：`.sig` 晚于 `.exe` 3 秒，确认同一次构建
+   - 隐私审计通过：sidecar 内 evolution 已排除、无密钥字符串
+   - 前端主 chunk 未退化，vendor-react 正常分离
 
-2. **安装并实测鉴权链路** ← 卡在这里的原因见下方「注意」
-   装完后要验证三件事：
-   - 应用能正常加载（不是白屏）。白屏 = 前端没拿到令牌，
-     去 DevTools console 找 `[desktop] failed to resolve auth token`
-   - 日志 `%LOCALAPPDATA%\com.fufan.ccflow\logs\Agent Flow.log` 里应有
-     `[auth] 接口鉴权已启用`
-   - 外部 curl 打后端应被拒：
-     ```bash
-     # 端口是随机的，从日志里找 "server running on http://127.0.0.1:<port>"
-     curl -s --noproxy '*' http://127.0.0.1:<port>/api/providers -w " <- %{http_code}"
-     # 期望 401
-     ```
+2. **安装并实测鉴权链路** ← 当前卡在这里，原因见下方「注意」
+
+   装完直接运行现成脚本（会自动定位端口、以外部进程身份打接口）：
+   ```bash
+   node scripts/verify-auth.mjs
+   ```
+   期望输出：鉴权已启用 / 外部调用全部 401 / `/api/health` 仍 200。
+
+   若应用**白屏**，说明前端没拿到令牌 → 打开 DevTools console 找
+   `[desktop] failed to resolve auth token`，同时检查 Rust 侧
+   `backend_auth_token` command 是否注册成功（`lib.rs` 的 `generate_handler!`）。
+
+   回滚办法：重装 v0.1.19（`release/updates/AgentFlow_0.1.19_x64-setup.exe`），
+   或临时在 sidecar.rs 里去掉 `.env("CC_FLOW_AUTH_TOKEN", ...)` 重新打包
+   （后端无该变量即整体放行）。
 
 3. 实测通过后再决定是否发布 v0.1.20（发布流程见下）
+
+   **未实测前不要发布**：鉴权链路一旦断了，症状是所有用户白屏。
 
 ## 注意（重要）
 
