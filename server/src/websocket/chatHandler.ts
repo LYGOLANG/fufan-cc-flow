@@ -55,9 +55,26 @@ interface ProjectSession {
   detach: () => void;
   /** 寄存宽限计时器;非 null 表示当前无 socket 绑定、正等待重连认领。 */
   parkTimer: ReturnType<typeof setTimeout> | null;
+  /**
+   * 断线期间被丢弃的最后一个终态事件，等重连认领时补发。
+   * 没有它的话，闪断中结束的那一轮永远不会通知到前端。
+   */
+  missedTerminal: { event: string; data: Record<string, unknown>; at: number } | null;
 }
 const sessionsByProject = new Map<string, ProjectSession>();
 const PARK_GRACE_MS = 30_000;
+
+/**
+ * 「一轮结束」类事件。断线期间丢掉它们，前端的 isStreaming 就永远落不下来，
+ * 表现为停在「正在思考…」而任务其实早已结束。故这几个要记下来、重连时补发。
+ */
+const TERMINAL_EVENTS = new Set(["task_complete", "aborted", "process_close"]);
+
+/**
+ * 补发的时效上限。超过这个时间的终态没有补发价值 —— 用户多半已经重开过会话，
+ * 此时冒出一条陈旧的任务结果卡片反而困惑。
+ */
+const MISSED_TERMINAL_TTL_MS = 10 * 60_000;
 
 /**
  * F1.10:按模型家族推导自动降级链(opus→sonnet→haiku;haiku/未知不降级)。
@@ -173,6 +190,7 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
     workflowRun: null,
     detach: () => {},
     parkTimer: null,
+    missedTerminal: null,
   };
   const { claude, codex } = session;
 
@@ -184,17 +202,29 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
   const forward = (event: string, data: Record<string, unknown>) => {
     if (ws.readyState === ws.OPEN) {
       ws.send(serverMsg(event, data));
-    } else {
-      logger.warn(
-        `[forward] Socket not open (state=${ws.readyState}), dropping event: ${event}`,
-      );
+      return;
     }
+    // socket 不在时事件只能丢。但**终态事件丢不得**:前端的 isStreaming 要靠
+    // 它才能落下来。典型场景是网络闪断(非页面刷新,前端 isStreaming 仍为 true),
+    // 断开期间这一轮跑完了 —— task_complete 被丢弃、claude.turnActive 随之变 false,
+    // 于是重连时下面那段以 isTurnActive() 为条件的重同步也不触发,
+    // 结果前端永远停在「正在思考…」,而任务其实早就结束了。
+    // 记下最后一个被丢弃的终态,重连认领时补发。
+    if (TERMINAL_EVENTS.has(event)) {
+      session.missedTerminal = { event, data, at: Date.now() };
+    }
+    logger.warn(
+      `[forward] Socket not open (state=${ws.readyState}), dropping event: ${event}`,
+    );
   };
 
   // ── Claude 引擎事件转发 ──
   claude.on("session_init", (d) => {
     session.activeSessionId = d.sessionId;
     if (d.model) session.activeModel = d.model as string;
+    // 新一轮开始，上一轮遗留的待补发终态作废 —— 否则重连时会冒出一条属于
+    // 上一轮的任务结果卡片，看起来像刚发的消息瞬间就结束了。
+    session.missedTerminal = null;
     registerAgent(d.sessionId, claude);
     updateSessionId(projectPath, d.sessionId);
     forward("session_init", d);
@@ -301,6 +331,20 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
   // 一轮任务在跑,它收到的 assistant_text 会被丢弃、且无停止按钮/运行指示。补发一个
   // session_init 让它重新进入流式态;并把尚未决断的权限请求重放出来,不让危险工具确认
   // 卡在无人看的缓冲里直到 60s 超时。
+  // 先补发断线期间丢掉的终态。它处理的正是下面那段覆盖不到的情况:
+  // 闪断中这一轮跑完了 → turnActive 已变 false → 以 isTurnActive() 为条件的
+  // 重同步不触发 → 前端永远停在「正在思考…」。
+  if (adopted && session.missedTerminal) {
+    const missed = session.missedTerminal;
+    session.missedTerminal = null;
+    if (Date.now() - missed.at <= MISSED_TERMINAL_TTL_MS) {
+      logger.info(`[resync] 补发断线期间丢失的终态: ${missed.event}`);
+      forward(missed.event, missed.data);
+    } else {
+      logger.info(`[resync] 丢弃过期的终态(${missed.event}),不再补发`);
+    }
+  }
+
   if (adopted && session.activeEngine === "claude" && claude.isTurnActive()) {
     const sid = claude.getActiveSessionId() ?? session.activeSessionId;
     if (sid) {
