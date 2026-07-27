@@ -168,6 +168,7 @@
 
 **交付内容**：
 - 用 Rust 迁移 Agents、Teams、Memory、Workflows、后台任务和审计时间线。
+- **Workflows 的迁移范围包含 Phase 12-14 建成的编排引擎**，不只是 CRUD：状态机、变量传递与失败处置需按 Phase 12 定义的抽象接口在 Rust 侧重新实现，行为以编排引擎上线后的表现为基准（见 `Product-Spec.md` 第 11.3 节）。
 - 保持子 Agent 隔离、任务状态同步、workflow 增删改和运行事件语义。
 - 补齐失败/循环/中断状态持久化与重启恢复。
 
@@ -237,6 +238,69 @@
 |------|-----------|------|
 | 无 | 无 | 本功能不引入数据库，状态来自文件系统和现有前端 store |
 
+## Phase 12: 工作流编排引擎内核（Node 侧，与传输层解耦）
+
+> 本 Phase 及 13、14 属**功能开发**，不在纯 Rust 迁移序列内，优先级高于 Phase 3-11。
+> 需求见 `REQUIREMENTS.md` 2.5（F5.1-F5.8），实现位置决策见 `Product-Spec.md` 第 11 节。
+
+**交付内容**：
+- 扩展工作流数据结构以承载编排语义：步骤级新增输出变量名与失败策略，字段一律可选，旧工作流文件不加改动即可读取。
+- 实现线性编排状态机：顺序推进、变量替换、单步失败后暂停并等待处置（重试/跳过/中止）、可中断。
+- 定义「执行单步」抽象接口，状态机只依赖该接口，不 import 任何 Express/ws/HTTP 类型，以保证后续 Rust 迁移是翻译而非重新设计。
+- 用 fake 执行器覆盖状态机全部分支的单元测试，不依赖真实模型调用。
+
+**关键文件**：
+- `client/src/types/workflow.ts` — `WorkflowStep` 增 `outputVar?`、`onFailure?`；`Workflow` 增 `version?`。
+- `server/src/services/workflow/types.ts` — 运行态类型：`RunState`、`StepState`、`StepResult`、`FailureAction`。
+- `server/src/services/workflow/stepRunner.ts` — `StepRunner` 接口：`runStep({ prompt, agent, signal }) => Promise<StepResult>`。
+- `server/src/services/workflow/engine.ts` — 状态机；变量替换复用现有 `$name` 语法。
+- `server/src/services/workflow/engine.test.ts` — fake StepRunner 驱动的分支覆盖测试。
+
+**验收标准**：
+- 三步工作流按序推进，第 N+1 步在第 N 步返回后才启动（fake 执行器断言调用顺序）。
+- 第 1 步声明 `outputVar`、第 2 步引用 `$var`，第 2 步收到的 prompt 中变量已被实际产出替换。
+- 单步失败时状态机停在该步等待处置；重试重跑该步、跳过进入下一步、中止结束整个运行，三条路径均有测试。
+- 中断信号触发后不再启动后续步骤，已完成步骤的产出保留在运行态里。
+- `engine.ts` 中不出现 Express/ws/http 相关 import（可用 grep 断言）。
+
+## Phase 13: 接入真实执行与运行态反馈
+
+**交付内容**：
+- 实现 Node 版 `StepRunner`：复用当前项目会话的 `claudeAgentService`，把事件驱动的一轮任务包装成 Promise（`task_complete` 视为完成，累积 `assistant_text` 作为该步产出，`error`/`close` 视为失败）。
+- 新增工作流运行的 WebSocket 协议：启动、逐步状态推送、失败待处置、用户处置指令、运行结束。
+- 前端展示运行态：当前第几步、每步状态与耗时、产出可展开、失败原因可见；提供重试/跳过/中止与全局停止。
+
+**关键文件**：
+- `server/src/services/workflow/claudeStepRunner.ts` — 事件转 Promise，含超时与中断透传。
+- `server/src/websocket/chatHandler.ts` — 新增 `workflow_start` / `workflow_resolve` / `workflow_abort` 入站动作与对应出站事件转发。
+- `client/src/stores/workflowStore.ts` — 运行态 store（当前运行、各步状态、待处置项）。
+- `client/src/hooks/useWebSocket.ts` — 新增工作流事件分支。
+- `client/src/components/agent/WorkflowManager.tsx` — 运行态面板与失败处置交互，替换当前「填入输入框」的执行路径。
+
+**验收标准**：
+- 点击执行后工作流真实运行：可在界面看到步骤逐个由等待变为运行中再变为成功，且第 N+1 步确实在第 N 步结束后才开始。
+- 步骤间数据传递在真实运行中生效：第 2 步的产出内容体现出它读到了第 1 步的结论。
+- 手动制造一步失败（如指定不存在的 Agent）时，运行暂停并弹出处置选项，选择跳过后其余步骤继续。
+- 运行中点停止：当前步骤被中止，后续不再启动，已完成步骤产出仍可见。
+- 断线重连不产生「运行中」假状态：重连后要么恢复真实运行态，要么明确标记为已中断。
+
+## Phase 14: 工作流编辑器支持编排字段
+
+**交付内容**：
+- 编辑器支持为每个步骤配置输出变量名与失败策略，未配置时保持零配置可用。
+- 变量面板区分「运行前需填写的输入变量」与「由步骤产出的输出变量」，避免用户混淆。
+- 保存前校验：变量名合法、被引用的变量必须在引用步骤之前产出。
+
+**关键文件**：
+- `client/src/components/agent/WorkflowManager.tsx` — `WorkflowEditor` 增字段与校验提示。
+- `server/src/services/workflowService.ts` — 保存时的服务端校验（前端校验不可信）。
+- `server/src/services/workflowService.test.ts` — 校验规则测试。
+
+**验收标准**：
+- 新建工作流可为步骤指定输出变量，并在后续步骤的提示词里通过 `$名称` 引用。
+- 引用了尚未产出的变量时保存被拒绝，并明确指出是哪一步引用了哪个变量。
+- 旧工作流打开后不显示任何报错，保存后仍可被旧版本读取（新增字段可选）。
+
 ## 功能依赖图
 
 ```text
@@ -256,6 +320,13 @@ Phase 8 ─┘
 Phase 4 + 5 + 6 + 7 + 8 + 9
   └─ Phase 10 删除 Node 与发布
        └─ Phase 11 Rust Web/远程 adapter（P1）
+
+功能开发线（独立于迁移序列，优先级更高）：
+Phase 12 编排引擎内核
+  └─ Phase 13 真实执行与运行态
+       └─ Phase 14 编辑器编排字段
+            └─ 并入 Phase 9 的 Rust 迁移范围
+                 └─ 必须先于 Phase 10（删除 Node sidecar）完成迁移
 ```
 
 ## 开发规则
