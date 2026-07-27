@@ -4,6 +4,7 @@ import { setupWebSocket } from "./websocket/index.js";
 import { shutdownAllSessions } from "./websocket/chatHandler.js";
 import { initTaskRegistry } from "./services/taskRegistry.js";
 import { logger } from "./utils/logger.js";
+import { isAuthEnabled } from "./middleware/auth.js";
 
 const PORT = Number(process.env.PORT) || 3001;
 
@@ -63,4 +64,11 @@ const HOST = process.env.HOST || "127.0.0.1";
 server.listen(PORT, HOST, () => {
   logger.info(`Agent Flow server running on http://${HOST}:${PORT}`);
   logger.info("WebSocket endpoints: /ws/chat");
+  // 显式打印鉴权状态:漏注入 CC_FLOW_AUTH_TOKEN 会静默退回「本机任何进程都能调」,
+  // 这条日志是发现该配置漂移的唯一线索。
+  logger.info(
+    isAuthEnabled()
+      ? "[auth] 接口鉴权已启用(仅持有令牌的调用方可访问)"
+      : "[auth] 接口鉴权未启用 —— 本机任意进程均可调用 API(开发模式预期如此)"
+  );
 });

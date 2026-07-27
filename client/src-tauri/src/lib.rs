@@ -16,6 +16,16 @@ fn backend_port(state: State<'_, AppState>) -> Option<u16> {
     *state.backend_port.lock().unwrap()
 }
 
+/// 前端取本次运行的接口访问令牌。
+///
+/// 只有跑在本应用 WebView 里的前端能调到这个 command,所以令牌不会落到其它
+/// 进程手里 —— 这正是「谁能调后端接口」这条边界的实现方式。dev 模式返回
+/// None(后端也没启用鉴权)。
+#[tauri::command]
+fn backend_auth_token(state: State<'_, AppState>) -> Option<String> {
+    state.auth_token.lock().unwrap().clone()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -37,6 +47,7 @@ pub fn run() {
             shutdown_project,
             resolve_project_path,
             backend_port,
+            backend_auth_token,
             system_proxy,
             webview_heartbeat,
             crash_recovery_state,
@@ -56,9 +67,11 @@ pub fn run() {
                 // 先收割上次运行残留的孤儿 sidecar(崩溃/强杀时 ExitRequested 不触发,
                 // 清理逻辑跑不到),否则残留会持续攥着 node.exe 句柄导致安装失败
                 sidecar::reap_orphans(app.handle());
-                let port = sidecar::spawn(app.handle())?;
+                let (port, token) = sidecar::spawn(app.handle())?;
                 let state = app.state::<AppState>();
                 *state.backend_port.lock().unwrap() = Some(port);
+                // 令牌只存在内存里,前端经 backend_auth_token 取。不落盘、不进命令行。
+                *state.auth_token.lock().unwrap() = Some(token);
             }
 
             // WebView 崩溃自愈看门狗:渲染进程崩了(实测 STATUS_BREAKPOINT)窗口会被
@@ -77,7 +90,9 @@ pub fn run() {
                 // 先让后端优雅收尾(中止运行中任务 + 落盘"被中止"登记,限时),再硬杀 sidecar 兜底
                 let port = *app_handle.state::<AppState>().backend_port.lock().unwrap();
                 if let Some(port) = port {
-                    sidecar::graceful_shutdown(port);
+                    // 后端启用鉴权后,这个内部请求同样要带令牌,否则收尾会被 401 挡掉
+                    let token = app_handle.state::<AppState>().auth_token.lock().unwrap().clone();
+                    sidecar::graceful_shutdown(port, token.as_deref());
                 }
                 sidecar::kill(app_handle);
             }

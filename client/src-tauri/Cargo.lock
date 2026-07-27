@@ -80,6 +80,7 @@ name = "app"
 version = "0.1.19"
 dependencies = [
  "cc-core",
+ "getrandom 0.2.17",
  "log",
  "serde",
  "serde_json",

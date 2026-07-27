@@ -27,6 +27,9 @@ tauri-plugin-shell = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tokio = { version = "1", features = ["sync"] }
+# 只用来生成接口访问令牌。选 getrandom 而非 rand:它已经在依赖树里(tauri 的
+# 传递依赖),直接取 OS 熵源,不引入额外的传递依赖。
+getrandom = "0.2"
 cc-core = { path = "../../desktop/crates/cc-core" }
 tauri-plugin-opener = "2.5.4"
 

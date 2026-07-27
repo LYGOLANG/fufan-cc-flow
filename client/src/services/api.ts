@@ -3,7 +3,7 @@ import type { ProviderInfo, ProviderTestResult } from "../types/provider";
 import type { McpServer } from "../types/mcp";
 import type { SkillInfo, SkillDetail, SkillGenerateResult } from "../types/skill";
 import type { PluginInfo } from "../types/plugin";
-import { httpBase } from "./endpoint";
+import { httpBase, authHeaders } from "./endpoint";
 
 // Base is resolved per-call: relative "/api" under Vite dev (proxied), or a direct
 // http://localhost:<port>/api when running as a packaged desktop/static build.
@@ -16,8 +16,11 @@ async function request<T>(
   // Only set Content-Type when there's a body.
   // GET requests with Content-Type trigger CORS preflight even for simple
   // cross-origin requests, adding unnecessary latency on Windows/proxy setups.
-  const headers: Record<string, string> =
-    options?.body != null ? { "Content-Type": "application/json" } : {};
+  const headers: Record<string, string> = {
+    ...(options?.body != null ? { "Content-Type": "application/json" } : {}),
+    // 桌面版的接口令牌;dev 无令牌时为空对象,不产生额外的头
+    ...authHeaders(),
+  };
   const res = await fetch(`${httpBase()}${path}`, {
     headers,
     ...options,
@@ -188,9 +191,11 @@ export const api = {
     request<FileNode>(
       `/files/tree?path=${encodeURIComponent(projectPath)}&depth=${depth}`
     ),
-  getFileContent: (filePath: string) =>
+  // root 用于限定读取范围(后端只允许项目根与 Claude/Codex 配置目录)。
+  // 技能浏览器读的是配置目录下的文件,不传 root 也能命中那两个根。
+  getFileContent: (filePath: string, root?: string) =>
     request<FileContent>(
-      `/files/content?path=${encodeURIComponent(filePath)}`
+      `/files/content?path=${encodeURIComponent(filePath)}${root ? `&root=${encodeURIComponent(root)}` : ""}`
     ),
   searchFiles: (projectPath: string, query: string) =>
     request<{ results: { path: string; type: string }[] }>(
@@ -298,7 +303,7 @@ export const api = {
   generateSkill: async (description: string, model?: string, signal?: AbortSignal) => {
     const res = await fetch(`${httpBase()}/skills/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ description, model }),
       signal,
     });
@@ -529,7 +534,8 @@ export const api = {
     form.append("originalName", file.name);
     const res = await fetch(
       `${httpBase()}/attachments/upload?project=${encodeURIComponent(projectPath)}`,
-      { method: "POST", body: form }
+      // FormData 的 Content-Type 交给浏览器自动带 boundary,这里只加鉴权头
+      { method: "POST", body: form, headers: authHeaders() }
     );
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: res.statusText }));

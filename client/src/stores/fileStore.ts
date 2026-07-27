@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { FileNode, FileContent } from "../types/file";
 import { api } from "../services/api";
+import { useUIStore } from "./uiStore";
 
 interface FileState {
   tree: FileNode | null;
@@ -61,7 +62,11 @@ export const useFileStore = create<FileState>((set, get) => ({
   openFile: async (filePath) => {
     set({ fileLoading: true, openFilePath: filePath });
     try {
-      const content = await api.getFileContent(filePath);
+      // 带上当前项目根:后端据此限定可读范围(项目内 + Claude/Codex 配置目录)
+      const content = await api.getFileContent(
+        filePath,
+        useUIStore.getState().projectPath || undefined
+      );
       set({ openFileContent: content, fileLoading: false });
     } catch {
       set({ fileLoading: false, openFileContent: null });

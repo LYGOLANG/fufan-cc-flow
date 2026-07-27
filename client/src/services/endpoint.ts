@@ -18,7 +18,38 @@ const DEFAULT_BACKEND_PORT = 3001;
 declare global {
   interface Window {
     __BACKEND_PORT__?: number;
+    /** 桌面版的接口访问令牌,由 Tauri 外壳在启动时注入(见 main.tsx) */
+    __AUTH_TOKEN__?: string;
   }
+}
+
+/**
+ * 接口访问令牌。
+ *
+ * 桌面版由 Tauri 外壳生成随机值、同时注入后端 sidecar 与前端,本机其它进程
+ * 拿不到 —— 这是「谁能调这套接口」的边界。dev 模式下不存在该令牌,后端也
+ * 不会校验,返回空串即可。
+ */
+export function authToken(): string {
+  return (typeof window !== "undefined" && window.__AUTH_TOKEN__) || "";
+}
+
+/** 需要鉴权时附加的请求头;无令牌返回空对象,不影响 dev */
+export function authHeaders(): Record<string, string> {
+  const token = authToken();
+  return token ? { "x-cc-flow-token": token } : {};
+}
+
+/**
+ * 给 WebSocket 地址拼上令牌。
+ *
+ * 浏览器的 WebSocket API 不支持自定义握手头,只能走 query —— 这是该协议的
+ * 固有限制,不是偷懒。令牌只在本机回环上传输,不出网。
+ */
+export function withAuthQuery(url: string): string {
+  const token = authToken();
+  if (!token) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
 }
 
 function backendPort(): number {
@@ -46,16 +77,16 @@ export function httpBase(): string {
 export function wsChatUrl(projectQuery: string): string {
   if (import.meta.env.DEV || isWebOrigin()) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}/ws/chat${projectQuery}`;
+    return withAuthQuery(`${protocol}//${window.location.host}/ws/chat${projectQuery}`);
   }
-  return `ws://localhost:${backendPort()}/ws/chat${projectQuery}`;
+  return withAuthQuery(`ws://localhost:${backendPort()}/ws/chat${projectQuery}`);
 }
 
 /** WebSocket /ws/terminal 完整地址,选址规则同 wsChatUrl。 */
 export function wsTerminalUrl(query: string): string {
   if (import.meta.env.DEV || isWebOrigin()) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}/ws/terminal?${query}`;
+    return withAuthQuery(`${protocol}//${window.location.host}/ws/terminal?${query}`);
   }
-  return `ws://localhost:${backendPort()}/ws/terminal?${query}`;
+  return withAuthQuery(`ws://localhost:${backendPort()}/ws/terminal?${query}`);
 }

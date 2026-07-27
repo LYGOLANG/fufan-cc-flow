@@ -5,6 +5,7 @@ import path from "path";
 import apiRouter from "./routes/index.js";
 import { logger } from "./utils/logger.js";
 import { statusOf, messageOf } from "./utils/httpError.js";
+import { authMiddleware } from "./middleware/auth.js";
 
 const app: Express = express();
 
@@ -37,7 +38,9 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.use("/api", apiRouter);
+// 鉴权闸门必须在业务路由之前:CC_FLOW_AUTH_TOKEN 未设时整体放行(dev),
+// 设了则只有持有同一 token 的调用方能进(桌面版由 Tauri 外壳注入)。
+app.use("/api", authMiddleware, apiRouter);
 
 // 服务器部署形态:同端口托管前端静态产物(SSH 隧道单端口访问)。
 // 目录不存在时(本地 dev 走 Vite、桌面端走 Tauri 资源)完全不生效。

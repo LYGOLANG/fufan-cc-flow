@@ -16,7 +16,20 @@ fn reserve_port() -> Result<u16, Box<dyn std::error::Error>> {
     Ok(port)
 }
 
-pub fn spawn(app: &tauri::AppHandle) -> Result<u16, Box<dyn std::error::Error>> {
+/// 生成本次运行的接口访问令牌(32 字节 OS 熵源 → 64 位十六进制)。
+///
+/// 后端只绑 127.0.0.1,但本机上任何进程都能往那个端口发请求,而这套接口能读写
+/// 文件、执行 CLI、开终端、读取存着 API Key 的配置。令牌把「谁能调」这条边界
+/// 立起来:它只经环境变量传给 sidecar、经 Tauri command 传给前端,不落盘、
+/// 不进命令行参数(命令行在进程列表里对其它进程可见)。每次启动都换新的。
+fn generate_auth_token() -> String {
+    let mut bytes = [0u8; 32];
+    // 取不到系统熵源属于严重异常,此时宁可让启动失败也不要退回弱随机
+    getrandom::getrandom(&mut bytes).expect("failed to read OS entropy for auth token");
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+pub fn spawn(app: &tauri::AppHandle) -> Result<(u16, String), Box<dyn std::error::Error>> {
     let resource_dir = app.path().resource_dir()?;
     let entry = resource_dir.join("server-dist").join("dist").join("index.js");
     let port = reserve_port()?;
@@ -29,11 +42,14 @@ pub fn spawn(app: &tauri::AppHandle) -> Result<u16, Box<dyn std::error::Error>> 
         .map(str::to_string)
         .unwrap_or(entry_str);
 
+    let auth_token = generate_auth_token();
     let (mut rx, child) = app
         .shell()
         .sidecar("node")?
         .args([entry_str])
         .env("PORT", port.to_string())
+        // 后端据此启用鉴权;未设置则整体放行(pnpm dev 的形态)
+        .env("CC_FLOW_AUTH_TOKEN", &auth_token)
         .spawn()?;
 
     // 把内置后端的 stdout/stderr 转发进应用日志,方便打包后排查"后端没起来"之类的问题。
@@ -50,7 +66,7 @@ pub fn spawn(app: &tauri::AppHandle) -> Result<u16, Box<dyn std::error::Error>> 
     });
 
     app.manage(SidecarProcess(Mutex::new(Some(child))));
-    Ok(port)
+    Ok((port, auth_token))
 }
 
 pub fn kill(app: &tauri::AppHandle) {
@@ -143,7 +159,7 @@ pub fn reap_orphans(_app: &tauri::AppHandle) {}
 /// 退出前的优雅收尾:调后端 POST /api/system/shutdown-all,让它中止所有运行中任务
 /// 并把「被中止的任务」同步落盘(下次启动提醒)。用 std TcpStream 手写 HTTP,
 /// 不引额外依赖;整体限时 ~3s,失败/超时不阻塞退出,随后仍会硬杀 sidecar 兜底。
-pub fn graceful_shutdown(port: u16) {
+pub fn graceful_shutdown(port: u16, auth_token: Option<&str>) {
     use std::io::{Read, Write};
     use std::net::TcpStream;
     use std::time::Duration;
@@ -156,8 +172,14 @@ pub fn graceful_shutdown(port: u16) {
     let _ = stream.set_write_timeout(Some(Duration::from_secs(1)));
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
 
+    // 后端启用鉴权后,这个内部请求同样要带令牌,否则收尾会被 401 挡掉,
+    // 「上次被中止的任务」就登记不上。
+    let auth_header = match auth_token {
+        Some(t) => format!("x-cc-flow-token: {t}\r\n"),
+        None => String::new(),
+    };
     let req = format!(
-        "POST /api/system/shutdown-all HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+        "POST /api/system/shutdown-all HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n{auth_header}Content-Length: 0\r\nConnection: close\r\n\r\n"
     );
     if stream.write_all(req.as_bytes()).is_ok() {
         // 等后端处理完(它同步落盘登记后才响应),读到响应或超时即继续退出

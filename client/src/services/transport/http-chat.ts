@@ -1,4 +1,4 @@
-import { httpBase, wsChatUrl } from "../endpoint";
+import { httpBase, wsChatUrl, authHeaders } from "../endpoint";
 import type { ChatConnection, ChatHandler } from "./types";
 
 interface PendingSend {
@@ -99,7 +99,7 @@ export class HttpChatConnection implements ChatConnection {
       try {
         fetch(`${httpBase()}/system/shutdown-project`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({ projectPath: this.projectPath }),
           keepalive: true,
         }).catch(() => {});

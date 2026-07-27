@@ -59,6 +59,9 @@ pub struct AppState {
     pub sessions: Arc<Mutex<HashMap<String, ProjectSession>>>,
     /// Release 桌面端内置 Node 后端监听端口。dev 模式后端由开发者自行启动。
     pub backend_port: Arc<Mutex<Option<u16>>>,
+    /// 本次运行的接口访问令牌:随 sidecar 一起生成,经环境变量给后端、
+    /// 经 `backend_auth_token` command 给前端。dev 模式为 None(不鉴权)。
+    pub auth_token: Arc<Mutex<Option<String>>>,
     /// 覆盖“已开始 spawn、尚未把 SessionHandle 写回 sessions”的窗口。
     /// ExitRequested 先封门并等待 pending_spawns 清零，再 drain sessions。
     lifecycle: Arc<(Mutex<LifecycleState>, Condvar)>,

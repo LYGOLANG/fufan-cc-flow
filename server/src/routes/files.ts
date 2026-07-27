@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { FileService } from "../services/fileService.js";
-import { assertWithinRoot } from "../utils/pathUtils.js";
+import { assertWithinRoot, getClaudeHome } from "../utils/pathUtils.js";
 import { httpError, statusOf, messageOf } from "../utils/httpError.js";
 
 const router: RouterType = Router();
@@ -47,18 +47,66 @@ router.get("/tree", async (req, res) => {
   }
 });
 
-// GET /api/files/content?path=/project/src/app.js
+/**
+ * 读文件允许的根目录。
+ *
+ * 这个端点此前零校验,可以读走 ~/.claude/.credentials.json、providers.json、
+ * .ssh/id_rsa —— 也就是本应用自己存的全部 API Key。讽刺的是 privateFile.ts
+ * 还专门用 icacls 给 providers.json 加了 ACL 硬化,这个端点把它原样发出去。
+ *
+ * 但不能简单锁死在项目内:技能浏览器要读 ~/.claude/skills 下的文件,那是合法
+ * 场景。所以允许根 = 传入的项目根 ∪ Claude/Codex 配置目录,并额外把配置目录
+ * 里真正敏感的文件挡掉。
+ */
+function allowedReadRoots(projectRoot?: string): string[] {
+  const roots = [getClaudeHome(), path.join(os.homedir(), ".codex")];
+  if (typeof projectRoot === "string" && projectRoot.trim()) roots.push(projectRoot);
+  return roots;
+}
+
+/** 即便落在允许的根内,这些文件也不该经此端点读出去 */
+const SENSITIVE_BASENAMES = new Set([
+  ".credentials.json",
+  "auth.json",
+  "providers.json",
+  ".env",
+]);
+
+// GET /api/files/content?path=/project/src/app.js&root=/project
 router.get("/content", async (req, res) => {
   const filePath = req.query.path as string;
+  const root = req.query.root as string | undefined;
   if (!filePath) {
     return res.status(400).json({ error: { code: "INVALID_REQUEST", message: "path required" } });
   }
 
   try {
-    const data = await service.getFileContent(filePath);
+    const roots = allowedReadRoots(root);
+    let resolved: string | null = null;
+    for (const r of roots) {
+      try {
+        resolved = assertWithinRoot(r, filePath, "path");
+        break;
+      } catch {
+        /* 换下一个允许根继续试 */
+      }
+    }
+    if (!resolved) {
+      return res.status(403).json({
+        error: { code: "FORBIDDEN", message: "该路径不在当前项目或配置目录内" },
+      });
+    }
+    if (SENSITIVE_BASENAMES.has(path.basename(resolved).toLowerCase())) {
+      return res.status(403).json({
+        error: { code: "FORBIDDEN", message: "该文件包含凭据,不允许通过此接口读取" },
+      });
+    }
+    const data = await service.getFileContent(resolved);
     res.json(data);
   } catch (err) {
-    res.status(404).json({ error: { code: "FILE_NOT_FOUND", message: String(err) } });
+    res.status(statusOf(err) === 500 ? 404 : statusOf(err)).json({
+      error: { code: "FILE_NOT_FOUND", message: messageOf(err, "文件不存在或无法读取") },
+    });
   }
 });
 
