@@ -4,103 +4,93 @@
 
 ## 当前任务
 
-v0.1.20 打包 + **桌面端鉴权链路实测**。这是接口鉴权改动的最后一环，前面所有
-验证都是在裸后端上做的，真正的桌面链路只有装上才能验。
+安装 v0.1.22 并验证。安装过程会切断助手会话（助手跑在 Agent Flow 的 sidecar 里），
+故用独立进程执行「关闭 → 安装 → 重启」。
 
-## 已完成（均已提交，工作区干净）
+## 装完请确认这几件事
 
-| commit | 内容 |
-|---|---|
-| `5a65614` | settingSources 补 local（「始终允许」重启后失效）、转发 permission_timeout（权限卡永久卡死）、修长会话自动滚动被永久锁死 |
-| `c124de6` | 路径穿越与 scope 提权：hooks RCE、projectRoot 改必填、10 处 name 加 assertSafeName、scope 白名单、teamService 同前缀绕过、统一错误出口 |
-| `830dd83` | 接口鉴权：Tauri 生成令牌注入 sidecar，REST 走 header、WS 走 verifyClient；files/content 限定读取范围 |
-| （最新） | 令牌获取改 allSettled，避免拖垮端口解析；版本升 0.1.20 |
+1. **应用能正常打开**（不是白屏）
+   白屏 = 前端没拿到鉴权令牌 → 打开 DevTools console 找
+   `[desktop] failed to resolve auth token`。回滚办法见文末。
 
-线上已发布版本：**v0.1.19**（GitHub Releases，含 STATUS_BREAKPOINT 根治）。
-v0.1.20 尚未发布。
-
-## 下一步（按顺序）
-
-1. ~~打包 v0.1.20~~ **已完成**
-   - 产物：`release/Agent Flow_0.1.20_x64-setup.exe`（94.6 MB，2026-07-27 14:55）
-   - 签名：`.sig` 晚于 `.exe` 3 秒，确认同一次构建
-   - 隐私审计通过：sidecar 内 evolution 已排除、无密钥字符串
-   - 前端主 chunk 未退化，vendor-react 正常分离
-
-2. **安装并实测鉴权链路** ← 当前卡在这里，原因见下方「注意」
-
-   装完直接运行现成脚本（会自动定位端口、以外部进程身份打接口）：
+2. **鉴权链路**（新增，本版第一次实装）
    ```bash
    node scripts/verify-auth.mjs
    ```
-   期望输出：鉴权已启用 / 外部调用全部 401 / `/api/health` 仍 200。
+   期望：日志显示「接口鉴权已启用」、外部调用全部 401、`/api/health` 仍 200。
 
-   若应用**白屏**，说明前端没拿到令牌 → 打开 DevTools console 找
-   `[desktop] failed to resolve auth token`，同时检查 Rust 侧
-   `backend_auth_token` command 是否注册成功（`lib.rs` 的 `generate_handler!`）。
+3. **工作流编排**（本版核心新功能）
+   打开右侧「工作流」标签页：
+   - 列表应按名称排序（①②③④⑤⑥ 按序，此前是乱的）
+   - 点「🏦 量化总流程」的 ▷ → 应看到步骤逐个执行，第 2 步等第 1 步的
+     `run_flow.py` 真正结束才启动
+   - 运行中可点 × 停止；某步失败会停下来问「重试/跳过/中止」
 
-   回滚办法：重装 v0.1.19（`release/updates/AgentFlow_0.1.19_x64-setup.exe`），
-   或临时在 sidecar.rs 里去掉 `.env("CC_FLOW_AUTH_TOKEN", ...)` 重新打包
-   （后端无该变量即整体放行）。
+## 本轮已完成（均已提交）
 
-3. 实测通过后再决定是否发布 v0.1.20（发布流程见下）
+工作流编排引擎 Phase 12-14 全部完成：
+- Phase 12 内核：状态机 + StepRunner 抽象接口 + 22 条测试 + 可移植性守卫
+- Phase 13 接真实执行：事件流→Promise 适配层、chatHandler 接线、运行态 UI
+- Phase 14 编辑器：outputVar / onFailure 配置、前后端校验（含跨端一致性核验）
 
-   **未实测前不要发布**：鉴权链路一旦断了，症状是所有用户白屏。
+安全与缺陷修复：
+- 接口鉴权（Tauri 生成令牌注入 sidecar，REST 走 header、WS 走 verifyClient）
+- 路径穿越与 scope 提权（hooks RCE、projectRoot 必填、assertSafeName 铺开）
+- settingSources 补 local（「始终允许」重启后失效）
+- permission_timeout 转发（权限卡永久卡死）
+- 长会话自动滚动被永久锁死
+- 后台任务/审计倒序、工作流列表排序
 
-## 注意（重要）
+测试 174 条，typecheck / lint(0 error) / 前端构建全绿。
 
-- **安装需要关闭 Agent Flow，而助手的会话跑在它的 sidecar 里**
-  （`PORT` 环境变量继承自桌面版，实测 51815）。关掉应用 = 会话断开。
-  所以这一步通常需要用户自己执行，或者接受会话中断。
-- 打包前确认没有残留 sidecar `node.exe` 占着 `server-dist`，否则 EBUSY。
-  按命令行精确 kill，**不要**按进程名批量杀（会误杀用户的其它 node 进程）。
+## 已知限制（重要，不要当成 bug 重新调查）
 
-## 发布流程（实测可用）
-
-```bash
-node scripts/release-update.mjs --notes "$(cat <notes.md>)"
-gh release create v0.1.20 --repo LYGOLANG/fufan-cc-flow-releases \
-  --title "..." --notes-file <notes.md> \
-  "release/updates/AgentFlow_0.1.20_x64-setup.exe" \
-  "release/updates/latest.json"
-```
-
-发布前必查（曾经差点踩坑）：
-- `.sig` 的 mtime 必须 >= `.exe` —— `release-update.mjs` 分别按文件名找两者，
-  不校验是否同一次构建。不带签名密钥打包时 NSIS 会覆盖 exe 但留下旧 `.sig`，
-  发出去所有人验签失败。
-- 应用内固化公钥与签名私钥必须配对（`tauri.conf.json` 的 `plugins.updater.pubkey`
-  base64 解码后应等于 `D:/cc-flow-secrets/fufan-ccflow.key.pub` 解码后的内容）。
-
-## 关键文件
-
-- `server/src/middleware/auth.ts` — 鉴权判定（含 6 条单测）
-- `client/src-tauri/src/sidecar.rs` — 令牌生成 + 环境变量注入
-- `client/src/main.tsx` — 前端取令牌（渲染前必须完成）
-- `client/src/services/endpoint.ts` — `authHeaders()` / `withAuthQuery()`
-- `server/src/utils/pathUtils.ts` — `assertSafeName` / `assertWithinRoot`
-
-## 死路（别重走）
-
-- WS 鉴权**不能**写在 `connection` 回调里 `ws.close()`：那时握手已完成，
-  无令牌也能连上。必须用 `verifyClient` 在升级阶段拒绝。已实测确认。
-- server 的 test 脚本原先硬编码 `src/services/*.test.ts src/utils/*.test.ts`，
-  新目录的测试会静默不跑。已改为 `src/**/*.test.ts`。
-- Bash heredoc + python 改含反斜杠/控制字符的正则会被吞转义，
-  用 Edit 工具或 Write 整文件重写。
+- **步骤指定的 Agent 是「提示词点名」而非强制分派**。实现把 Agent 名字包装进
+  提示词交给主会话，模型可以无视、自己把活干了；填一个不存在的 Agent 名也
+  不会报错（已实测确认）。真正的强制分派需在 SDK 的 agents(AgentDefinition)
+  层面声明约束，属后续改进。详见 REQUIREMENTS.md F5.3。
 
 ## 尚未处理的已知问题（按优先级）
 
-1. 闪断后永久卡「正在思考…」（`task_complete` 在断线窗口被丢弃，重连时
-   `isTurnActive()` 已为 false，重同步分支不触发）
+1. 闪断后永久卡「正在思考…」（task_complete 在断线窗口被丢弃，重连时
+   isTurnActive() 已为 false，重同步分支不触发）
 2. 断线时点「停止」/「允许」帧被静默丢弃，但 UI 已标记为成功
-3. 新会话第一条消息后立刻点停止无效（`activeSessionId` 还是 null）
-4. Codex 引擎下「压缩上下文」是假的（`/compact` 被当普通 prompt 发出去，
-   后端那 50 行 `case "compact"` 完全不可达）
-5. 「扩展思考」开关关掉等于没关（无 `type:"disabled"` 分支）
-6. `costCalculator` 漏了 opus：`claude-opus-5` 会被判 200K，
-   导致自动压缩在真实用量 ~19% 时就触发
-7. `hooksStore` 乐观更新且失败不回滚（界面说谎）
-8. 三个 `runClaude`（mcp/plugin/marketplace）无超时，Promise 永不 settle
-9. 打包缺 `mtime(sig) >= mtime(exe)` 守卫
-10. 对话主链路零测试（`claudeAgentService` 1392 行、`sessionManager` 961 行）
+3. 新会话第一条消息后立刻点停止无效（activeSessionId 还是 null）
+4. Codex 引擎下「压缩上下文」是假的（/compact 被当普通 prompt 发出去）
+5. 「扩展思考」开关关掉等于没关（无 type:"disabled" 分支）
+6. costCalculator 漏了 opus：claude-opus-5 会被判 200K，导致自动压缩在真实
+   用量 ~19% 时就触发
+7. hooksStore 乐观更新且失败不回滚（界面说谎）
+8. 三个 runClaude（mcp/plugin/marketplace）无超时
+9. 打包缺 mtime(sig) >= mtime(exe) 守卫
+10. 对话主链路零测试（claudeAgentService 1392 行、sessionManager 961 行）
+
+## 待规划功能
+
+远程会话与会话共享（SSH / 共享会话）的调研成果已落盘在
+REQUIREMENTS.md 第 4 节，含 lumen 不是 SSH 工具这一关键澄清、三个待拍板
+决策点、与「不监听端口」的冲突解法。不要重新调研。
+
+## 回滚办法
+
+若 v0.1.22 白屏或无法使用：
+- 重装 v0.1.19（线上版本，`release/updates/AgentFlow_0.1.19_x64-setup.exe`）
+- 或临时去掉 `client/src-tauri/src/sidecar.rs` 里的
+  `.env("CC_FLOW_AUTH_TOKEN", ...)` 重新打包（后端无该变量即整体放行鉴权）
+
+## 关键文件
+
+- `server/src/services/workflow/` — 编排引擎（engine / stepRunner / claudeStepRunner / validate）
+- `server/src/middleware/auth.ts` — 接口鉴权
+- `server/src/websocket/chatHandler.ts` — workflow_start/resolve/abort 接线
+- `client/src/components/agent/WorkflowManager.tsx` — 编辑器 + 运行态面板
+- `scripts/verify-auth.mjs` — 鉴权链路实测脚本
+
+## 死路（别重走）
+
+- WS 鉴权不能写在 connection 回调里 ws.close()：那时握手已完成，无令牌也能
+  连上。必须用 verifyClient 在升级阶段拒绝。
+- 编排的每一步必须走 handleClientMessage 的完整 send_message 路径，不要自己
+  拼 claude.start —— 漏带字段会让常驻进程指纹对不上、白白杀进程重启。
+- server 的 test 脚本曾硬编码目录导致新测试静默不跑，现已改为 src/**/*.test.ts。
+- Bash heredoc + python 改含反斜杠/控制字符的正则会被吞转义，用 Edit 或 Write。
