@@ -172,12 +172,15 @@ export default function WorkflowManager() {
   // ── List view ──
   return (
     <div className="p-3 space-y-3">
-      {/* 运行中的 workflow/后台任务(数据来自 SDK task_started/background_tasks_changed 事件) */}
+      {/* 这里显示的是**后台任务**(SDK 的 task_started / background_tasks_changed 事件),
+          不是下方列表里的工作流 —— 下方的工作流不产生后台任务(见 composeAndSend:
+          它只把步骤拼成 prompt 填进输入框)。原先标题只写「运行中」,又把 agentName
+          显示在右侧,一眼看去像是某个工作流正在跑,实际毫无关系。 */}
       {runningTasks.length > 0 && (
         <div className="rounded-lg border border-emerald-ok/20 bg-emerald-ok/5 p-2.5 space-y-1.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-ok">
             <Loader2 size={11} className="animate-spin" />
-            运行中（{runningTasks.length}）
+            后台任务运行中（{runningTasks.length}）
           </div>
           {runningTasks.map((t) => (
             <div key={t.id} className="flex items-center gap-2 text-[11px]">
@@ -209,8 +212,11 @@ export default function WorkflowManager() {
         <div className="text-center py-4">
           <GitMerge size={20} className="mx-auto text-slate-500 mb-2" />
           <p className="text-xs text-slate-400">暂无工作流</p>
+          {/* 不要写成「自动按步骤调用多个 Agent」——那是假承诺。
+              执行按钮只做一件事:把步骤拼成一段提示词填进输入框(见 composeAndSend),
+              真正要不要照步骤走、要不要分派给 Agent,取决于主对话的模型。 */}
           <p className="text-[10px] text-slate-500 mt-1">
-            创建工作流来自动按步骤调用多个 Agent
+            把常用的多步指令存成模板，执行时一键填入输入框
           </p>
         </div>
       ) : (
@@ -225,7 +231,8 @@ export default function WorkflowManager() {
                 </div>
                 <div className="flex items-center gap-1">
                   <button onClick={() => handleExecute(wf)}
-                    className="p-1 rounded hover:bg-emerald-ok/10 text-slate-400 hover:text-emerald-ok transition-colors" title="执行">
+                    className="p-1 rounded hover:bg-emerald-ok/10 text-slate-400 hover:text-emerald-ok transition-colors"
+                    title="填入输入框（不会自动发送，需要你确认后回车）">
                     <Play size={11} />
                   </button>
                   <button onClick={() => setEditing(wf)}

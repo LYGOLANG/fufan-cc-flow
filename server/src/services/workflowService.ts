@@ -36,7 +36,13 @@ export class WorkflowService {
         }
       }
 
-      return workflows;
+      // 按名称排序。此前直接返回 fs.readdir 的顺序 —— 那是文件系统的目录项
+      // 顺序,而文件名是 wf_<时间戳>.json,和用户看到的工作流名称毫无关系,
+      // 所以列表看起来完全随机(用户给工作流编了 ①②③,显示出来却是 ③②①⑥⑤④)。
+      // 用 localeCompare 以支持中文与序号字符的自然顺序。
+      return workflows.sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "", "zh-CN", { numeric: true })
+      );
     } catch {
       return [];
     }

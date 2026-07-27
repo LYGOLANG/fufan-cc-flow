@@ -10,6 +10,7 @@ import {
   Bot,
 } from "lucide-react";
 import { useAgentStore } from "../../stores/agentStore";
+import { sortFinishedTasks } from "../../utils/taskOrdering";
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -29,7 +30,9 @@ export default function BackgroundTasks() {
   const { backgroundTasks } = useAgentStore();
 
   const running = backgroundTasks.filter((t) => t.status === "running");
-  const finished = backgroundTasks.filter((t) => t.status !== "running");
+  // 已完成:最近完成的排最上面。此前只做 filter,保持的是任务追加顺序,
+  // 结果最早跑完的反而占在顶部,而用户想看的通常是刚结束的那个。
+  const finished = sortFinishedTasks(backgroundTasks.filter((t) => t.status !== "running"));
 
   if (backgroundTasks.length === 0) {
     return (

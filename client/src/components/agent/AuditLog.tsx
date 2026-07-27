@@ -52,10 +52,20 @@ function EventRow({ e }: { e: AuditEvent }) {
 export default function AuditLog() {
   const events = useAuditStore((s) => s.events);
   const clear = useAuditStore((s) => s.clear);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  // 新事件到达时自动滚到底部
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // 最新的事件排最上面。store 里是按到达顺序追加的,这里倒序展示。
+  const ordered = [...events].reverse();
+
+  // 新事件到达时跟随到顶部 —— 注意这与倒序是一套的:原先是无条件
+  // scrollIntoView 到底部,倒序之后若不改,新事件在顶部而视图却往最旧的
+  // 位置滚,方向完全相反。
+  //
+  // 只在用户已经贴着顶部时才跟随:否则说明他正在往下翻历史,这时候把视图
+  // 拽回顶部是打断操作。
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const el = listRef.current;
+    if (el && el.scrollTop < 40) el.scrollTop = 0;
   }, [events.length]);
 
   if (events.length === 0) {
@@ -85,11 +95,10 @@ export default function AuditLog() {
           <Trash2 size={12} />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto min-h-0 py-1">
-        {events.map((e) => (
+      <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 py-1">
+        {ordered.map((e) => (
           <EventRow key={e.id} e={e} />
         ))}
-        <div ref={bottomRef} />
       </div>
     </div>
   );
