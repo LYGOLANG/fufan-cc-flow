@@ -2,6 +2,10 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { logger } from "../utils/logger.js";
+// 记忆文件名 / 规则名来自 HTTP 请求(body 或 URL 参数),会被直接 path.join
+// 到记忆目录下再读写删。这些在业务上只是一层文件名,一律用 assertSafeName
+// 在源头拒掉分隔符与 `..`,避免写到 ~/.claude/CLAUDE.md 之类的位置。
+import { assertSafeName } from "../utils/pathUtils.js";
 
 interface MemoryFileInfo {
   name: string;
@@ -106,6 +110,7 @@ export class MemoryService {
     projectPath: string,
     filename: string
   ): Promise<{ name: string; content: string; lineCount: number; size: number } | null> {
+    assertSafeName(filename, "记忆文件名");
     const memoryDir = this.getMemoryDir(projectPath);
     const filePath = path.join(memoryDir, filename);
 
@@ -128,6 +133,7 @@ export class MemoryService {
     filename: string,
     content: string
   ): Promise<{ lineCount: number }> {
+    assertSafeName(filename, "记忆文件名");
     const memoryDir = this.getMemoryDir(projectPath);
     await fs.mkdir(memoryDir, { recursive: true });
     await fs.writeFile(path.join(memoryDir, filename), content, "utf-8");
@@ -135,6 +141,7 @@ export class MemoryService {
   }
 
   async deleteMemoryFile(projectPath: string, filename: string): Promise<boolean> {
+    assertSafeName(filename, "记忆文件名");
     const memoryDir = this.getMemoryDir(projectPath);
     try {
       await fs.unlink(path.join(memoryDir, filename));
@@ -337,12 +344,14 @@ export class MemoryService {
   }
 
   async saveRule(projectPath: string, name: string, content: string, scope: "project" | "user" = "project"): Promise<void> {
+    assertSafeName(name, "规则名");
     const rulesDir = this.getRulesDir(projectPath, scope);
     await fs.mkdir(rulesDir, { recursive: true });
     await fs.writeFile(path.join(rulesDir, name), content, "utf-8");
   }
 
   async deleteRule(projectPath: string, name: string, scope: "project" | "user" = "project"): Promise<boolean> {
+    assertSafeName(name, "规则名");
     try {
       await fs.unlink(path.join(this.getRulesDir(projectPath, scope), name));
       return true;

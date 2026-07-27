@@ -14,6 +14,60 @@ export function isSubPath(parent: string, child: string): boolean {
   return !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
+/**
+ * `name` 是否可以安全地作为**单个**文件/目录名拼进路径。
+ *
+ * 用于所有「把外部传入的 name/filename/id 直接 path.join 到某个目录下」的位置。
+ * 这些参数在业务上从来就只是一层名字(技能名、记忆文件名、Agent 名、工作流 id),
+ * 不需要支持子路径,所以这里可以一律从严:任何分隔符、`..`、绝对路径形态、
+ * 控制字符都拒绝。
+ *
+ * 注意与 isSubPath 的分工:isSubPath 判断「结果是否落在某个根内」,适合校验
+ * 完整路径;本函数在更上游把「压根不该是路径」的输入挡掉,不依赖调用方还记得
+ * 传对根目录。
+ *
+ * 控制字符(含 NUL/DEL)一并拒绝:它们能在日志里伪装名字,且在部分文件系统上
+ * 会被截断成完全不同的路径。这里写成 \u 转义而不是字面控制字符,否则源码里
+ * 根本看不见(此前就是字面写法,ESLint 的 no-control-regex 才把它揪出来)。
+ */
+// eslint-disable-next-line no-control-regex -- 匹配控制字符正是本函数的目的
+const UNSAFE_NAME_RE = /[/\\]|^\.\.?$|^[A-Za-z]:|[\u0000-\u001f\u007f]/;
+
+export function isSafeName(name: unknown): name is string {
+  if (typeof name !== "string") return false;
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > 255) return false;
+  // 用原值判断:两端空白本身也可能被用来伪造同名文件
+  return name === trimmed && !UNSAFE_NAME_RE.test(name);
+}
+
+/** isSafeName 的抛错版本,给路由层直接用 */
+export function assertSafeName(name: unknown, label = "名称"): string {
+  if (!isSafeName(name)) {
+    throw Object.assign(new Error(`${label}不合法(不能包含路径分隔符或 ..)`), {
+      statusCode: 400,
+    });
+  }
+  return name;
+}
+
+/**
+ * 把 `child` 解析为绝对路径并断言它落在 `root` 内,返回规整后的绝对路径。
+ *
+ * 相比裸用 isSubPath 的两点改进:
+ * 1. 两边都先 path.resolve —— isSubPath 内部的 path.relative 在收到相对路径时
+ *    会拿 process.cwd() 当基准,结果取决于服务进程的工作目录,不可靠。
+ * 2. 失败即抛,调用方不会因为「忘了处理返回的 false」而放行。
+ */
+export function assertWithinRoot(root: string, child: string, label = "路径"): string {
+  const absRoot = path.resolve(normalizePath(root));
+  const absChild = path.resolve(absRoot, normalizePath(child));
+  if (absChild !== absRoot && !isSubPath(absRoot, absChild)) {
+    throw Object.assign(new Error(`${label}不在允许的目录内`), { statusCode: 403 });
+  }
+  return absChild;
+}
+
 export function getClaudeHome(): string {
   const configured = process.env.CLAUDE_CONFIG_DIR?.trim();
   return configured ? normalizePath(configured) : path.join(os.homedir(), ".claude");

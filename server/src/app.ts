@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import path from "path";
 import apiRouter from "./routes/index.js";
 import { logger } from "./utils/logger.js";
+import { statusOf, messageOf } from "./utils/httpError.js";
 
 const app: Express = express();
 
@@ -50,5 +51,26 @@ if (existsSync(clientDist)) {
   });
   logger.info(`[static] serving client from ${clientDist}`);
 }
+
+/**
+ * 统一错误出口。
+ *
+ * 路径守卫(assertSafeName / assertWithinRoot)和入参校验抛的错误都带
+ * statusCode,这里把它们翻成 400/403 —— 否则 Express 5 兜住 async rejection
+ * 后一律回 500,前端只能显示「服务器错误」,而实际上是「名称不合法」这类
+ * 用户可以自己纠正的问题。
+ *
+ * 5xx 只回通用文案:内部错误的 message 可能含服务器路径,细节留在日志里。
+ */
+app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = statusOf(err);
+  if (status >= 500) {
+    logger.error(`[${req.method} ${req.path}]`, err instanceof Error ? err.stack : String(err));
+  }
+  if (res.headersSent) return;
+  res.status(status).json({
+    error: { code: status === 500 ? "INTERNAL_ERROR" : "INVALID_REQUEST", message: messageOf(err) },
+  });
+});
 
 export default app;

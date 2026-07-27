@@ -1,7 +1,11 @@
 import { Router, type Router as RouterType } from "express";
+import { statusOf, messageOf } from "../utils/httpError.js";
 import { TeamService } from "../services/teamService.js";
 
 const router: RouterType = Router();
+
+// 校验类错误(团队名/Agent 名非法)自带 statusCode,透传 400/403;
+// 其余仍按 500,且不把内部堆栈当用户提示。
 const service = new TeamService();
 
 // GET /api/teams/enabled — check if Agent Teams feature is enabled
@@ -15,7 +19,7 @@ router.get("/", async (_req, res) => {
     const teams = await service.listTeams();
     res.json({ teams });
   } catch (err) {
-    res.status(500).json({ error: { code: "TEAM_LIST_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "TEAM_LIST_ERROR", message: messageOf(err) } });
   }
 });
 
@@ -28,7 +32,7 @@ router.get("/:name", async (req, res) => {
     }
     res.json(team);
   } catch (err) {
-    res.status(500).json({ error: { code: "TEAM_GET_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "TEAM_GET_ERROR", message: messageOf(err) } });
   }
 });
 
@@ -42,7 +46,7 @@ router.post("/", async (req, res) => {
     const team = await service.createTeam(name.trim(), leadDescription);
     res.json(team);
   } catch (err) {
-    res.status(500).json({ error: { code: "TEAM_CREATE_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "TEAM_CREATE_ERROR", message: messageOf(err) } });
   }
 });
 
@@ -52,7 +56,7 @@ router.delete("/:name", async (req, res) => {
     await service.deleteTeam(req.params.name);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: { code: "TEAM_DELETE_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "TEAM_DELETE_ERROR", message: messageOf(err) } });
   }
 });
 
@@ -62,7 +66,7 @@ router.get("/:name/tasks", async (req, res) => {
     const tasks = await service.getTasks(req.params.name);
     res.json({ tasks });
   } catch (err) {
-    res.status(500).json({ error: { code: "TASK_LIST_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "TASK_LIST_ERROR", message: messageOf(err) } });
   }
 });
 
@@ -75,7 +79,7 @@ router.patch("/:name/tasks/:taskId", async (req, res) => {
     }
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: { code: "TASK_UPDATE_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "TASK_UPDATE_ERROR", message: messageOf(err) } });
   }
 });
 
@@ -86,7 +90,7 @@ router.get("/:name/messages", async (req, res) => {
     const messages = await service.getRecentMessages(req.params.name, limit);
     res.json({ messages });
   } catch (err) {
-    res.status(500).json({ error: { code: "MESSAGE_LIST_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "MESSAGE_LIST_ERROR", message: messageOf(err) } });
   }
 });
 
@@ -96,7 +100,7 @@ router.get("/:name/messages/:agent", async (req, res) => {
     const messages = await service.getMessages(req.params.name, req.params.agent);
     res.json({ messages });
   } catch (err) {
-    res.status(500).json({ error: { code: "MESSAGE_GET_ERROR", message: String(err) } });
+    res.status(statusOf(err)).json({ error: { code: "MESSAGE_GET_ERROR", message: messageOf(err) } });
   }
 });
 

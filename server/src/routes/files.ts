@@ -3,10 +3,33 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { FileService } from "../services/fileService.js";
-import { isSubPath } from "../utils/pathUtils.js";
+import { assertWithinRoot } from "../utils/pathUtils.js";
+import { httpError, statusOf, messageOf } from "../utils/httpError.js";
 
 const router: RouterType = Router();
 const service = new FileService();
+
+/**
+ * 取写操作的目标路径:projectRoot 必填,且目标必须落在其内。
+ *
+ * 此前 projectRoot 是**可选** body 字段,不传就整条检查跳过 —— 也就是说
+ * 「文件写操作校验路径在项目目录内」这条承诺，调用方自己就能关掉。
+ * 前端所有写操作(FileTree 的新建/重命名/删除)本来就一直在传它,改成必填
+ * 不影响任何现有功能。
+ *
+ * 注意这层校验的定位:它防的是自家 bug 和误操作、限制爆炸半径。它挡不住
+ * 恶意调用方——对方可以自己把 projectRoot 也填成想去的地方。真正的边界是
+ * 接口鉴权,那是另一件事。
+ */
+function resolveWriteTarget(rawPath: unknown, rawRoot: unknown, label: string): string {
+  if (typeof rawPath !== "string" || !rawPath.trim()) {
+    throw httpError(400, `${label} 不能为空`);
+  }
+  if (typeof rawRoot !== "string" || !rawRoot.trim()) {
+    throw httpError(400, "projectRoot 是必填项(用于限定写操作范围)");
+  }
+  return assertWithinRoot(rawRoot, rawPath, label);
+}
 
 // GET /api/files/tree?path=/project&depth=3
 router.get("/tree", async (req, res) => {
@@ -150,6 +173,11 @@ router.get("/browse", async (req, res) => {
 });
 
 // POST /api/files/mkdir  body: { path: string, projectRoot?: string }
+//
+// 这里的 projectRoot 是**有意**保持可选的,别顺手改成必填:
+// FolderBrowserModal 的「新建文件夹」用于给新项目选位置(client 侧调用不传
+// projectRoot),此时根本还没有项目根。传了就按项目内校验,不传则只创建空目录
+// —— 破坏力远小于 create/rename/delete,那三个已改为必填。
 router.post("/mkdir", async (req, res) => {
   const folderPath = req.body?.path as string | undefined;
   const projectRoot = req.body?.projectRoot as string | undefined;
@@ -158,30 +186,21 @@ router.post("/mkdir", async (req, res) => {
   }
 
   try {
-    const normalized = path.normalize(folderPath);
-    if (projectRoot && !isSubPath(projectRoot, normalized)) {
-      return res.status(403).json({ error: "路径不在项目目录内" });
-    }
+    const normalized = projectRoot
+      ? assertWithinRoot(projectRoot, folderPath, "path")
+      : path.normalize(folderPath);
     await fs.mkdir(normalized, { recursive: true });
     return res.json({ path: normalized });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    res.status(statusOf(err)).json({ error: messageOf(err, "创建目录失败") });
   }
 });
 
-// POST /api/files/create  body: { filePath: string, content?: string, projectRoot?: string }
+// POST /api/files/create  body: { filePath: string, content?: string, projectRoot: string }
 router.post("/create", async (req, res) => {
-  const filePath = req.body?.filePath as string | undefined;
   const content = (req.body?.content as string) ?? "";
-  const projectRoot = req.body?.projectRoot as string | undefined;
-  if (!filePath) {
-    return res.status(400).json({ error: "filePath is required" });
-  }
   try {
-    const normalized = path.normalize(filePath);
-    if (projectRoot && !isSubPath(projectRoot, normalized)) {
-      return res.status(403).json({ error: "路径不在项目目录内" });
-    }
+    const normalized = resolveWriteTarget(req.body?.filePath, req.body?.projectRoot, "filePath");
     // Ensure parent directory exists
     await fs.mkdir(path.dirname(normalized), { recursive: true });
     // Fail if file already exists
@@ -192,24 +211,16 @@ router.post("/create", async (req, res) => {
     await fs.writeFile(normalized, content, "utf-8");
     return res.json({ path: normalized });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    res.status(statusOf(err)).json({ error: messageOf(err, "创建文件失败") });
   }
 });
 
-// POST /api/files/rename  body: { oldPath: string, newPath: string, projectRoot?: string }
+// POST /api/files/rename  body: { oldPath: string, newPath: string, projectRoot: string }
 router.post("/rename", async (req, res) => {
-  const oldPath = req.body?.oldPath as string | undefined;
-  const newPath = req.body?.newPath as string | undefined;
-  const projectRoot = req.body?.projectRoot as string | undefined;
-  if (!oldPath || !newPath) {
-    return res.status(400).json({ error: "oldPath and newPath are required" });
-  }
   try {
-    const normalizedOld = path.normalize(oldPath);
-    const normalizedNew = path.normalize(newPath);
-    if (projectRoot && (!isSubPath(projectRoot, normalizedOld) || !isSubPath(projectRoot, normalizedNew))) {
-      return res.status(403).json({ error: "路径不在项目目录内" });
-    }
+    // 两端都要校验:只校验其中一个,就能把文件重命名到项目外
+    const normalizedOld = resolveWriteTarget(req.body?.oldPath, req.body?.projectRoot, "oldPath");
+    const normalizedNew = resolveWriteTarget(req.body?.newPath, req.body?.projectRoot, "newPath");
     // Check target doesn't already exist
     const exists = await fs.access(normalizedNew).then(() => true).catch(() => false);
     if (exists) {
@@ -218,26 +229,24 @@ router.post("/rename", async (req, res) => {
     await fs.rename(normalizedOld, normalizedNew);
     return res.json({ oldPath: normalizedOld, newPath: normalizedNew });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    res.status(statusOf(err)).json({ error: messageOf(err, "重命名失败") });
   }
 });
 
-// DELETE /api/files/delete  body: { filePath: string, projectRoot?: string }
+// DELETE /api/files/delete  body: { filePath: string, projectRoot: string }
+// 这是全仓破坏力最大的一个端点(fs.rm recursive),projectRoot 必填且强制校验。
 router.delete("/delete", async (req, res) => {
-  const filePath = req.body?.filePath as string | undefined;
-  const projectRoot = req.body?.projectRoot as string | undefined;
-  if (!filePath) {
-    return res.status(400).json({ error: "filePath is required" });
-  }
   try {
-    const normalized = path.normalize(filePath);
-    if (projectRoot && !isSubPath(projectRoot, normalized)) {
-      return res.status(403).json({ error: "路径不在项目目录内" });
+    const normalized = resolveWriteTarget(req.body?.filePath, req.body?.projectRoot, "filePath");
+    // 不允许删除项目根本身:传 filePath === projectRoot 时 assertWithinRoot 会放行
+    // (根算在自己内),但那等于一键清空整个项目。
+    if (normalized === path.resolve(req.body.projectRoot as string)) {
+      return res.status(403).json({ error: "不能删除项目根目录" });
     }
     await fs.rm(normalized, { recursive: true });
     return res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    res.status(statusOf(err)).json({ error: messageOf(err, "删除失败") });
   }
 });
 

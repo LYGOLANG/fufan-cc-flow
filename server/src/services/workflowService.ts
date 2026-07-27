@@ -1,5 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
+// 名称来自 HTTP 请求且被直接 path.join 进目录,一律先过 assertSafeName
+import { assertSafeName } from "../utils/pathUtils.js";
 
 interface WorkflowStep {
   agent: string | null; // null = main session
@@ -44,6 +46,7 @@ export class WorkflowService {
     projectPath: string,
     id: string
   ): Promise<Workflow | null> {
+    assertSafeName(id, "工作流 id");
     const filePath = path.join(this.getWorkflowsDir(projectPath), `${id}.json`);
     try {
       const raw = await fs.readFile(filePath, "utf-8");
@@ -84,6 +87,7 @@ export class WorkflowService {
     projectPath: string,
     id: string
   ): Promise<boolean> {
+    assertSafeName(id, "工作流 id");
     try {
       await fs.unlink(
         path.join(this.getWorkflowsDir(projectPath), `${id}.json`)

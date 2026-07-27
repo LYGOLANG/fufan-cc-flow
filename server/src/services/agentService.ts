@@ -2,6 +2,8 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { parseFrontmatter, serializeFrontmatter } from "../utils/frontmatterParser.js";
+// 名称来自 HTTP 请求且被直接 path.join 进目录,一律先过 assertSafeName
+import { assertSafeName } from "../utils/pathUtils.js";
 
 interface AgentInfo {
   name: string;
@@ -106,6 +108,7 @@ export class AgentService {
     name: string,
     projectPath: string
   ): Promise<AgentDetail | null> {
+    assertSafeName(name, "Agent 名");
     const dir =
       scope === "project"
         ? this.getProjectAgentsDir(projectPath)
@@ -129,6 +132,7 @@ export class AgentService {
     content: string,
     projectPath: string
   ): Promise<string> {
+    assertSafeName(name, "Agent 名");
     const dir =
       scope === "project"
         ? this.getProjectAgentsDir(projectPath)
@@ -148,6 +152,7 @@ export class AgentService {
     name: string,
     projectPath: string
   ): Promise<boolean> {
+    assertSafeName(name, "Agent 名");
     const dir =
       scope === "project"
         ? this.getProjectAgentsDir(projectPath)

@@ -4,6 +4,8 @@ import os from "os";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { resolveCliPath } from "../utils/claudeCli.js";
 import { parseFrontmatter, serializeFrontmatter } from "../utils/frontmatterParser.js";
+// 名称来自 HTTP 请求且被直接 path.join 进目录,一律先过 assertSafeName
+import { assertSafeName } from "../utils/pathUtils.js";
 
 interface SkillInfo {
   name: string;
@@ -217,6 +219,7 @@ export class SkillService {
     name: string,
     projectPath: string
   ): Promise<{ name: string; frontmatter: Record<string, unknown>; content: string } | null> {
+    assertSafeName(name, "技能名");
     const skillsDir =
       scope === "project"
         ? this.getProjectSkillsDir(projectPath)
@@ -254,6 +257,7 @@ export class SkillService {
     content: string,
     projectPath: string
   ): Promise<string> {
+    assertSafeName(name, "技能名");
     const dir =
       scope === "project"
         ? this.getProjectSkillsDir(projectPath)
@@ -274,6 +278,8 @@ export class SkillService {
     name: string,
     projectPath: string
   ): Promise<boolean> {
+    // 这里的 sink 是 fs.rm(recursive) —— 名字必须先过闸
+    assertSafeName(name, "技能名");
     const dir =
       scope === "project"
         ? this.getProjectSkillsDir(projectPath)

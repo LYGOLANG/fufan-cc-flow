@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import type { TeamInfo, TeamMember, TeamTask, TeamMessage } from "../types/team.js";
+import { assertSafeName, assertWithinRoot } from "../utils/pathUtils.js";
 
 export class TeamService {
   private claudeHome = path.join(os.homedir(), ".claude");
@@ -16,20 +17,21 @@ export class TeamService {
     return path.normalize(path.join(this.claudeHome, "tasks"));
   }
 
+  // 团队名/Agent 名只是一层名字,直接用 assertSafeName 在源头挡掉分隔符与 `..`。
+  //
+  // 原先这三处用的是 `dir.startsWith(baseDir)`,漏了分隔符:传
+  // `../teams-evil` 归一化后是 `~/.claude/teams-evil`,它确实以
+  // `~/.claude/teams` 开头,守卫直接放行 —— 而 deleteTeam 的 sink 是
+  // fs.rm(recursive, force)。改用 assertSafeName + assertWithinRoot 双保险:
+  // 前者在源头拒绝路径形态,后者兜住「结果必须落在根内」。
   private teamDir(teamName: string): string {
-    const dir = path.normalize(path.join(this.teamsDir(), teamName));
-    if (!dir.startsWith(this.teamsDir())) {
-      throw new Error("Invalid team name: path traversal detected");
-    }
-    return dir;
+    assertSafeName(teamName, "团队名");
+    return assertWithinRoot(this.teamsDir(), teamName, "团队目录");
   }
 
   private taskDir(teamName: string): string {
-    const dir = path.normalize(path.join(this.tasksDir(), teamName));
-    if (!dir.startsWith(this.tasksDir())) {
-      throw new Error("Invalid team name: path traversal detected");
-    }
-    return dir;
+    assertSafeName(teamName, "团队名");
+    return assertWithinRoot(this.tasksDir(), teamName, "任务目录");
   }
 
   private inboxesDir(teamName: string): string {
@@ -154,12 +156,13 @@ export class TeamService {
   // ── Messages ──
 
   async getMessages(teamName: string, agentName: string): Promise<TeamMessage[]> {
-    const inboxFile = path.join(this.inboxesDir(teamName), `${agentName}.jsonl`);
-    // Safety check
-    const normalized = path.normalize(inboxFile);
-    if (!normalized.startsWith(this.inboxesDir(teamName))) {
-      throw new Error("Invalid agent name: path traversal detected");
-    }
+    // 同 teamDir:原先的 startsWith 挡不住同前缀兄弟目录
+    assertSafeName(agentName, "Agent 名");
+    const inboxFile = assertWithinRoot(
+      this.inboxesDir(teamName),
+      `${agentName}.jsonl`,
+      "收件箱"
+    );
 
     try {
       const raw = await fs.readFile(inboxFile, "utf-8");
