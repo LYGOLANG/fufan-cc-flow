@@ -36,28 +36,71 @@ if (!existsSync(LOG)) {
 
 const log = readFileSync(LOG, "utf8");
 
-// ── 1. 鉴权是否已启用 ──
-const authOn = log.includes("[auth] 接口鉴权已启用");
-const authOff = log.includes("[auth] 接口鉴权未启用");
-console.log("=== 1. 后端启动时的鉴权状态 ===");
-if (authOn) {
-  console.log("   ✅ 日志显示:接口鉴权已启用");
-} else if (authOff) {
-  fail(
-    "日志显示鉴权【未】启用 —— Tauri 外壳没能把 CC_FLOW_AUTH_TOKEN 注入 sidecar。\n" +
-      "   检查 client/src-tauri/src/sidecar.rs 的 .env(\"CC_FLOW_AUTH_TOKEN\", ...)"
-  );
+// ── 1. 找出后端端口 ──
+//
+// 优先从日志取；取不到就退回扫描端口。日志会轮转，应用跑久了启动那几行
+// （含端口与鉴权状态）就被滚掉了 —— 实测踩过：应用 21:21 启动，一小时后
+// 日志首行已是 22:13，脚本据此误报「可能装的是旧版本」。
+console.log("=== 1. 定位后端端口 ===");
+let port = null;
+const portMatches = [...log.matchAll(/server running on http:\/\/127\.0\.0\.1:(\d+)/g)];
+if (portMatches.length > 0) {
+  port = portMatches[portMatches.length - 1][1];
+  console.log(`   ${port}（取自日志）`);
 } else {
-  fail("日志里找不到鉴权状态行 —— 可能装的仍是旧版本(该日志自 v0.1.20 起才有)。");
+  // 从 sidecar 进程的命令行拿不到端口（它由 Rust 经环境变量注入），
+  // 所以直接探测：健康检查是唯一免鉴权的端点，正好用来认门。
+  console.log("   日志中无启动行（已轮转），改为探测…");
+  const { execSync } = await import("node:child_process");
+  let candidates = [];
+  try {
+    const out = execSync("netstat -ano -p tcp", { encoding: "utf8", windowsHide: true });
+    candidates = [
+      ...new Set(
+        [...out.matchAll(/127\.0\.0\.1:(\d+)\s+.*LISTENING/g)].map((m) => m[1])
+      ),
+    ];
+  } catch {
+    fail("无法枚举监听端口，请手动指定：node scripts/verify-auth.mjs <port>");
+  }
+  const argPort = process.argv[2];
+  if (argPort) candidates = [argPort];
+  for (const c of candidates) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${c}/api/health`, {
+        signal: AbortSignal.timeout(800),
+      });
+      if (res.ok && (await res.json())?.status === "ok") {
+        port = c;
+        console.log(`   ${port}（探测到）`);
+        break;
+      }
+    } catch {
+      /* 不是它 */
+    }
+  }
+  if (!port) fail("没找到运行中的后端。应用是否已启动？也可手动指定端口作为参数。");
 }
 
-// ── 2. 找出后端端口 ──
-const portMatches = [...log.matchAll(/server running on http:\/\/127\.0\.0\.1:(\d+)/g)];
-if (portMatches.length === 0) {
-  fail("日志里找不到后端端口。");
+// ── 2. 鉴权是否已启用 ──
+//
+// 以**实际行为**为准而不是日志文案：日志会轮转，而「无令牌能否调通」是
+// 此刻的事实。
+console.log("\n=== 2. 鉴权是否生效 ===");
+try {
+  const res = await fetch(`http://127.0.0.1:${port}/api/providers`);
+  if (res.status === 401) {
+    console.log("   ✅ 无令牌被拒（401）—— 鉴权已启用");
+  } else {
+    fail(
+      `无令牌竟然拿到 HTTP ${res.status} —— 鉴权【未】生效。\n` +
+        "   Tauri 外壳可能没把 CC_FLOW_AUTH_TOKEN 注入 sidecar，\n" +
+        '   检查 client/src-tauri/src/sidecar.rs 的 .env("CC_FLOW_AUTH_TOKEN", ...)'
+    );
+  }
+} catch (err) {
+  fail(`探测失败：${err.message}`);
 }
-const port = portMatches[portMatches.length - 1][1];
-console.log(`\n=== 2. 后端端口 ===\n   ${port}(取日志中最后一次启动)`);
 
 // ── 3. 以外部进程身份打接口,期望全部被拒 ──
 console.log("\n=== 3. 外部进程调用后端(期望全部 401)===");
