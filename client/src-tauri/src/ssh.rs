@@ -171,6 +171,20 @@ pub fn start(
         // 不弹交互提示:密码/passphrase 输入在 GUI 场景下无处可输,只会挂死
         "-o".into(),
         "BatchMode=yes".into(),
+        // 首次连接自动接受主机密钥,之后密钥变更一律拒绝。
+        //
+        // 三选一里这是唯一可用的:
+        //   - 默认(ask):BatchMode 下不能交互,首次连接必定失败,且错误信息
+        //     完全指不到"你需要先手工 ssh 一次"这个真实原因;
+        //   - no:永远不校验主机密钥,等于对中间人门户大开——远程连接传的是
+        //     完整接口令牌和项目代码,不能这么办;
+        //   - accept-new:首次信任(与 SSH 常规的 TOFU 一致),之后主机密钥
+        //     一旦变化立即拒绝连接。
+        //
+        // 这条是 Rust 集成测试逼出来的:先前的 Node 验证脚本图方便用了
+        // StrictHostKeyChecking=no,把这个缺口整个盖住了。
+        "-o".into(),
+        "StrictHostKeyChecking=accept-new".into(),
         // 断线检测:每 15s 一次,连续 3 次无响应即断开,避免半死连接长期挂着
         "-o".into(),
         "ServerAliveInterval=15".into(),
@@ -210,13 +224,24 @@ pub fn start(
         stdin.flush().ok();
     }
 
-    // 把 ssh 的 stderr 转进应用日志。"Permission denied"、"Host key verification
-    // failed" 这类信息只出现在这里,不转发的话用户只会看到一句干巴巴的"连接失败"。
+    // ssh 的 stderr 里藏着**唯一**能指明失败原因的信息("Permission denied"、
+    // "bad permissions"、"Host key verification failed"...)。既转进日志,也留一份
+    // 在内存里:连接失败时要把它带进错误信息给用户看,否则界面上只有一句
+    // "ssh 提前退出(255)",而真正的原因可能是私钥权限这种毫不相干的东西。
+    let stderr_lines = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
     if let Some(err) = child.stderr.take() {
+        let sink = std::sync::Arc::clone(&stderr_lines);
         std::thread::spawn(move || {
             use std::io::BufRead;
             for line in std::io::BufReader::new(err).lines().map_while(Result::ok) {
                 log::warn!("[remote/ssh] {line}");
+                if let Ok(mut v) = sink.lock() {
+                    // 只留开头若干行:失败原因总在最前面,而长连接后期可能刷出
+                    // 大量无关输出,无限累积等于内存泄漏
+                    if v.len() < 24 {
+                        v.push(line);
+                    }
+                }
             }
         });
     }
@@ -237,9 +262,62 @@ pub fn start(
         Err(e) => {
             let _ = child.kill();
             let _ = child.wait();
-            Err(e)
+            let raw = stderr_lines.lock().map(|v| v.join("\n")).unwrap_or_default();
+            Err(match explain_ssh_failure(&raw) {
+                Some(hint) => format!("{e}\n\n{hint}"),
+                None if raw.trim().is_empty() => e,
+                None => format!("{e}\n\nssh 输出:\n{}", raw.trim()),
+            })
         }
     }
+}
+
+/// 把 ssh 的原始报错翻译成用户能据以行动的话。
+///
+/// 这些串每一条都对应一次真实的排查:光看 "exit code 255" 谁也想不到问题
+/// 出在私钥的 Windows ACL 上。
+fn explain_ssh_failure(stderr: &str) -> Option<String> {
+    let s = stderr.to_ascii_lowercase();
+
+    if s.contains("bad permissions") || s.contains("unprotected private key") {
+        return Some(
+            "私钥文件权限过于开放,Windows 版 OpenSSH 会拒绝使用它。\n\
+             用管理员 PowerShell 执行(把路径换成你的私钥):\n\
+             \x20 icacls \"C:\\Users\\你\\.ssh\\id_ed25519\" /inheritance:r /grant:r \"$env:USERNAME:F\"\n\
+             注意:Git Bash 里的 ssh 不做这项检查,所以在终端里能连通不代表这里也能。"
+                .into(),
+        );
+    }
+    if s.contains("permission denied (publickey") {
+        return Some(
+            "服务器拒绝了这把密钥。请确认:\n\
+             \x20 · 公钥已写入远程账户的 ~/.ssh/authorized_keys\n\
+             \x20 · 私钥路径填的是私钥本身(不是 .pub)\n\
+             \x20 · 私钥没有密码短语 —— 图形界面下无处输入,带密码的密钥用不了"
+                .into(),
+        );
+    }
+    if s.contains("host key verification failed") {
+        return Some(
+            "服务器的主机密钥与本机记录的不一致。若确属正常变更(重装系统、换机器),\n\
+             删除 ~/.ssh/known_hosts 中该主机对应的那一行后重试。\n\
+             若并未变更过,请先排查网络是否被中间人劫持。"
+                .into(),
+        );
+    }
+    if s.contains("connection refused") {
+        return Some("远程主机拒绝连接:该地址/端口上没有 SSH 服务在监听。请检查主机、端口,以及远端 sshd 是否运行。".into());
+    }
+    if s.contains("could not resolve hostname") {
+        return Some("无法解析主机名。请检查拼写,或改用 IP 地址。".into());
+    }
+    if s.contains("connection timed out") || s.contains("operation timed out") {
+        return Some("连接超时:通常是防火墙拦截或主机不可达。".into());
+    }
+    if s.contains("cannot listen to port") || s.contains("address already in use") {
+        return Some("本地端口转发失败,该端口已被占用。重启应用会重新分配端口。".into());
+    }
+    None
 }
 
 /// 轮询本地隧道端口上的 `/api/health` 直到后端就绪。
@@ -328,6 +406,28 @@ mod tests {
     }
 
     #[test]
+    fn ssh报错能翻译成可行动的提示() {
+        // 私钥权限:这条最反直觉——Git Bash 里 ssh 连得通,应用里却连不上,
+        // 因为 MSYS 版不检查 Windows ACL 而 System32 版检查。
+        let hint = explain_ssh_failure(
+            "Permissions for 'C:/Users/x/.ssh/k' are too open.\nbad permissions",
+        )
+        .expect("私钥权限问题应给出提示");
+        assert!(hint.contains("icacls"), "应给出可直接执行的修复命令");
+
+        assert!(explain_ssh_failure("Permission denied (publickey).")
+            .expect("应识别公钥被拒")
+            .contains("authorized_keys"));
+
+        assert!(explain_ssh_failure("ssh: connect to host x port 22: Connection refused")
+            .expect("应识别连接被拒")
+            .contains("sshd"));
+
+        // 认不出来的错误不要硬编一个提示,原样把 ssh 输出带给用户更有用
+        assert!(explain_ssh_failure("some unknown failure").is_none());
+    }
+
+    #[test]
     fn 端口为零不合法() {
         let mut c = cfg();
         c.remote_port = 0;
@@ -351,6 +451,63 @@ mod tests {
         let cmd = build_remote_command(&cfg());
         assert!(cmd.contains("read -r CC_FLOW_AUTH_TOKEN"), "应从 stdin 读取令牌");
         assert!(!cmd.contains("CC_FLOW_AUTH_TOKEN="), "令牌不得以赋值形式出现在命令行");
+    }
+
+    /// 真连一台靶机跑通整条链路。
+    ///
+    /// 默认 ignored:它需要一台可 SSH 且已装好后端的机器。上面那些单测只能保证
+    /// 命令**拼**得对,证明不了这段 Rust 真能把隧道建起来——而 spawn 参数、stdin
+    /// 写入时机、就绪探测这些恰恰是最容易出错的地方。
+    ///
+    /// 跑法(靶机搭建见 HANDOFF.md):
+    ///   CC_FLOW_TEST_SSH_KEY=C:/Users/xxx/.ssh/cc-flow-wsl-test \
+    ///   cargo test --lib -- --ignored --nocapture 真实连接靶机
+    #[test]
+    #[ignore]
+    fn 真实连接靶机() {
+        let Ok(key) = std::env::var("CC_FLOW_TEST_SSH_KEY") else {
+            panic!("需要设置 CC_FLOW_TEST_SSH_KEY 指向靶机私钥");
+        };
+        let cfg = RemoteConfig {
+            host: std::env::var("CC_FLOW_TEST_SSH_HOST").unwrap_or_else(|_| "127.0.0.1".into()),
+            ssh_port: std::env::var("CC_FLOW_TEST_SSH_PORT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(2222),
+            user: std::env::var("CC_FLOW_TEST_SSH_USER").unwrap_or_else(|_| "root".into()),
+            identity_file: Some(key),
+            remote_dir: std::env::var("CC_FLOW_TEST_REMOTE_DIR")
+                .unwrap_or_else(|_| "/opt/agent-flow-server".into()),
+            // 用一个不常见的端口,避免撞上靶机上已经跑着的后端而测出假通过
+            remote_port: 3017,
+        };
+
+        let token = generate_test_token();
+        let local_port = crate::sidecar::reserve_port().expect("分配本地端口");
+
+        let mut session = start(&cfg, &token, local_port).expect("应能连上靶机并启动远程后端");
+
+        // 隧道确实通到了远端后端
+        assert!(
+            http_get_ok(local_port, "/api/health").expect("健康检查请求应成功"),
+            "隧道已建立但健康检查未返回 200"
+        );
+
+        stop(&mut session);
+
+        // 关掉之后端口应该不再可用 —— 否则说明 ssh 没真被杀掉,
+        // 或者连上的其实是靶机上一个早就跑着的后端(假通过)
+        std::thread::sleep(Duration::from_millis(1500));
+        assert!(
+            http_get_ok(local_port, "/api/health").is_err(),
+            "断开后本地端口仍可连通,说明隧道没有真正关闭"
+        );
+    }
+
+    #[cfg(test)]
+    fn generate_test_token() -> String {
+        // 不用 sidecar::generate_auth_token,避免测试依赖 OS 熵源初始化路径
+        format!("test-{}", std::process::id())
     }
 
     #[test]
