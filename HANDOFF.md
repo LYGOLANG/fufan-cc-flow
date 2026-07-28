@@ -4,6 +4,19 @@
 
 ## 当前任务
 
+**Phase 15 + 16 代码完成**，v0.1.24 已安装并通过本机回归。
+
+Phase 16（跨机语义）已完成 5/6 项，详见 DEV-PLAN。新增基础设施：
+- `client/src/stores/connectionStore.ts` — 「连的哪台后端」的单一事实源
+- `client/src/utils/hostPath.ts` — 按目标平台处理路径（10 个用例）
+- `GET /api/system/host-info` — 后端上报自己的 platform/分隔符/大小写敏感性
+- Rust `forward_remote_port` — 按需给远端端口开 SSH 转发（预览链接用）
+
+**唯一未做项**：隧道中断时前端无明确提示（`http-chat.ts:48` 的重连状态机
+没有「地址失效」概念，会永远以同样间隔重试同一地址）。
+
+**下面这段是历史记录**：
+
 **Phase 15 远程连接底座**：代码已完成，待打包安装后在真实桌面环境验证。
 
 已完成：
