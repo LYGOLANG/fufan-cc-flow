@@ -55,7 +55,10 @@ function reservePort() {
   });
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) =>
+  new Promise((r) => {
+    setTimeout(r, ms);
+  });
 
 async function waitForHealth(localPort, timeoutMs = 60_000) {
   const deadline = Date.now() + timeoutMs;
@@ -162,25 +165,22 @@ async function main() {
     const noToken = await fetch(`http://127.0.0.1:${localPort}${AUTHED}`, {
       signal: AbortSignal.timeout(5000),
     });
-    noToken.status === 401
-      ? pass("无令牌 → 401")
-      : fail(`无令牌应 401,实得 ${noToken.status}`);
+    if (noToken.status === 401) pass("无令牌 → 401");
+    else fail(`无令牌应 401,实得 ${noToken.status}`);
 
     const badToken = await fetch(`http://127.0.0.1:${localPort}${AUTHED}`, {
       headers: { "x-cc-flow-token": "wrong-token" },
       signal: AbortSignal.timeout(5000),
     });
-    badToken.status === 401
-      ? pass("错误令牌 → 401")
-      : fail(`错误令牌应 401,实得 ${badToken.status}`);
+    if (badToken.status === 401) pass("错误令牌 → 401");
+    else fail(`错误令牌应 401,实得 ${badToken.status}`);
 
     const good = await fetch(`http://127.0.0.1:${localPort}${AUTHED}`, {
       headers: { "x-cc-flow-token": token },
       signal: AbortSignal.timeout(5000),
     });
-    good.ok
-      ? pass(`正确令牌 → ${good.status}`)
-      : fail(`正确令牌应 2xx,实得 ${good.status}`);
+    if (good.ok) pass(`正确令牌 → ${good.status}`);
+    else fail(`正确令牌应 2xx,实得 ${good.status}`);
 
     console.log("=== 3. 令牌是否泄漏进远程进程列表 ===");
     // 直接读后端进程自己的 cmdline,而不是 `ps aux | grep <token>`——后者的
