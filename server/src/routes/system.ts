@@ -2,6 +2,7 @@ import { Router, type Router as RouterType } from "express";
 import { exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
+import os from "os";
 import path from "path";
 import { SystemService } from "../services/systemService.js";
 import { CodexService } from "../services/codexService.js";
@@ -34,6 +35,29 @@ const execAsync = promisify(exec);
 const router: RouterType = Router();
 const systemService = new SystemService();
 const codexService = new CodexService();
+
+/**
+ * GET /api/system/host-info
+ *
+ * 后端所在机器的路径语义。远程连接时前端跑在 Windows、后端可能在 Linux,
+ * 而前端有大量地方在**猜**这些信息:靠"路径里有没有反斜杠"判断分隔符
+ * (FolderBrowserModal)、用 toLowerCase() 归一化路径再比较(uiStore/FileTree)。
+ * 猜错的后果是 Linux 上 /Src 与 /src 被当成同一个目录、拼出的新路径分隔符混用。
+ *
+ * 本机形态下这些猜测碰巧总是对的,所以问题一直没暴露 —— 直到后端搬到另一台机器。
+ */
+router.get("/host-info", (_req, res) => {
+  const platform = process.platform;
+  res.json({
+    platform,
+    pathSep: platform === "win32" ? "\\" : "/",
+    // Windows 与 macOS(默认 APFS/HFS+)大小写不敏感,其余按敏感处理。
+    // 宁可在不敏感的系统上按敏感对待(顶多少匹配到几个大小写变体),
+    // 也不能反过来 —— 那会把两个不同的目录判成同一个。
+    caseSensitive: platform !== "win32" && platform !== "darwin",
+    homedir: os.homedir(),
+  });
+});
 
 // GET /api/system/claude-info
 router.get("/claude-info", async (_req, res) => {
