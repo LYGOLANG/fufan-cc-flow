@@ -29,6 +29,7 @@ import type {
 import { logger } from "../utils/logger.js";
 import { resolveCliPath } from "../utils/claudeCli.js";
 import { findSessionJsonl } from "../utils/pathUtils.js";
+import { decideFork, effortKeyOf } from "./forkDecision.js";
 import type { AgentServiceOptions, ContentBlock } from "../types/claude.js";
 import type { PermissionRequest } from "../types/api.js";
 import { applyClaudeCliProxyEnv } from "./claudeOAuthEnvironment.js";
@@ -207,7 +208,16 @@ function userMessageOf(prompt: string): SDKUserMessage {
  * 此列——官方端点可通过 setModel/setPermissionMode 热切;但第三方兼容端点的模型
  * 经 ANTHROPIC_MODEL env 钉死,故 baseUrl 存在时模型并入指纹。
  */
-function spawnFingerprint(o: AgentServiceOptions): string {
+/**
+ * 常驻进程的「身份指纹」：只要它变了，下一条消息就必须换进程才能生效。
+ *
+ * 导出仅为可测。这个函数是本文件最容易出静默 bug 的地方 —— 新增一个影响
+ * query 行为的选项却忘了加进来，不会有任何报错，只会表现为「设置改了不生效，
+ * 要重开会话才行」。本轮就踩过两次（maxBudget、thinking）。
+ * 相应地，它里面还有两处**刻意的例外**（fallbackModel 不入、model 只在第三方
+ * 端点入），看着像遗漏但不是，被"顺手修复"会架空进程复用。测试把这些都锁住了。
+ */
+export function spawnFingerprint(o: AgentServiceOptions): string {
   return JSON.stringify([
     o.projectPath,
     o.baseUrl ?? "",
@@ -489,32 +499,33 @@ export class ClaudeAgentService extends EventEmitter {
     const prevModel = options.sessionId
       ? sessionModelCache.get(options.sessionId)
       : undefined;
-    const modelChanged =
-      !!options.sessionId &&
-      !!options.model &&
-      prevModel !== undefined &&
-      prevModel !== options.model;
-
-    const effortKey = `${options.effort ?? ""}:${options.ultracode ? 1 : 0}`;
+    const effortKey = effortKeyOf(options.effort, options.ultracode);
     const prevEffort = options.sessionId
       ? sessionEffortCache.get(options.sessionId)
       : undefined;
-    const effortChanged =
-      !!options.sessionId &&
-      prevEffort !== undefined &&
-      prevEffort !== effortKey;
 
-    if (modelChanged) {
+    // 判定逻辑抽在 forkDecision.ts（有测试覆盖）：四个条件绞在一起，且判错
+    // 的两个方向都是静默的 —— 该 fork 没 fork 是「换了模型没反应」，
+    // 不该 fork 却 fork 是「历史被切碎成一堆新会话」。
+    const decision = decideFork({
+      sessionId: options.sessionId,
+      model: options.model,
+      prevModel,
+      effortKey,
+      prevEffort,
+      explicitFork: options.forkSession,
+    });
+
+    if (decision.reason === "model-changed") {
       logger.info(
         `[${sessionId}] 模型变更(${prevModel} → ${options.model}),对 resume 会话启用 forkSession`,
       );
-    }
-    if (effortChanged) {
+    } else if (decision.reason === "effort-changed") {
       logger.info(
         `[${sessionId}] 推理力度变更(${prevEffort} → ${effortKey}),对 resume 会话启用 forkSession`,
       );
     }
-    const forkSession = options.forkSession || modelChanged || effortChanged;
+    const forkSession = decision.fork;
 
     // resume 前净化历史里第三方端点写入的非 msg_ 消息 id,避免官方 API 400
     if (options.sessionId) {
