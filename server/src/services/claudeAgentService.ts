@@ -30,6 +30,7 @@ import { logger } from "../utils/logger.js";
 import { resolveCliPath } from "../utils/claudeCli.js";
 import { findSessionJsonl } from "../utils/pathUtils.js";
 import { decideFork, effortKeyOf } from "./forkDecision.js";
+import { sanitizeJsonlContent } from "./jsonlSanitize.js";
 import type { AgentServiceOptions, ContentBlock } from "../types/claude.js";
 import type { PermissionRequest } from "../types/api.js";
 import { applyClaudeCliProxyEnv } from "./claudeOAuthEnvironment.js";
@@ -253,32 +254,12 @@ async function sanitizeSessionJsonlForResume(sessionId: string): Promise<void> {
   } catch {
     return;
   }
-  let changed = 0;
-  const lines = raw.split("\n").map((line) => {
-    if (!line.includes('"assistant"')) return line; // 快速跳过非 assistant 行
-    try {
-      const rec = JSON.parse(line) as {
-        type?: string;
-        message?: { id?: unknown };
-      };
-      const msg = rec?.message;
-      if (
-        rec?.type === "assistant" &&
-        typeof msg?.id === "string" &&
-        msg.id &&
-        !msg.id.startsWith("msg_")
-      ) {
-        msg.id = `msg_${msg.id}`;
-        changed++;
-        return JSON.stringify(rec);
-      }
-    } catch {
-      /* 非法 JSON 行原样保留 */
-    }
-    return line;
-  });
+  // 纯逻辑抽在 jsonlSanitize.ts(有测试覆盖)。这里只管文件读写 ——
+  // 该函数会改写用户真实的聊天记录,逻辑出错就是历史被写坏且无法回退,
+  // 所以判定部分必须能脱离文件系统单测。
+  const { content, changed } = sanitizeJsonlContent(raw);
   if (changed > 0) {
-    await fs.writeFile(file, lines.join("\n"), "utf-8");
+    await fs.writeFile(file, content, "utf-8");
     logger.info(
       `[${sessionId}] resume 净化:已为 ${changed} 条 assistant 消息 id 补上 msg_ 前缀(第三方端点历史)`,
     );
