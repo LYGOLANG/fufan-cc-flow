@@ -95,6 +95,38 @@ code-reviewer 通过，应由用户明确选择开启。
   孤儿后端，还会干扰 verify-auth 的端口探测。按命令行精确列出再逐个杀。
 - 验证「签名/产物守卫」时别用 `cp` 还原备份：`cp` 会把 mtime 刷成当前时间，
   构造出的场景是假的（sig 反而比 exe 新），会误判成「守卫没拦住」。用 `touch`。
+- **WSL 靶机（远程功能的测试环境）**：`wsl -d Ubuntu-22.04`，sshd 监听 2222，
+  从 Windows 用 `ssh -i ~/.ssh/cc-flow-wsl-test -p 2222 root@127.0.0.1` 连入
+  （**走 localhost 转发，不要用 WSL 的 172.x IP**——那条路被 Hyper-V 防火墙挡）。
+  Node v22.11.0 装在 `/opt/node-v22.11.0-linux-x64`，后端部署在 `/opt/agent-flow-server`。
+- **从 Git Bash 调 `wsl` 有两处路径/引号陷阱**：
+  ① Git Bash 会把 `/mnt/c/...` 改写成 `C:/Program Files/Git/mnt/c/...`（MSYS 路径转换），
+     必须前置 `MSYS_NO_PATHCONV=1`；
+  ② `wsl -- bash -lc '<脚本>'` 里的单引号在 Windows 命令行层不生效，含空格的路径会被
+     重新分割，脚本里的变量静默变成空串（症状：`mkdir: cannot create directory ''`）。
+     把脚本写成文件再 `wsl -- bash <文件>` 传参，比内联字符串可靠得多。
+- **WSL 的 `&` 后台进程会随 `wsl -- cmd` 结束被清理**：sshd 要用自带守护模式
+  （`/usr/sbin/sshd` 不加 `-D`），否则下一条命令就发现它没了。
+- **sshd 启动前必须有 `/run/sshd` 且属主 root:root 0755**：`/run` 是 tmpfs，
+  WSL 实例重启即清空。缺了只报 `Missing privilege separation directory`。
+- **Hyper-V 防火墙默认 Block 入站到 WSL**（WSL 2.5+，网卡名就叫
+  `vEthernet (WSL (Hyper-V firewall))`）。症状极具误导性：**ping 得通**（ICMP 有放行规则）
+  但 TCP 一律拒。加规则用 `New-NetFirewallHyperVRule -VMCreatorId '{40E0AC32-...}'`。
+  本次加的测试规则名 `cc-flow-wsl-ssh-test`，删除：`Remove-NetFirewallHyperVRule -Name 'cc-flow-wsl-ssh-test'`。
+  （实测走 localhost 转发时并不需要这条规则，留着仅为直连 IP 备用。）
+- **node-gyp 的头文件走 `disturl`，与 npm registry 是两个设置**：设了
+  `--registry=npmmirror` 后包下载飞快，编译却卡在
+  `https://nodejs.org/download/release/vX/node-vX-headers.tar.gz` 直到 ETIMEDOUT。
+  报错通篇是 node-gyp，看着像工具链坏了，实为网络。解法
+  `npm_config_disturl=https://cdn.npmmirror.com/binaries/node`。
+  `install-remote.sh` 已内置探测与自动回退。
+- **WSL 继承的 Windows PATH 里含 `(x86)` 等括号**：`export PATH=/usr/local/bin:$PATH`
+  不加引号会直接 `syntax error near unexpected token '('`。WSL 内脚本一律
+  `export PATH="/usr/local/bin:/usr/bin:/bin"` 或给 `$PATH` 加引号。
+- **node-pty 没有 linux 预编译二进制**：npm 包 `node-pty@1.1.0` 的 `prebuilds/` 只有
+  darwin-arm64/x64 与 win32-arm64/x64。**不是打包裁剪的**，pnpm store 里也一样。
+  所以远程 Linux 部署不能直接拷 Windows 的 `server-dist`，必须在目标机
+  `npm install` 现场编译，前置依赖 `python3` + `build-essential`。
 - 打包产物名带空格（`Agent Flow_x.y.z_x64-setup.exe`），发布时去空格
   （GitHub 会把资产名里的空格转成点，去空格才能让 latest.json 的 url 对得上）。
   签名 trusted comment 里记的是**带空格**的原名，这是正常的，tauri 验签不看文件名。
