@@ -28,6 +28,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execFileSync } from "child_process";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const conf = JSON.parse(
@@ -108,11 +109,25 @@ fs.writeFileSync(path.join(outDir, "latest.json"), JSON.stringify(manifest, null
 console.log(`✅ 更新产物已生成: ${outDir}`);
 console.log(`   版本: v${version}`);
 console.log(`   下载地址: ${manifest.platforms["windows-x86_64"].url}`);
+
+// 这里曾经只是一行「记得确认公钥和私钥配对」的文字提醒。提醒挡不住任何事:
+// 密钥对不上时产物看着完全正常、发布毫无报错,失败只发生在**用户那侧**的
+// 自动更新里,发布方永远收不到反馈。所以改成发布前真验一次。
+console.log(`\n🔑 用应用内公钥验签...`);
+try {
+  execFileSync(process.execPath, [path.join(root, "scripts", "verify-signature.mjs")], {
+    stdio: "inherit",
+  });
+} catch {
+  console.error(
+    `\n❌ 验签未通过,已阻止发布。\n` +
+      `   最常见原因: 打包用的私钥(~/.tauri/fufan-ccflow.key)与应用内固化的\n` +
+      `   公钥不是一对。换过密钥的话,得重发一版全量安装包才能让老用户接上。`
+  );
+  process.exit(1);
+}
+
 console.log(
-  `   下一步: gh release create v${version} --repo ${repo} --title "v${version}" ` +
-    `--notes "${notes}" "release/updates/${assetName}" "release/updates/latest.json"`
-);
-console.log(
-  `\n🔑 提醒: 应用内固化的公钥必须与打包私钥(~/.tauri/fufan-ccflow.key)配对,\n` +
-    `   否则所有更新都会校验失败。换过密钥就要重发一版全量安装包。`
+  `\n   下一步: gh release create v${version} --repo ${repo} --title "v${version}" ` +
+    `--notes-file <说明文件> "release/updates/${assetName}" "release/updates/latest.json"`
 );
