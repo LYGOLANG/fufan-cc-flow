@@ -59,6 +59,14 @@ interface UIState {
   fileViewModalOpen: boolean;
   settingsActiveTab: "model" | "environment";
   folderBrowserOpen: boolean;
+  /**
+   * 非 null 时，目录浏览器处于「选择器」模式：选中后把路径回调给调用方，
+   * 而不是直接打开该项目。
+   *
+   * 用于后端所在机器没有图形界面的场景（远程连接到 headless 服务器）——
+   * 那时系统原生目录框根本弹不出来，只能用应用内的浏览器代替。
+   */
+  folderPickResolve: ((path: string | null) => void) | null;
   skillBrowserOpen: boolean;
   skillBrowserInitialSelection: { tab: "project" | "user" | "plugin"; name: string } | null;
   createSkillModalOpen: boolean;
@@ -106,6 +114,10 @@ interface UIState {
   setFileViewModalOpen: (open: boolean) => void;
   setSettingsActiveTab: (tab: "model" | "environment") => void;
   setFolderBrowserOpen: (open: boolean) => void;
+  /** 以选择器模式打开目录浏览器，返回用户选定的路径（取消为 null） */
+  pickFolderInApp: () => Promise<string | null>;
+  /** 由目录浏览器调用：交回结果并退出选择器模式 */
+  resolveFolderPick: (path: string | null) => void;
   setSkillBrowserOpen: (open: boolean) => void;
   setSkillBrowserInitialSelection: (sel: { tab: "project" | "user" | "plugin"; name: string } | null) => void;
   setCreateSkillModalOpen: (open: boolean) => void;
@@ -156,6 +168,7 @@ export const useUIStore = create<UIState>((set) => ({
   settingsActiveTab: "model",
   settingsPageOpen: false,
   folderBrowserOpen: false,
+  folderPickResolve: null,
   skillBrowserOpen: false,
   skillBrowserInitialSelection: null,
   createSkillModalOpen: false,
@@ -241,7 +254,25 @@ export const useUIStore = create<UIState>((set) => ({
   setFileViewModalOpen: (open) => set({ fileViewModalOpen: open }),
   setSettingsActiveTab: (tab) => set({ settingsActiveTab: tab }),
   setSettingsPageOpen: (open) => set({ settingsPageOpen: open }),
-  setFolderBrowserOpen: (open) => set({ folderBrowserOpen: open }),
+  setFolderBrowserOpen: (open) =>
+    set((s) => {
+      // 直接关闭时,若还挂着未兑现的选择器回调,必须按「取消」兑现掉。
+      // 漏掉这一步,调用方的 await 会永远悬着,界面停在"正在处理"再也不动。
+      if (!open && s.folderPickResolve) s.folderPickResolve(null);
+      return { folderBrowserOpen: open, folderPickResolve: open ? s.folderPickResolve : null };
+    }),
+
+  pickFolderInApp: () =>
+    new Promise<string | null>((resolve) => {
+      set({ folderBrowserOpen: true, folderPickResolve: resolve });
+    }),
+
+  resolveFolderPick: (path) =>
+    set((s) => {
+      s.folderPickResolve?.(path);
+      return { folderBrowserOpen: false, folderPickResolve: null };
+    }),
+
   setSkillBrowserOpen: (open) => set({ skillBrowserOpen: open }),
   setSkillBrowserInitialSelection: (sel) => set({ skillBrowserInitialSelection: sel }),
   setCreateSkillModalOpen: (open) => set({ createSkillModalOpen: open }),

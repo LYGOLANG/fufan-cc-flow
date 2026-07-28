@@ -660,8 +660,12 @@ export const api = {
         body: JSON.stringify(opts ?? {}),
       }),
 
+    // unavailable = 后端所在机器没有图形界面(远程连到 headless 服务器时的常态),
+    // 与"用户点了取消"必须区分:前者要改用应用内目录浏览,后者什么都不该做。
     pickFolder: () =>
-      request<{ path: string | null }>("/system/pick-folder"),
+      request<{ path: string | null; unavailable?: boolean; reason?: string }>(
+        "/system/pick-folder",
+      ),
     debugClaudeHome: () =>
       request<{
         claudeHome: string;

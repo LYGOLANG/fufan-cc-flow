@@ -315,9 +315,30 @@ router.post("/claude-settings", async (req, res) => {
 });
 
 // GET /api/system/pick-folder — open native OS folder dialog, return selected path
-// Server and client run on the same machine (local tool), so the dialog appears on the user's desktop.
+//
+// 注意:对话框弹在**后端所在的机器**上。本机形态下前后端同机,所以它出现在用户
+// 桌面上;远程连接时后端在另一台机器,那台机器往往是 headless 服务器,压根没有
+// 图形环境。
+//
+// 此时若照常尝试,zenity 会挂到 120 秒超时才失败,而失败又与"用户点了取消"
+// 返回同样的 {path:null} —— 前端只能干等两分钟,然后什么也没发生、什么也不知道。
+// 故先探测图形环境,不可用时立刻返回 unavailable,由前端改用应用内目录浏览。
 router.get("/pick-folder", async (_req, res) => {
   try {
+    const headless =
+      process.platform !== "win32" &&
+      process.platform !== "darwin" &&
+      !process.env.DISPLAY &&
+      !process.env.WAYLAND_DISPLAY;
+    if (headless) {
+      res.json({
+        path: null,
+        unavailable: true,
+        reason: "后端所在机器没有图形界面，无法弹出系统目录选择框",
+      });
+      return;
+    }
+
     let selectedPath: string | null = null;
 
     if (process.platform === "win32") {

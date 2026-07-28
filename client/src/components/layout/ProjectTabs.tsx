@@ -66,7 +66,7 @@ function formatProjectInitError(err: unknown): string {
 export default function ProjectTabs() {
   const {
     openProjects, projectPath, busyProjects, projectsAwaitingPermission,
-    setProjectPath, closeOpenProject, setProjectSession,
+    setProjectPath, closeOpenProject, setProjectSession, pickFolderInApp,
   } = useUIStore();
   const { currentSessionId, setSessionId } = useChatStore();
   const [initTargetPath, setInitTargetPath] = useState<string | null>(null);
@@ -120,11 +120,18 @@ export default function ProjectTabs() {
     setInitPreview(null);
     setInitTargetPath(null);
     try {
+      // 系统原生目录框弹在**后端所在机器**上。远程连到 headless 服务器时那台
+      // 机器没有图形环境,后端会回 unavailable —— 此时改用应用内目录浏览,
+      // 而不是让用户对着一个什么也不会发生的按钮发呆。
       const picked = await api.systemApi.pickFolder();
-      if (!picked.path) return;
+      let targetPath = picked.path;
+      if (!targetPath && picked.unavailable) {
+        targetPath = await pickFolderInApp();
+      }
+      if (!targetPath) return;
 
-      setInitTargetPath(picked.path);
-      const preview = await api.previewProjectInit(picked.path);
+      setInitTargetPath(targetPath);
+      const preview = await api.previewProjectInit(targetPath);
       if (!preview.hasConflicts && !preview.hasMissing) {
         await finishProjectInit(preview.targetPath, []);
         return;

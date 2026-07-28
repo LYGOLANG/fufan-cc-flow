@@ -26,7 +26,15 @@ interface BrowseResult {
 }
 
 export default function FolderBrowserModal() {
-  const { folderBrowserOpen, setFolderBrowserOpen, projectPath, recentProjects, removeRecentProject } = useUIStore();
+  const {
+    folderBrowserOpen,
+    setFolderBrowserOpen,
+    projectPath,
+    recentProjects,
+    removeRecentProject,
+    folderPickResolve,
+    resolveFolderPick,
+  } = useUIStore();
 
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [result, setResult] = useState<BrowseResult | null>(null);
@@ -73,6 +81,12 @@ export default function FolderBrowserModal() {
   const recentList = [...new Set([...recentProjects, ...sessionProjects])].slice(0, 12);
 
   const handleSelect = () => {
+    // 选择器模式:把路径交回调用方,不要顺手把它当项目打开 ——
+    // 调用方要的可能是「一个用于初始化新项目的空目录」,直接打开是错的。
+    if (folderPickResolve) {
+      resolveFolderPick(currentPath || null);
+      return;
+    }
     if (currentPath) {
       openProject(currentPath); // 切路径并加载该项目的会话上下文
     }
@@ -198,7 +212,12 @@ export default function FolderBrowserModal() {
                   className="group flex items-center gap-2 rounded-md hover:bg-white/5 transition-colors"
                 >
                   <button
-                    onClick={() => { openProject(p); setFolderBrowserOpen(false); }}
+                    onClick={() => {
+                      // 选择器模式下同样只交回路径,不打开
+                      if (folderPickResolve) return resolveFolderPick(p);
+                      openProject(p);
+                      setFolderBrowserOpen(false);
+                    }}
                     className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5 text-left"
                     title={p}
                   >
