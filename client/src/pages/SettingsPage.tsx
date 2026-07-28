@@ -7,6 +7,7 @@ import ClaudeCliPanel from "../components/settings/claude-cli-panel";
 import CodexProviderPanel from "../components/settings/codex-provider-panel";
 import ProvidersPanel, { type ProviderStatusView } from "../components/settings/ProvidersPanel";
 import ProxySettingsPanel from "../components/settings/proxy-settings-panel";
+import RemoteConnectionPanel from "../components/settings/remote-connection-panel";
 import { useSystemStore } from "../stores/systemStore";
 import { useUIStore } from "../stores/uiStore";
 import type { ProviderInfo } from "../types/provider";
@@ -161,8 +162,9 @@ export default function SettingsPage() {
 
             {section === "network" && (
               <div className="space-y-5">
-                <SectionHeader title="网络代理" description="这是一份应用级共享连接设置，不属于 Claude 或任何单一供应商。" />
+                <SectionHeader title="网络与连接" description="应用级共享连接设置，不属于 Claude 或任何单一供应商。" />
                 <div className="rounded-2xl border border-sky-link/15 bg-sky-link/[0.03] p-5"><ProxySettingsPanel /></div>
+                <div className="rounded-2xl border border-sky-link/15 bg-sky-link/[0.03] p-5"><RemoteConnectionPanel /></div>
               </div>
             )}
 
