@@ -39,6 +39,14 @@ interface UIState {
 
   // Connection + project
   wsConnected: boolean;
+  /**
+   * 连续重连失败到「大概率不会自己好」的程度。
+   *
+   * 有一类故障重试一万次也没用：远程模式下 SSH 隧道由桌面壳在启动时建立，
+   * 隧道进程一死（换网、休眠、服务器重启），本机那个端口就再没人监听，
+   * 只有重启应用才会重建。此时界面还显示"正在重连"就是在骗人。
+   */
+  wsStale: boolean;
   projectPath: string;
   /** Recently opened project folders (most recent first). */
   recentProjects: string[];
@@ -98,7 +106,7 @@ interface UIState {
   setTerminalOpen: (open: boolean) => void;
   setTerminalHeight: (h: number) => void;
 
-  setWsConnected: (c: boolean) => void;
+  setWsConnected: (c: boolean, stale?: boolean) => void;
   setProjectPath: (p: string) => void;
   removeRecentProject: (p: string) => void;
   closeOpenProject: (p: string) => void;
@@ -145,6 +153,7 @@ export const useUIStore = create<UIState>((set) => ({
   terminalHeight: 260,
 
   wsConnected: false,
+  wsStale: false,
   projectPath: RESOLVED_PROJECT_PATH,
   recentProjects: (JSON.parse(localStorage.getItem("fufan_recentProjects") || "[]") as string[])
     .filter((p) => !isIgnoredProject(p)),
@@ -190,7 +199,8 @@ export const useUIStore = create<UIState>((set) => ({
   setTerminalOpen: (open) => set({ terminalOpen: open }),
   setTerminalHeight: (h) => set({ terminalHeight: h }),
 
-  setWsConnected: (c) => set({ wsConnected: c }),
+  // 连上即清 stale：无论之前失败多少次，成功一次就说明这条路还活着
+  setWsConnected: (c, stale) => set({ wsConnected: c, wsStale: c ? false : !!stale }),
   setProjectPath: (p) => {
     localStorage.setItem("fufan_projectPath", p);
     set((s) => {

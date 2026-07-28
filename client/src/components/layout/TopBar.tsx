@@ -9,13 +9,15 @@ import {
   TerminalSquare,
 } from "lucide-react";
 import { useUIStore } from "../../stores/uiStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 import { useConfigStore } from "../../stores/configStore";
 import { useChatStore } from "../../stores/chatStore";
 import { formatCost } from "../../utils/costCalculator";
 import ModelSelector from "../manage/ModelSelector";
 
 export default function TopBar() {
-  const { sidebarOpen, toggleSidebar, wsConnected, projectPath, setProjectPath, toggleTerminal } =
+  const isRemoteConn = useConnectionStore((s) => s.kind === "remote");
+  const { sidebarOpen, toggleSidebar, wsConnected, wsStale, projectPath, setProjectPath, toggleTerminal } =
     useUIStore();
   const model = useConfigStore((s) => s.model);
   const totalCost = useChatStore((s) => s.totalCost);
@@ -87,10 +89,22 @@ export default function TopBar() {
             ? "text-emerald-ok bg-emerald-ok/5"
             : "text-rose-err bg-rose-err/5"
         }`}
+        // 连不上时把「为什么」和「怎么办」说清楚。远程模式下隧道由桌面壳
+        // 在启动时建立，它一死就只能重启应用——这时还让用户等"自动重连"
+        // 是在浪费他的时间。
+        title={
+          wsConnected
+            ? undefined
+            : wsStale
+              ? isRemoteConn
+                ? "与远程服务器的连接已断开。SSH 隧道在应用启动时建立，断开后需重启应用重建。"
+                : "后端多次重连失败。可尝试重启应用；若仍不行，查看应用日志。"
+              : "正在重连…"
+        }
       >
         {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
         <span className="hidden sm:inline">
-          {wsConnected ? "已连接" : "离线"}
+          {wsConnected ? "已连接" : wsStale ? "连接已断开" : "重连中…"}
         </span>
       </div>
     </header>

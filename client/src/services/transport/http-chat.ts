@@ -17,6 +17,14 @@ export class HttpChatConnection implements ChatConnection {
   private readonly sendTimeoutMs = 15000;
   private pendingSends: PendingSend[] = [];
   private closedByUser = false;
+  /** 自上次成功连接以来的连续失败次数 */
+  private consecutiveFailures = 0;
+  /**
+   * 连续失败到这个次数就认为「这条连接大概率不会自己好了」。
+   * 4 次 ≈ 3+6+12+24 秒,足够穿过一次 sidecar 重启,又不至于让用户
+   * 对着"正在重连"干等太久。
+   */
+  private readonly staleAfterFailures = 4;
 
   constructor(private readonly projectPath: string) {}
 
@@ -31,6 +39,7 @@ export class HttpChatConnection implements ChatConnection {
 
     this.ws.onopen = () => {
       this.reconnectDelay = 3000;
+      this.consecutiveFailures = 0;
       this.notify("_connected", {});
       this.flushPendingSends();
     };
@@ -46,8 +55,21 @@ export class HttpChatConnection implements ChatConnection {
       }
     };
     this.ws.onclose = () => {
-      this.notify("_disconnected", {});
-      if (this.closedByUser) return;
+      if (this.closedByUser) {
+        this.notify("_disconnected", { stale: false });
+        return;
+      }
+      this.consecutiveFailures += 1;
+
+      // 重试本身不停 —— 网络恢复、后端重启都可能让它自己好起来。
+      // 但连续失败到一定次数后必须**告诉用户**,因为有一类故障重试
+      // 一万次也没用:远程模式下 SSH 隧道是桌面壳在启动时建的,
+      // 隧道进程一旦死掉(换网、休眠、服务器重启),本机那个端口就再也
+      // 没人监听了,只有重启应用才会重新建立。此时界面若一直显示
+      // "正在重连",就是在骗人。
+      const stale = this.consecutiveFailures >= this.staleAfterFailures;
+      this.notify("_disconnected", { stale, attempts: this.consecutiveFailures });
+
       const delay = this.reconnectDelay;
       this.reconnectDelay = Math.min(
         this.reconnectDelay * 2,
@@ -72,8 +94,11 @@ export class HttpChatConnection implements ChatConnection {
         this.pendingSends = this.pendingSends.filter((item) => item !== pending);
         this.notify("error", {
           code: "BACKEND_NOT_CONNECTED",
+          // 原文案是「迁移期 Node 后端还没连接上」——那是开发者视角的话,
+          // 用户既不知道什么是迁移期,也不知道 Node 后端是什么。
           message:
-            "迁移期 Node 后端还没连接上，这条消息没有发出去。请稍等几秒重试。",
+            "与后端的连接尚未建立，这条消息没有发出去。请稍等几秒重试；" +
+            "若持续如此，检查连接状态提示。",
         });
       }, this.sendTimeoutMs),
     };

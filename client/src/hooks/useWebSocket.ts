@@ -93,7 +93,9 @@ export function useWebSocket() {
           break;
 
         case "_disconnected":
-          setWsConnected(false);
+          // stale = 连续重连失败到「大概率不会自己好」的程度，
+          // 由传输层判定（见 http-chat.ts 的 staleAfterFailures）
+          setWsConnected(false, payload.stale === true);
           break;
 
         case "session_init": {
