@@ -366,6 +366,65 @@ fn http_get_ok(port: u16, path: &str) -> Result<bool, String> {
     Ok(String::from_utf8_lossy(&buf[..n]).starts_with("HTTP/1.1 200"))
 }
 
+/// 一条按需建立的额外端口转发(与主隧道分开的独立 ssh 进程)。
+pub struct ForwardedPort {
+    pub local_port: u16,
+    child: Child,
+}
+
+/// 为远端的某个端口开一条转发,返回本机上对应的端口。
+///
+/// 用途:远程开发时模型常说「打开 http://localhost:3000 预览」。那个 localhost
+/// 指的是**远程机器**,而本机浏览器打开它只会访问用户自己电脑的 3000 端口 ——
+/// 要么打不开,要么打开了完全不相干的东西,且没有任何迹象表明发生了什么。
+///
+/// 这里不复用主隧道:主隧道的存活与后端生命周期绑定,而预览端口来去自由,
+/// 混在一起会让「关掉一个预览」变成「断开整个后端」。
+pub fn forward_port(cfg: &RemoteConfig, remote_port: u16) -> Result<ForwardedPort, String> {
+    cfg.validate()?;
+    let ssh = resolve_ssh()?;
+    let local_port = crate::sidecar::reserve_port().map_err(|e| format!("无法分配本地端口: {e}"))?;
+
+    let mut args: Vec<String> = vec![
+        "-p".into(),
+        cfg.ssh_port.to_string(),
+        // -N:只做转发,不执行远程命令
+        "-N".into(),
+        "-L".into(),
+        format!("{local_port}:127.0.0.1:{remote_port}"),
+        "-o".into(),
+        "ExitOnForwardFailure=yes".into(),
+        "-o".into(),
+        "BatchMode=yes".into(),
+        "-o".into(),
+        "StrictHostKeyChecking=accept-new".into(),
+        "-o".into(),
+        "ServerAliveInterval=15".into(),
+    ];
+    if let Some(id) = &cfg.identity_file {
+        args.push("-i".into());
+        args.push(id.clone());
+    }
+    args.push(format!("{}@{}", cfg.user, cfg.host));
+
+    let child = Command::new(&ssh)
+        .args(&args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("建立端口转发失败: {e}"))?;
+
+    log::info!("[remote] forwarding local {local_port} -> remote {remote_port}");
+    Ok(ForwardedPort { local_port, child })
+}
+
+/// 关掉一条端口转发。
+pub fn stop_forward(f: &mut ForwardedPort) {
+    let _ = f.child.kill();
+    let _ = f.child.wait();
+}
+
 /// 断开远程连接。杀掉 ssh 进程即可——远端包装 shell 会因 stdin EOF 自行收掉后端。
 pub fn stop(session: &mut RemoteSession) {
     log::info!("[remote] closing tunnel on local port {}", session.local_port);

@@ -8,7 +8,7 @@ import { useWebSocket } from "./hooks/useWebSocket";
 import { useAutoCompact } from "./hooks/useAutoCompact";
 import { restoreOnBoot } from "./utils/openProject";
 import { getCrashRecoveryState } from "./utils/crashRecovery";
-import { installExternalLinkHandler } from "./utils/openExternal";
+import { installExternalLinkHandler, resolveExternalUrl } from "./utils/openExternal";
 import { installHeartbeat } from "./utils/heartbeat";
 import { installCrashReporter } from "./utils/crashReporter";
 import { useUIStore } from "./stores/uiStore";
@@ -42,9 +42,13 @@ export default function App() {
     () =>
       installExternalLinkHandler((url) => {
         const ui = useUIStore.getState();
-        ui.setBrowserUrl(url);
         ui.setRightSidebarTab("browser");
         if (!ui.rightPanelOpen) ui.setRightPanelOpen(true);
+        // 远程模式下 localhost 链接指向的是远程机器,须先转发端口再显示 ——
+        // 直接 setBrowserUrl(url) 会让内置浏览器面板去连本机自己的同号端口。
+        void resolveExternalUrl(url).then((resolved) => {
+          useUIStore.getState().setBrowserUrl(resolved);
+        });
       }),
     []
   );

@@ -40,6 +40,15 @@ fn get_connection_config(app: tauri::AppHandle) -> connection::ConnectionConfig 
     connection::load(&app)
 }
 
+/// 把远端的某个端口映射到本机,返回本机端口。本机模式下原样返回。
+///
+/// 给"打开 http://localhost:3000 预览"这类链接用:那个 localhost 指的是
+/// 远程机器,直接在本机浏览器打开只会访问用户自己电脑的同号端口。
+#[tauri::command]
+fn forward_remote_port(app: tauri::AppHandle, port: u16) -> Result<u16, String> {
+    connection::forward_remote_port(&app, port)
+}
+
 /// 保存连接配置。**下次启动生效** —— 不做热切换。
 ///
 /// 热切换意味着要在运行中把所有 WebSocket、正在跑的会话、终端 PTY 全部迁移到
@@ -78,6 +87,7 @@ pub fn run() {
             backend_error,
             get_connection_config,
             set_connection_config,
+            forward_remote_port,
             system_proxy,
             webview_heartbeat,
             crash_recovery_state,

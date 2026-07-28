@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ExternalLink, Globe, RotateCw, X } from "lucide-react";
 import { useUIStore } from "../../stores/uiStore";
-import { openExternal } from "../../utils/openExternal";
+import { openExternal, resolveExternalUrl } from "../../utils/openExternal";
 
 /**
  * 内置浏览器面板 —— 在右侧栏里预览网页,不打断对话。
@@ -48,7 +48,10 @@ export default function BrowserPanel() {
 
   const go = useCallback(() => {
     const url = normalize(input);
-    if (url) setBrowserUrl(url);
+    if (!url) return;
+    // 用户可能直接在地址栏敲 localhost:3000 —— 远程模式下同样要先转发,
+    // 否则加载的是本机自己的 3000 端口(见 openExternal.ts 的 resolveExternalUrl)
+    void resolveExternalUrl(url).then(setBrowserUrl);
   }, [input, setBrowserUrl]);
 
   const reload = useCallback(() => {

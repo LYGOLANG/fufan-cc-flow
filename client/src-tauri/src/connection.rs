@@ -40,7 +40,17 @@ pub enum ConnectionMode {
 }
 
 /// 运行中的远程会话。放进 Tauri 托管状态,退出时取出来关掉。
-pub struct RemoteBackendState(pub Mutex<Option<RemoteSession>>);
+///
+/// 一并存下 RemoteConfig:按需转发预览端口时还要再发 ssh,而那时配置文件
+/// 可能已被用户改过 —— 必须用**当前连接实际使用的**那份,否则会把转发建到
+/// 另一台机器上。
+pub struct RemoteBackendState {
+    pub session: Mutex<Option<RemoteSession>>,
+    pub config: RemoteConfig,
+    /// 已建立的预览端口转发:远端端口 -> 本机转发。
+    /// 复用而非每次新建,否则用户多点几次预览就攒出一堆 ssh 进程。
+    pub forwards: Mutex<std::collections::HashMap<u16, crate::ssh::ForwardedPort>>,
+}
 
 fn config_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     let dir = app
@@ -114,7 +124,11 @@ pub fn start_backend(app: &tauri::AppHandle) -> Result<(u16, String), String> {
                 .map_err(|e| format!("无法分配本地端口: {e}"))?;
 
             let session = crate::ssh::start(&remote, &token, local_port)?;
-            app.manage(RemoteBackendState(Mutex::new(Some(session))));
+            app.manage(RemoteBackendState {
+                session: Mutex::new(Some(session)),
+                config: remote,
+                forwards: Mutex::new(std::collections::HashMap::new()),
+            });
             Ok((local_port, token))
         }
     }
@@ -126,11 +140,72 @@ pub fn start_backend(app: &tauri::AppHandle) -> Result<(u16, String), String> {
 /// `try_state` 拿不到就是 None,代价可以忽略,而漏掉一条的后果是进程泄漏。
 pub fn stop_backend(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<RemoteBackendState>() {
-        if let Some(mut session) = state.0.lock().unwrap().take() {
+        // 先收预览端口转发:它们是独立的 ssh 进程,不随主隧道一起消失,
+        // 漏掉就会在用户退出应用后继续挂在后台
+        if let Ok(mut fwd) = state.forwards.lock() {
+            for (_, f) in fwd.iter_mut() {
+                crate::ssh::stop_forward(f);
+            }
+            fwd.clear();
+        }
+        if let Some(mut session) = state.session.lock().unwrap().take() {
             crate::ssh::stop(&mut session);
         }
     }
     crate::sidecar::kill(app);
+}
+
+/// 为远端端口开(或复用)一条转发,返回本机端口。本机模式下原样返回。
+pub fn forward_remote_port(app: &tauri::AppHandle, remote_port: u16) -> Result<u16, String> {
+    let Some(state) = app.try_state::<RemoteBackendState>() else {
+        // 本机模式:localhost:N 本来就指向这台机器,不需要任何转发
+        return Ok(remote_port);
+    };
+    let mut forwards = state
+        .forwards
+        .lock()
+        .map_err(|_| "端口转发表被污染".to_string())?;
+
+    let known_locals: Vec<u16> = forwards.values().map(|f| f.local_port).collect();
+    match resolve_forward_target(&forwards.iter().map(|(k, v)| (*k, v.local_port)).collect(), &known_locals, remote_port) {
+        ForwardDecision::Reuse(local) | ForwardDecision::AlreadyLocal(local) => Ok(local),
+        ForwardDecision::NeedNew => {
+            let f = crate::ssh::forward_port(&state.config, remote_port)?;
+            let local = f.local_port;
+            forwards.insert(remote_port, f);
+            Ok(local)
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ForwardDecision {
+    /// 该远端端口已经转发过,复用现有的本机端口
+    Reuse(u16),
+    /// 传入的值本身就是一个已转发出来的本机端口(而非待转发的远端端口)
+    AlreadyLocal(u16),
+    NeedNew,
+}
+
+/// 纯决策逻辑,从副作用(真正建立 ssh 转发)中拆出来以便测试。
+///
+/// `known: 远端端口 -> 本机端口` 的既有映射;`known_locals` 是其值的集合,
+/// 用于判断"幂等保护"那一支 —— 调用方可能把已解析出的本机端口当参数
+/// 再传一次(典型场景:地址栏已显示 127.0.0.1:X,用户点"用系统浏览器打开"
+/// 时原样把它又送进来)。此时它是本机端口而非待转发的远端端口,应原样放行,
+/// 否则会把这个本机端口号误当成远端端口去转发,建出一条指向错误目标的隧道。
+fn resolve_forward_target(
+    known: &std::collections::HashMap<u16, u16>,
+    known_locals: &[u16],
+    requested: u16,
+) -> ForwardDecision {
+    if let Some(&local) = known.get(&requested) {
+        return ForwardDecision::Reuse(local);
+    }
+    if known_locals.contains(&requested) {
+        return ForwardDecision::AlreadyLocal(requested);
+    }
+    ForwardDecision::NeedNew
 }
 
 #[cfg(test)]
@@ -172,5 +247,34 @@ mod tests {
         let text = serde_json::to_string(&cfg).unwrap();
         let back: ConnectionConfig = serde_json::from_str(&text).unwrap();
         assert_eq!(back.mode, ConnectionMode::Remote);
+    }
+
+    #[test]
+    fn 未知远端端口触发新建转发() {
+        let known = std::collections::HashMap::new();
+        assert_eq!(resolve_forward_target(&known, &[], 3000), ForwardDecision::NeedNew);
+    }
+
+    #[test]
+    fn 已转发过的远端端口直接复用() {
+        let mut known = std::collections::HashMap::new();
+        known.insert(3000u16, 51000u16);
+        assert_eq!(
+            resolve_forward_target(&known, &[51000], 3000),
+            ForwardDecision::Reuse(51000)
+        );
+    }
+
+    #[test]
+    fn 已解析出的本机端口原样放行不二次转发() {
+        // 这是双重解析的场景:BrowserPanel 把地址栏里已经是 127.0.0.1:51000
+        // 的 URL 又送进 resolveExternalUrl 一次(比如点"用系统浏览器打开")。
+        // 51000 是本机端口,不是远端端口,不能拿去发起新的 ssh 转发。
+        let mut known = std::collections::HashMap::new();
+        known.insert(3000u16, 51000u16);
+        assert_eq!(
+            resolve_forward_target(&known, &[51000], 51000),
+            ForwardDecision::AlreadyLocal(51000)
+        );
     }
 }
