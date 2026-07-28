@@ -9,7 +9,8 @@ use tauri_plugin_shell::ShellExt;
 /// 关闭窗口时能把它一起杀掉——不然装了这个 app 的用户退出后,后端还会在后台裸跑。
 pub struct SidecarProcess(pub Mutex<Option<CommandChild>>);
 
-fn reserve_port() -> Result<u16, Box<dyn std::error::Error>> {
+/// 取一个当前空闲的本机端口。远程模式复用它作为隧道入口(见 connection.rs)。
+pub fn reserve_port() -> Result<u16, Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(("127.0.0.1", 0))?;
     let port = listener.local_addr()?.port();
     drop(listener);
@@ -22,7 +23,7 @@ fn reserve_port() -> Result<u16, Box<dyn std::error::Error>> {
 /// 文件、执行 CLI、开终端、读取存着 API Key 的配置。令牌把「谁能调」这条边界
 /// 立起来:它只经环境变量传给 sidecar、经 Tauri command 传给前端,不落盘、
 /// 不进命令行参数(命令行在进程列表里对其它进程可见)。每次启动都换新的。
-fn generate_auth_token() -> String {
+pub fn generate_auth_token() -> String {
     let mut bytes = [0u8; 32];
     // 取不到系统熵源属于严重异常,此时宁可让启动失败也不要退回弱随机
     getrandom::getrandom(&mut bytes).expect("failed to read OS entropy for auth token");

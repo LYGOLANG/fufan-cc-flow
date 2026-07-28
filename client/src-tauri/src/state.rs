@@ -62,6 +62,10 @@ pub struct AppState {
     /// 本次运行的接口访问令牌:随 sidecar 一起生成,经环境变量给后端、
     /// 经 `backend_auth_token` command 给前端。dev 模式为 None(不鉴权)。
     pub auth_token: Arc<Mutex<Option<String>>>,
+    /// 后端启动失败的原因(远程连接尤其常见:关机、换网、密钥过期)。
+    /// 存下来给前端展示 —— 否则用户只看到界面连不上,却不知道是远端不可达
+    /// 还是应用自己坏了,更不知道该去设置里改回本机模式。
+    pub backend_error: Arc<Mutex<Option<String>>>,
     /// 覆盖“已开始 spawn、尚未把 SessionHandle 写回 sessions”的窗口。
     /// ExitRequested 先封门并等待 pending_spawns 清零，再 drain sessions。
     lifecycle: Arc<(Mutex<LifecycleState>, Condvar)>,
