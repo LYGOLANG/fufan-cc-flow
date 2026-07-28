@@ -4,28 +4,21 @@
 
 ## 当前任务
 
-打包 v0.1.23 并安装验证。
+v0.1.23 已发布到 GitHub Releases。下一步待用户拍板：做远程会话/共享会话功能。
 
-安装会切断助手会话（助手跑在 Agent Flow 的 sidecar 里），故用独立脚本执行：
+## v0.1.23 发布记录（已完成）
 
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/install-desktop.ps1 \
-  -Installer "release/Agent Flow_0.1.23_x64-setup.exe"
-```
+- Release: https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/tag/v0.1.23
+- 端点 `releases/latest/download/latest.json` 实测返回 `"version": "0.1.23"`
+- 安装包线上 HTTP 200，Content-Length 94642193 与本地一致
+- **验签实测通过**：`node scripts/verify-signature.mjs`
+  → `alg=ED, keyid=19d9f96e097fbd06`，应用内固化公钥能验过这个包
+- 本机已安装 v0.1.23 并验证：鉴权 401 全绿、工作流排序正确、
+  新模块（编排引擎 / auth / forkDecision / jsonlSanitize）确认进了安装包
 
-该脚本以独立进程运行「关闭 → 清 sidecar → 静默安装 → 校验版本 → 重启」，
-助手断线后仍会跑完。日志：`%LOCALAPPDATA%\com.fufan.ccflow\install.log`。
+线上此前停在 v0.1.19，这一版把 v0.1.20～v0.1.23 的改动一次带上。
 
-## 装完请确认
-
-1. **应用正常打开**（白屏 = 前端没拿到鉴权令牌，回滚办法见文末）
-2. **鉴权链路**：`node scripts/verify-auth.mjs`
-   期望：无令牌 401、伪造令牌 401、`/api/health` 200。
-   （脚本已改为探测端口 + 看实际行为，不再依赖会轮转的日志）
-3. **工作流编排**：右侧「工作流」→ 列表按名称排序 → 点「🏦 量化总流程」▷，
-   应看到步骤逐个执行，第 2 步等第 1 步的 `run_flow.py` 真正结束才启动
-
-## 已完成（全部已提交，工作区干净）
+## 已完成（全部已提交并推送，工作区干净）
 
 **工作流编排引擎（DEV-PLAN Phase 12-14）**
 - 内核：状态机 + StepRunner 抽象接口 + 可移植性守卫测试
@@ -35,19 +28,17 @@ powershell -ExecutionPolicy Bypass -File scripts/install-desktop.ps1 \
 
 **安全**
 - 接口鉴权（Rust 生成令牌 → 环境变量 → sidecar → Tauri 命令 → 前端）
-  已在 v0.1.22 真实桌面环境验证通过
 - 路径穿越与 scope 提权（hooks RCE、projectRoot 必填、assertSafeName 铺开）
 
 **10 条已知问题全部清完**（详见 git log）
-闪断卡死 / 断线丢帧 UI 说谎 / 新会话立刻停止无效 / Codex 压缩是假的 /
-扩展思考开关无效 / 上下文窗口漏判 opus-5 / hooks 界面说谎 / 三条命令无超时 /
-打包陈旧签名 / 主链路零测试
 
-**Hooks**
-`.claude/hooks/` 下 8 个脚本此前**从未生效**（settings.json 的 hooks 为空，
-而该目录不会被自动发现）。已注册 7 个并逐个实测。
+**Hooks** `.claude/hooks/` 下 7 个脚本已注册并实测。
 **stop-gate.sh 故意未注册** —— 它 fail-closed，会 block 会话停止直到
 code-reviewer 通过，应由用户明确选择开启。
+
+**发布流程**：`scripts/verify-signature.mjs` 用应用内固化公钥端到端验签，
+已接进 `release-update.mjs`，不通过即中止发布。替掉了原先那行文字提醒——
+密钥对不上时产物看着完全正常，失败只发生在用户那侧，发布方收不到反馈。
 
 测试 232 条，typecheck / lint(0 error) / 前端构建全绿。
 
@@ -63,12 +54,18 @@ code-reviewer 通过，应由用户明确选择开启。
 含「lumen 不是 SSH 工具」这一关键澄清、三个待用户拍板的决策点、
 以及与「不监听端口」的冲突解法。**不要重新调研。**
 
-三个决策点：权限卡弹给谁、两端同时发消息如何处理、通道走 SSH 隧道还是自建中继。
+三个决策点：
+1. Guest 触发工具调用时权限卡弹给谁（建议只弹 Host）
+2. 两端同时发消息如何处理（建议先到先执行、另一方排队）
+3. 通道走 SSH 隧道还是自建中继（建议第一版走 SSH 隧道）
+
+与 Product-Spec「运行期间无后端 TCP 监听」冲突，建议解法：
+改为默认状态而非绝对约束。
 
 ## 回滚办法
 
-若 v0.1.23 白屏或不可用：
-- 重装 v0.1.19（线上版本，`release/updates/AgentFlow_0.1.19_x64-setup.exe`）
+若某版白屏或不可用：
+- 重装上一版（`release/updates/AgentFlow_<ver>_x64-setup.exe` 有历史包）
 - 或去掉 `client/src-tauri/src/sidecar.rs` 里的 `.env("CC_FLOW_AUTH_TOKEN", ...)`
   重新打包（后端无该变量即整体放行鉴权）
 
@@ -79,6 +76,7 @@ code-reviewer 通过，应由用户明确选择开启。
 - `server/src/services/forkDecision.ts` — 分叉判定（从 start() 抽出，有测试）
 - `server/src/services/jsonlSanitize.ts` — 会话历史净化（与文件 IO 分离，有测试）
 - `scripts/verify-auth.mjs` — 鉴权链路实测
+- `scripts/verify-signature.mjs` — 发布验签（已接进 release-update.mjs）
 - `scripts/install-desktop.ps1` — 独立进程安装（ASCII-only，见死路）
 
 ## 死路（别重走）
@@ -95,3 +93,8 @@ code-reviewer 通过，应由用户明确选择开启。
 - Bash heredoc + python 改含反斜杠/控制字符的正则会被吞转义，用 Edit 或 Write。
 - `pkill -f "tsx src/index.ts"` 杀不干净（tsx 派生子进程树），会留下无鉴权裸跑的
   孤儿后端，还会干扰 verify-auth 的端口探测。按命令行精确列出再逐个杀。
+- 验证「签名/产物守卫」时别用 `cp` 还原备份：`cp` 会把 mtime 刷成当前时间，
+  构造出的场景是假的（sig 反而比 exe 新），会误判成「守卫没拦住」。用 `touch`。
+- 打包产物名带空格（`Agent Flow_x.y.z_x64-setup.exe`），发布时去空格
+  （GitHub 会把资产名里的空格转成点，去空格才能让 latest.json 的 url 对得上）。
+  签名 trusted comment 里记的是**带空格**的原名，这是正常的，tauri 验签不看文件名。
