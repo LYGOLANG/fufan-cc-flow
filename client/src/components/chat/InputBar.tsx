@@ -12,6 +12,7 @@ import AttachmentPreview from "./AttachmentPreview";
 import ModelSelector from "../manage/ModelSelector";
 import type { Attachment } from "../../types/claude";
 import { isTauriRuntime } from "../../utils/tauri";
+import { isRemote } from "../../stores/connectionStore";
 import { buildEngineParams } from "../../utils/sendPayload";
 
 const RUN_MODES: { id: RunMode; label: string }[] = [
@@ -96,6 +97,11 @@ export default function InputBar() {
     });
   }, [insertInput, setInsertInput]);
 
+  // 远程模式下拖入本机路径时的说明(见下方 onDragDropEvent)
+  const [dropHint, setDropHint] = useState<string | null>(null);
+  const dropHintTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(dropHintTimer.current), []);
+
   // F1.15 外部拖入(OS 文件/文件夹)→ 识别绝对路径插入输入框。
   // 桌面壳里 Tauri 拦截原生文件拖放(HTML5 drop 拿不到路径),必须走 onDragDropEvent;
   // 多个路径空格分隔,含空格的路径加引号,Claude 可直接 Read/Glob。
@@ -110,6 +116,17 @@ export default function InputBar() {
           if (event.payload.type !== "drop") return;
           const paths = (event.payload as { paths?: string[] }).paths ?? [];
           if (paths.length === 0) return;
+
+          // 拿到的是**本机**的绝对路径。远程模式下模型跑在另一台机器上,
+          // 那些路径在它眼里根本不存在 —— 插进去只会换来一句"文件不存在",
+          // 而用户完全不知道为什么(路径明明就在那儿)。宁可明确拒绝并说清楚。
+          if (isRemote()) {
+            setDropHint("拖入的是本机路径，远程机器上读不到 · 请用左侧 📎 上传");
+            window.clearTimeout(dropHintTimer.current);
+            dropHintTimer.current = window.setTimeout(() => setDropHint(null), 7000);
+            return;
+          }
+
           const insert =
             paths.map((p) => (/\s/.test(p) ? `"${p}"` : p)).join(" ") + " ";
           useUIStore.getState().setInsertInput(insert);
@@ -572,7 +589,12 @@ export default function InputBar() {
               </span>
             ) : (
               <>
-                {pendingPermCount > 0 ? (
+                {dropHint ? (
+                  <span className="text-[11px] text-amber-glow flex items-center gap-1.5">
+                    <ShieldAlert size={12} className="flex-shrink-0" />
+                    {dropHint}
+                  </span>
+                ) : pendingPermCount > 0 ? (
                   <span className="text-[11px] text-amber-glow flex items-center gap-1.5 animate-pulse">
                     <ShieldAlert size={12} className="flex-shrink-0" />
                     等待权限确认 ({pendingPermCount})

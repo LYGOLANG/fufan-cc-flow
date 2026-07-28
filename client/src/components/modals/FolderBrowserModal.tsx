@@ -6,6 +6,7 @@ import {
 import { useUIStore } from "../../stores/uiStore";
 import { api } from "../../services/api";
 import { openProject } from "../../utils/openProject";
+import { isAbsolute } from "../../utils/hostPath";
 
 /** Last path segment, for a friendly display name. */
 function baseName(p: string): string {
@@ -78,7 +79,14 @@ export default function FolderBrowserModal() {
   }, [folderBrowserOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Merge locally-saved recents with session-history project dirs.
-  const recentList = [...new Set([...recentProjects, ...sessionProjects])].slice(0, 12);
+  //
+  // 按当前后端的路径风格过滤:最近项目存的是裸路径,与"当时连的哪台机器"
+  // 没有绑定关系。切到远程 Linux 后端后,列表里那些 C:\... 全是无效项 ——
+  // 点进去只会得到一个找不到的目录,而用户看不出为什么。
+  // isAbsolute 按目标平台判定,恰好能把不属于当前机器的路径筛掉。
+  const recentList = [...new Set([...recentProjects, ...sessionProjects])]
+    .filter((p) => isAbsolute(p))
+    .slice(0, 12);
 
   const handleSelect = () => {
     // 选择器模式:把路径交回调用方,不要顺手把它当项目打开 ——
