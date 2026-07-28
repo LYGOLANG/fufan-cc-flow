@@ -4,7 +4,38 @@
 
 ## 当前任务
 
-v0.1.23 已发布到 GitHub Releases。下一步待用户拍板：做远程会话/共享会话功能。
+**Phase 15 远程连接底座**：代码已完成，待打包安装后在真实桌面环境验证。
+
+已完成：
+- `scripts/verify-remote-tunnel.mjs` 端到端验证**全部通过**（WSL Ubuntu 靶机，
+  真跨 OS：Windows 客户端 → Linux 后端）：隧道连通、鉴权 401/401/200、
+  令牌不进远程命令行、ssh 断开后远端无残留
+- `client/src-tauri/src/ssh.rs` — 隧道与远端后端生命周期
+- `client/src-tauri/src/connection.rs` — 运行时连接策略，默认路径与改造前逐字一致
+- `client/src/components/settings/remote-connection-panel.tsx` — 设置页配置面板
+- **cargo test 21 passed（含真连靶机的集成测试）** / typecheck / lint 0 error
+
+跑真实连接测试（默认 ignored）：
+```bash
+# 先保活 WSL 并起 sshd（见下方靶机说明）
+cd client/src-tauri
+CC_FLOW_TEST_SSH_KEY="C:/Users/Administrator/.ssh/cc-flow-wsl-test" \
+  cargo test --lib -- --include-ignored --nocapture
+```
+
+**这个集成测试抓到了两个 Node 验证脚本盖住的问题**（别把它当可有可无的慢测删掉）：
+1. 缺主机密钥策略 —— Node 脚本用了 `StrictHostKeyChecking=no`，生产不能那样写；
+   默认的 `ask` 在 BatchMode 下必失败。现用 `accept-new`。
+2. 私钥 ACL —— Windows 版 System32 OpenSSH 拒绝权限过开的私钥，而 Git Bash 的
+   MSYS ssh **不检查** Windows ACL。症状是「终端里 ssh 连得通，应用里连不上」。
+
+待验证（打包 v0.1.24 后）：
+1. 设置页能保存远程配置
+2. 重启后真的连上 WSL 靶机
+3. 本机模式行为无变化（回归）
+
+**未验证的部分**：对话功能在远程下没跑通过——WSL 靶机没装 Claude Code CLI。
+后端起得来、鉴权通、隧道稳都已验证，但"远程真能对话"还差这一步。
 
 ## v0.1.23 发布记录（已完成）
 
@@ -95,6 +126,13 @@ code-reviewer 通过，应由用户明确选择开启。
   孤儿后端，还会干扰 verify-auth 的端口探测。按命令行精确列出再逐个杀。
 - 验证「签名/产物守卫」时别用 `cp` 还原备份：`cp` 会把 mtime 刷成当前时间，
   构造出的场景是假的（sig 反而比 exe 新），会误判成「守卫没拦住」。用 `touch`。
+- **私钥的 Windows ACL**：System32 的 `ssh.exe` 拒绝权限过开的私钥，Git Bash 的
+  MSYS `ssh` 不检查。所以「Git Bash 里连得通」证明不了应用里能连通——应用走的是
+  System32 那个。修：`icacls <key> /inheritance:r /grant:r "Administrator:F"`。
+- **WSL 实例会在空闲后整个关闭，sshd 随之消失**（表现为刚验证过的连接突然
+  `Connection refused`）。测试前先起一个保活进程：
+  `wsl -d Ubuntu-22.04 -- bash -lc "mkdir -p /run/sshd; /usr/sbin/sshd -e; sleep 3600"`
+  （放后台跑）。
 - **WSL 靶机（远程功能的测试环境）**：`wsl -d Ubuntu-22.04`，sshd 监听 2222，
   从 Windows 用 `ssh -i ~/.ssh/cc-flow-wsl-test -p 2222 root@127.0.0.1` 连入
   （**走 localhost 转发，不要用 WSL 的 172.x IP**——那条路被 Hyper-V 防火墙挡）。
