@@ -301,6 +301,89 @@
 - 引用了尚未产出的变量时保存被拒绝，并明确指出是哪一步引用了哪个变量。
 - 旧工作流打开后不显示任何报错，保存后仍可被旧版本读取（新增字段可选）。
 
+## Phase 15: 远程连接底座（SSH 隧道 + 远程 sidecar 启动）
+
+> 与 Phase 11 的区别：Phase 11 是 Rust 迁移完成后用 Axum 暴露服务的目标形态；
+> 本 Phase 是 Node 阶段的提前实现，不新增服务端组件。迁移完成后，
+> 隧道管理与前端代码可沿用，仅把远程跑的进程换成 Rust binary。
+> 设计依据见 REQUIREMENTS.md 8.2。
+
+**交付内容**：
+- 连接配置模型：`{kind: local|remote, sshTarget, remoteServerPath, remotePort}`，
+  持久化到本机配置，含"当前使用哪个连接"的选择。
+- `sidecar` 抽象出两种实现：本机 spawn / 远程 spawn。远程实现负责
+  ① 经 SSH 启动远程后端并注入本机生成的 `CC_FLOW_AUTH_TOKEN`
+  ② 建立 `ssh -L <本地端口>:127.0.0.1:<远程端口>` 转发
+  ③ 就绪探测（`/health` 免鉴权，正是为此设计）
+  ④ 断开时只清理本次启动的远程进程与隧道。
+- `lib.rs` setup 的连接分支：现为 `if cfg!(debug_assertions)` 这一个编译期判据
+  同时决定"清孤儿/起 sidecar/写 AppState"三件事，需改为运行时可选的连接策略。
+- 退出链路隔离：`RunEvent::ExitRequested` 的 `shutdown_all` 与 `graceful_shutdown`
+  当前硬编码 `127.0.0.1`，远程形态下不得对远端广播关闭（那会关掉别人的后端）。
+- 远程部署脚本：在目标机器安装 Node 运行时与 server 产物、生成启动命令。
+
+**关键文件**：
+- `client/src-tauri/src/sidecar.rs` — 本机/远程两种实现的分派点（现全为本机语义：
+  `reserve_port` 绑回环、`reap_orphans` 走 PowerShell CIM、`graceful_shutdown` 硬编码回环 IP）。
+- `client/src-tauri/src/lib.rs:64-98` — setup 连接分支与退出链路。
+- `client/src-tauri/src/ssh.rs`（新建）— 隧道与远程进程生命周期。
+- `scripts/install-remote.sh`（新建）— 远程部署脚本。
+
+**验收标准**：
+- 连上远程后，对话、文件树、终端三条主路径全部可用，且终端开的是**远程** shell。
+- 应用退出后，远程机器上不残留由本次连接启动的进程（实测 `ps` 核对）。
+- 未配置远程时行为与现状逐字一致：不建隧道、不发 SSH、不新增任何监听。
+- 隧道中断时前端有明确提示，而非停留在"正在重连"的无限循环。
+
+## Phase 16: 跨机语义修正
+
+> 摸排（2026-07-28）确认的本机假设，逐条消除。这些不修就会以"路径找不到"、
+> "对话框卡 120 秒"等形式暴露，且症状与真实原因相距很远。
+
+**交付内容**：
+- `connectionStore`：单一事实源，持有 `{kind, remotePlatform, pathSep, label}`。
+  平台语义由后端上报，前端不再猜。
+- 路径处理去 Windows 化：`uiStore.ts:5` 的 `toLowerCase()` 归一在 Linux 远端会把
+  `/Src` 与 `/src` 判为同一目录；`FileTree.tsx:92` 的小写前缀比较同理；
+  `FolderBrowserModal.tsx:85`、`:344` 靠"有没有反斜杠"猜分隔符。
+- 目录选择：`server/src/routes/system.ts:293` 的 `pick-folder` 会在**后端机器**
+  拉起原生对话框（PowerShell / osascript / zenity）。远程 headless 无 DISPLAY，
+  会挂到 120 秒超时。远程形态改用应用内目录浏览。
+- 外链与预览：`openExternal.ts:16` 在本机开浏览器，`BrowserPanel.tsx:123` 由本机
+  网络栈发起请求。AI 回复里的 `localhost:3000` 指的是远程机器，需经隧道映射。
+- 拖拽：`InputBar.tsx:102-127` 插入的是本机 OS 绝对路径，远程 Claude 读不到。
+  远程形态下改走已有的附件上传路径（`InputBar.tsx:179-191` 那条已是远程安全的）。
+- 项目列表按连接分组：`uiStore.ts:137-143` 的最近/打开项目存的是裸路径，
+  与"连的哪台后端"无绑定，切换后全是脏数据。
+
+**关键文件**：
+- `client/src/stores/connectionStore.ts`（新建）
+- `client/src/stores/uiStore.ts`、`client/src/components/ide/FileTree.tsx`、
+  `client/src/components/modals/FolderBrowserModal.tsx`、
+  `client/src/components/chat/InputBar.tsx`、`client/src/utils/openExternal.ts`
+
+**验收标准**：
+- Linux 远端上大小写不同的同名目录被正确区分（构造 `/tmp/A` 与 `/tmp/a` 实测）。
+- 远程连接下点"新建项目"不触发后端原生对话框，不出现 120 秒挂起。
+- 切换连接后，最近项目列表只显示当前连接下的项目。
+- 本机连接的所有行为与 Phase 15 之前逐字一致（回归测试覆盖）。
+
+## Phase 17: 会话共享（在 Phase 15/16 之上叠加协作层）
+
+> 待拍板项见 REQUIREMENTS.md 8.1 决策表 #1、#2，开工前必须先定。
+
+**交付内容**：
+- 会话票据：加密封装 `{连接地址, sessionId, 一次性凭据, 过期时间, 权限档位}`，
+  可过期、可吊销；Host 能查看当前连接方并踢出（可建必可删）。
+- 事件广播：同一会话的事件流分发给多个连接方。
+- 发言权控制：会话串行，一轮未完不能插入第二轮（决策 #2）。
+- HIL 权限归属（决策 #1）。
+
+**验收标准**：
+- 两个客户端连同一会话，一方发消息另一方实时看到完整事件流。
+- 票据过期后无法建连；Host 踢出后对方立即断开且无法自动重连。
+- Host 拒绝权限请求时，Guest 侧显示明确原因而非静默失败。
+
 ## 功能依赖图
 
 ```text
