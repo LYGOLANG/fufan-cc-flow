@@ -280,7 +280,18 @@ export class CodexAgentService extends EventEmitter {
           sessionId: currentId,
           result: lastAgentText,
           usage,
-          costUsd: 0, // OpenAI 计价方式与 Anthropic 不同，暂不计算美元成本
+          // Codex 不统计美元成本。前端 ContextBar 是 `totalCost > 0 &&` 才渲染，
+          // 所以这里的 0 表现为「不显示成本」而非「显示 $0」——这点是诚实的。
+          //
+          // 但由此带来一个必须让用户知道的后果：**设置里的「任务费用上限」
+          // 对 Codex 完全不生效**。那个上限靠 Claude Agent SDK 的 maxBudgetUsd
+          // 实现（claudeAgentService.ts:531），全项目只有那一处读 maxBudget。
+          // 已在 budget-panel.tsx 明确标注适用范围。
+          //
+          // 将来要补计价，先分清认证方式（codexService.ts:29）：
+          //   chatgpt —— 订阅制包月，按 token 折算美元本身就是误导
+          //   apikey  —— 按量计费，此时才有意义
+          costUsd: 0,
           numTurns: 1,
           isError: false,
         });

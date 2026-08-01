@@ -254,7 +254,7 @@ pub fn start(
         });
     }
 
-    match wait_until_ready(local_port, Duration::from_secs(60), &mut child) {
+    match wait_until_ready(local_port, Duration::from_secs(60), &mut child, auth_token) {
         Ok(()) => {
             log::info!("[remote] backend ready on local port {local_port}");
             Ok(RemoteSession { child, local_port })
@@ -324,9 +324,16 @@ fn explain_ssh_failure(stderr: &str) -> Option<String> {
 ///
 /// 同时监视 ssh 进程本身:它先退出说明连接就没建起来(认证失败、端口占用等),
 /// 此时应立刻报错,而不是傻等满 60 秒。
-fn wait_until_ready(port: u16, timeout: Duration, child: &mut Child) -> Result<(), String> {
+fn wait_until_ready(
+    port: u16,
+    timeout: Duration,
+    child: &mut Child,
+    auth_token: &str,
+) -> Result<(), String> {
     let deadline = Instant::now() + timeout;
     let mut last_err = String::from("未知原因");
+    // 连上了后端、但令牌对不上的次数。这是孤儿后端的特征信号。
+    let mut unauthorized_hits = 0u32;
 
     while Instant::now() < deadline {
         if let Ok(Some(status)) = child.try_wait() {
@@ -335,9 +342,36 @@ fn wait_until_ready(port: u16, timeout: Duration, child: &mut Child) -> Result<(
                  本地端口被占用。详细信息见应用日志中的 [remote/ssh] 行。"
             ));
         }
-        match http_get_ok(port, "/api/health") {
-            Ok(true) => return Ok(()),
-            Ok(false) => last_err = "健康检查返回非 200".into(),
+
+        // 探**带鉴权**的端点,不能只探 /api/health。
+        //
+        // /api/health 是免鉴权的(auth.ts 的 EXEMPT_PATHS),于是上一次运行残留的
+        // 孤儿后端也会回 200 —— 应用据此认定"连上了",而之后每个带新令牌的请求
+        // 都被那个旧后端 401,WS 升级也被拒。表现是重连循环 + 提示"需重启应用",
+        // 而重启后孤儿还在,症状一模一样:一个自己修不好、且提示词把用户
+        // 推向无效动作的死循环。
+        //
+        // 孤儿是怎么来的:应用崩溃/被强杀时 ExitRequested 不触发,本机 ssh 存活,
+        // 远端 wrapper 的 `cat > /dev/null` 仍阻塞着,远端 node 继续占着 remote_port。
+        // 下次启动的新 node 撞 EADDRINUSE 直接退出,但 wrapper 不退、ssh 也不退。
+        match http_status(port, "/api/providers", Some(auth_token)) {
+            Ok(200) => return Ok(()),
+            Ok(401) | Ok(403) => {
+                unauthorized_hits += 1;
+                last_err = "端口上有后端在响应,但它不认本次的访问令牌".into();
+                // 连续多次 401 基本可以断定不是"还没起来",而是别人占着端口
+                if unauthorized_hits >= 3 {
+                    return Err(format!(
+                        "远端 {} 端口被另一个后端占用(它不认本次的访问令牌)。\n\n\
+                         这通常是上一次运行残留的孤儿进程 —— 应用崩溃或被强杀时\
+                         远端后端不会自动退出。**重启应用无法解决**,需要先清理它:\n\
+                         \x20 ssh <user>@<host> \"pkill -f 'node dist/index.js'\"\n\n\
+                         清理后再重新连接。",
+                        port
+                    ));
+                }
+            }
+            Ok(code) => last_err = format!("健康检查返回 HTTP {code}"),
             Err(e) => last_err = e,
         }
         std::thread::sleep(Duration::from_millis(800));
@@ -345,8 +379,42 @@ fn wait_until_ready(port: u16, timeout: Duration, child: &mut Child) -> Result<(
     Err(format!("远程后端在 {}s 内未就绪({last_err})。请确认远端已用 scripts/install-remote.sh 安装,且 node 可用。", timeout.as_secs()))
 }
 
-/// 极简 HTTP GET,只关心状态行是不是 200。沿用 `sidecar::graceful_shutdown` 的
-/// 做法,用 std TcpStream 手写,不为一次健康检查引入 HTTP 客户端依赖。
+/// 极简 HTTP GET,返回状态码。沿用 `sidecar::graceful_shutdown` 的做法,
+/// 用 std TcpStream 手写,不为一次健康检查引入 HTTP 客户端依赖。
+///
+/// 带 token 时会加 `x-cc-flow-token` 头 —— 就绪探测靠它区分「端口通了」
+/// 与「通到的是不是我刚启动的那个后端」(见 wait_until_ready)。
+fn http_status(port: u16, path: &str, token: Option<&str>) -> Result<u16, String> {
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_millis(800))
+        .map_err(|e| format!("连接本地隧道端口失败: {e}"))?;
+    stream.set_write_timeout(Some(Duration::from_secs(2))).ok();
+    stream.set_read_timeout(Some(Duration::from_secs(3))).ok();
+
+    let auth = match token {
+        Some(t) => format!("x-cc-flow-token: {t}\r\n"),
+        None => String::new(),
+    };
+    let req =
+        format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n{auth}Connection: close\r\n\r\n");
+    stream
+        .write_all(req.as_bytes())
+        .map_err(|e| format!("发送健康检查失败: {e}"))?;
+
+    let mut buf = [0u8; 256];
+    let n = stream
+        .read(&mut buf)
+        .map_err(|e| format!("读取健康检查响应失败: {e}"))?;
+    let head = String::from_utf8_lossy(&buf[..n]);
+    // 状态行形如 "HTTP/1.1 200 OK"
+    head.split_whitespace()
+        .nth(1)
+        .and_then(|c| c.parse::<u16>().ok())
+        .ok_or_else(|| format!("无法解析响应状态行: {}", head.lines().next().unwrap_or("")))
+}
+
+/// 极简 HTTP GET,只关心状态行是不是 200。保留给不需要区分状态码的调用点。
+#[allow(dead_code)]
 fn http_get_ok(port: u16, path: &str) -> Result<bool, String> {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let mut stream = TcpStream::connect_timeout(&addr, Duration::from_millis(800))
@@ -484,6 +552,35 @@ mod tests {
 
         // 认不出来的错误不要硬编一个提示,原样把 ssh 输出带给用户更有用
         assert!(explain_ssh_failure("some unknown failure").is_none());
+    }
+
+    /// 就绪探测必须走带鉴权的端点，否则区分不出「孤儿后端占着端口」。
+    ///
+    /// /api/health 是免鉴权的，上一次运行残留的孤儿后端也会回 200。若拿它当
+    /// 就绪判据，应用会认定"连上了"，而之后每个带新令牌的请求都被那个旧后端
+    /// 401 —— 表现为重连循环 + 提示"需重启应用"，重启后孤儿还在，症状不变。
+    #[test]
+    fn 就绪探测不能只依赖免鉴权端点() {
+        let src = include_str!("ssh.rs");
+        // 定位 wait_until_ready 的函数体
+        let body_start = src
+            .find("fn wait_until_ready(")
+            .expect("wait_until_ready 应存在");
+        let body = &src[body_start..body_start + 2600.min(src.len() - body_start)];
+
+        assert!(
+            body.contains("/api/providers") || body.contains("Some(auth_token)"),
+            "就绪探测必须带令牌打鉴权端点，否则孤儿后端会被误判为就绪"
+        );
+        assert!(
+            body.contains("401"),
+            "必须显式处理 401：那正是「端口上有别的后端」的信号"
+        );
+        // 提示词不能把用户推向无效动作
+        assert!(
+            body.contains("重启应用无法解决") || body.contains("pkill"),
+            "识别出孤儿后，必须告诉用户真正有效的清理办法，而不是让他重启应用"
+        );
     }
 
     #[test]

@@ -32,6 +32,16 @@ export default function BudgetPanel() {
         单次任务累计花费达到该金额时自动停止，防止一个跑飞的任务烧掉大量额度。
         按 API 计费估算，订阅制额度不受此限制。设为 0 表示不限制。
       </p>
+      {/*
+        必须写明适用范围。这个上限靠 Claude Agent SDK 的 maxBudgetUsd 实现
+        （server/src/services/claudeAgentService.ts:531），而 Codex 引擎走的是
+        另一条完全独立的路径，全项目只有 Claude 那一处读了 maxBudget。
+        不说清楚的话，用户设完以为两个引擎都有保护，实际 Codex 那边毫无闸门 ——
+        「以为有保护而实际没有」比「知道没有」危险得多。
+      */}
+      <p className="text-[11px] text-amber-glow/80 mb-3 leading-relaxed">
+        ⚠️ 仅对 <b>Claude 引擎</b>生效。Codex 引擎目前不统计花费，此上限对它不起作用。
+      </p>
 
       <div className="flex items-center gap-2">
         <span className="text-sm text-slate-400 font-mono">$</span>
