@@ -123,6 +123,23 @@ code-reviewer 通过，应由用户明确选择开启。
 - `scripts/verify-signature.mjs` — 发布验签（已接进 release-update.mjs）
 - `scripts/install-desktop.ps1` — 独立进程安装（ASCII-only，见死路）
 
+## 值得复查的模式：把「不知道」当成「否定」
+
+v0.1.25 修的那个「每次启动误报未安装 CLI」，根因是探测失败的 catch 里写死
+`{ installed: false }`。三态（未知 / 是 / 否）被压成两态，于是"后端还没起来"
+和"确实没装"变得无法区分。
+
+同类写法值得排查：任何 `catch { set({ xxx: false }) }` 或
+`catch { return [] }`，只要调用方会据此显示结论性的 UI，就可能在
+后端冷启动期间说谎。判据是问一句：**这个 false 是"查过了，没有"，
+还是"没查到"？** 后者必须保持 null / undefined。
+
+已修：`systemStore` 的 `loadClaudeInfo` / `loadCodexInfo`。
+
+顺带教训：给 store 里的函数加可选参数后，务必 grep 一遍
+`onClick={fn}` 这类直接当回调传的地方 —— React 会把事件对象塞给第一个参数。
+这次四处「重新检测」按钮全中，而它们恰好是用户绕过该 bug 的唯一手段。
+
 ## 死路（别重走）
 
 - WS 鉴权不能写在 connection 回调里 `ws.close()`：那时握手已完成，无令牌也能连上。
