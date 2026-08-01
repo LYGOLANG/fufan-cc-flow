@@ -83,6 +83,8 @@ pnpm package:desktop  # 打包 Windows 桌面安装包（NSIS）
 - **桌面外壳**：Rust 侧负责拉起/回收 Node sidecar（退出时按进程树 kill，启动时清理孤儿）、WebView 心跳看门狗（渲染进程崩溃自动重载；连续失败 3 次起前端以安全模式启动跳过会话自动恢复，5 次起退 60s 慢速重试但永不放弃）、minisign 签名的自动更新
 - **发送参数收口**：`send_message` 的引擎参数一律由 `client/src/utils/sendPayload.ts` 的 `buildEngineParams()` 组装。后端 `spawnFingerprint` 会把 effort / thinkingBudget / maxBudget 算进常驻进程指纹，少带一个字段就会触发无谓的杀进程重启——不要在调用点手写这组字段
 - **跨平台**：路径统一用 `path.normalize`，Windows 下路径哈希先将 `\` 转换为 `/`
+- **远程连接**（v0.1.24 起，实验性）：远程后端由本机经 SSH 启动，因而隧道把远程端口映射到本机端口——前端连的仍是 `localhost:<端口>`，CSP、CORS、后端的 `127.0.0.1` 绑定三处约束**都不用放宽**。令牌走 SSH stdin 而非命令行（远程常是多用户机器，`ps aux` 全局可见）。核心在 `client/src-tauri/src/{ssh,connection}.rs`
+- **跨机路径语义**：前端不得自行判断分隔符与大小写敏感性（曾到处 `toLowerCase()` + 靠反斜杠猜分隔符，本机碰巧总对、Linux 后端全错）。一律走 `client/src/utils/hostPath.ts`，平台信息由后端 `GET /api/system/host-info` 上报，存在 `connectionStore`
 - **安全**：API Key 仅存本地不写日志，文件写操作校验路径在项目目录内；后端只绑 `127.0.0.1`，CLI 调用一律绝对路径 + 数组 argv（不用 `shell:true`）
 
 ## 前端设计系统（Void Console）

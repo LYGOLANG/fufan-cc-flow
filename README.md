@@ -24,7 +24,14 @@ Fufan-CC Flow 将 Claude Code CLI / Codex CLI 的全部能力封装为友好的�
 | **MCP 管理** | 图形化添加/删除 MCP Server（stdio / HTTP / SSE） |
 | **Memory 管理** | Auto Memory 和 CLAUDE.md 双体系统一管理 |
 | **Sub-Agent 树** | 可视化多 Agent 执行链路 |
+| **工作流编排** | 按步骤依次执行，步骤间经变量传递结果，失败可重试/跳过/中止 |
+| **远程连接**（实验性） | 经 SSH 隧道操作另一台机器上的项目，数据不过第三方 |
 | **Settings 向导** | 两步配置（环境检测 → API Key 设置），支持官方 + 国产基座 |
+
+> **远程连接目前是实验性的**：隧道建立、接口鉴权、令牌不落入远程进程列表、
+> 断开后无残留进程都已实测；但**连上远程后的对话、文件树、终端尚未验证**。
+> 远程机器需自行安装 Claude Code CLI 并完成登录——后端只是 CLI 的壳，
+> 没有它必然对不了话。部署脚本见 `scripts/install-remote.sh`。
 
 ---
 
