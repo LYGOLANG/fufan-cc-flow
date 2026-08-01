@@ -4,6 +4,7 @@ import MessageList from "./MessageList";
 import InputBar from "./InputBar";
 import { useChatStore } from "../../stores/chatStore";
 import { useUIStore } from "../../stores/uiStore";
+import { useConnectionStore } from "../../stores/connectionStore";
 import { useSystemStore } from "../../stores/systemStore";
 import { useConfigStore } from "../../stores/configStore";
 import { useProviderStore } from "../../stores/providerStore";
@@ -14,7 +15,11 @@ const SettingsPage = lazy(() => import("../../pages/SettingsPage"));
 
 export default function ChatPanel() {
   const { currentSessionId, isStreaming, messages } = useChatStore();
-  const { setHistoryModalOpen, wsConnected, setSettingsPageOpen, settingsPageOpen, projectPath, setFolderBrowserOpen } = useUIStore();
+  const { setHistoryModalOpen, wsConnected, wsStale, setSettingsPageOpen, settingsPageOpen, projectPath, setFolderBrowserOpen } = useUIStore();
+  const isRemoteConn = useConnectionStore((s) => s.kind === "remote");
+  const staleHint = isRemoteConn
+    ? "与远程服务器的连接已断开。SSH 隧道在应用启动时建立，断开后需重启应用重建。"
+    : "多次重连失败。可尝试重启应用；若仍不行，查看应用日志。";
   const { claudeInfo, authStatus, codexInfo, codexAuthStatus } = useSystemStore();
   const claudeStatus = useClaudeStatus();
   // 状态标签跟随当前供应商:非 Anthropic 时显示对应供应商名,而不是固定 Claude Code
@@ -99,10 +104,23 @@ export default function ChatPanel() {
                 <span>Agent 运行中</span>
               </>
             ) : !wsConnected ? (
+              // 断线分两种，用户要采取的行动完全不同：
+              //   重连中   —— 等着就行，多半自己会好
+              //   已断开   —— 连续失败到「大概率不会自愈」（见 http-chat.ts 的
+              //               staleAfterFailures）。远程模式下 SSH 隧道是桌面壳
+              //               启动时建的，进程一死只能重启应用，干等毫无意义。
+              // 此前这段区分写在 TopBar.tsx 里，而那个组件从未被挂载过 ——
+              // 逻辑和测试都对，用户却只看得到一个「未连接」。
               <>
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-rose-err" />
+                <div
+                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    wsStale ? "bg-rose-err" : "bg-amber-glow animate-pulse"
+                  }`}
+                />
                 <Zap size={11} className="flex-shrink-0" />
-                <span>未连接</span>
+                <span title={wsStale ? staleHint : "正在尝试重新连接…"}>
+                  {wsStale ? "连接已断开" : "重连中…"}
+                </span>
               </>
             ) : isNonAnthropic ? (
               <button

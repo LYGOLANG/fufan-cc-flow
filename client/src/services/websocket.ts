@@ -8,37 +8,14 @@ import type { ChatConnection, ChatHandler } from "./transport/types";
  */
 const MAX_BUFFER = 2000;
 
-/**
- * 终态事件:任务在服务端结束,可清除 busy 标记。
- *
- * 服务端 `chatHandler.ts` 也有一个同名集合,但**语义不同**,不要"顺手对齐":
- *   - 这里:哪些事件意味着可以熄灭「运行中」指示
- *   - 那里:断线期间丢失后需要在重连时补发的事件
- * 两者当前内容恰好相同,纯属巧合。真正的约束是各自的用途,不是彼此相等。
- */
-const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted"]);
-
-/**
- * 「这一轮没能开始」的错误码。只有它们才该清掉 busy。
- *
- * `error` 事件此前被整个当成终态,于是任何运行中的局部失败都会把「运行中」
- * 指示灯打灭 —— 而任务还在服务端跑着。典型的误伤:
- *   - COMPACT_FAILED:压缩失败,会话完好,这一轮照常继续
- *   - 前端的 BACKEND_NOT_CONNECTED:闪断时发消息超时,而服务端有 30 秒寄存,
- *     任务照常在跑、照常计费
- *   - SDK 运行时 error:工具失败之类的局部错误,真正终结时另有 process_close
- *
- * 界面说「没在跑」而实际在跑,比没有指示更糟:用户会重复发送,或以为可以
- * 关掉应用。故只认这几个明确表示"任务压根没起来"的码。
- */
-export const TASK_NEVER_STARTED_CODES = new Set([
-  "START_FAILED",
-  "NO_PROJECT",
-  "INVALID_REQUEST",
-  "NOT_FOUND",
-  "INVALID_PROJECT",
-  "INVALID_PROJECT_KEY",
-]);
+// 两份判定表抽在 taskErrorCodes.ts。它们同时决定项目标签的 busy 与聊天面板的
+// isStreaming——两边曾各自演化，出现过「标签在闪 / 面板说结束了」的自相矛盾；
+// 且必须能被单测直接引用（此前测试自己抄了一份，漏码时照样全绿）。
+//
+// 服务端 chatHandler.ts 也有个同名 TERMINAL_EVENTS，但**语义不同**
+// （那边管断线补发，这边管熄灯），内容相同纯属巧合，不要顺手对齐。
+import { TASK_NEVER_STARTED_CODES, TERMINAL_EVENTS } from "./taskErrorCodes";
+export { TASK_NEVER_STARTED_CODES };
 
 /**
  * 多项目连接管理器(对外仍名 wsService,保持 .send()/.subscribe() 原 API 不变)。

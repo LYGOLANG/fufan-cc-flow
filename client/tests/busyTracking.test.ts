@@ -13,15 +13,11 @@ import test from "node:test";
  * 这里复刻 websocket.ts 的 trackBusy 规则。
  */
 
-const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted"]);
-const TASK_NEVER_STARTED_CODES = new Set([
-  "START_FAILED",
-  "NO_PROJECT",
-  "INVALID_REQUEST",
-  "NOT_FOUND",
-  "INVALID_PROJECT",
-  "INVALID_PROJECT_KEY",
-]);
+// 直接引生产值，不再抄一份。
+//
+// 此前这里复刻了一份集合，结果漏掉 UNKNOWN_PROVIDER / PROVIDER_NOT_CONFIGURED
+// 时测试照样全绿 —— 测的是抄件不是生产值，等于没有保护。
+import { TASK_NEVER_STARTED_CODES, TERMINAL_EVENTS } from "../src/services/taskErrorCodes";
 
 /** 与 websocket.ts:trackBusy 同构 */
 function nextBusy(
@@ -80,4 +76,23 @@ test("回归：error 不在终态集合里", () => {
   // 这是本次修复的核心。若有人"顺手"把 error 加回 TERMINAL_EVENTS，
   // 上面那些用例会失败，但这条断言让原因一目了然。
   assert.ok(!TERMINAL_EVENTS.has("error"), "error 不是终态：任务可能仍在运行");
+});
+
+test("回归：不发终态事件的错误码必须在白名单里", () => {
+  // 服务端这几条走的都是「发完 error 直接 break」的路径，后面**没有**
+  // task_complete / process_close / aborted 跟上。漏掉任何一个，界面就会
+  // 永久停在「正在思考…」，且输入框受限、后续消息带 continueActive。
+  //
+  // 这条曾经真的漏过：把 error 移出终态集合时只想到了参数校验类错误，
+  // 忘了「选了第三方供应商但没配 Key」也走同一条路。
+  for (const code of [
+    "UNKNOWN_PROVIDER", // chatHandler.ts:442
+    "PROVIDER_NOT_CONFIGURED", // chatHandler.ts:450
+    "WORKFLOW_ERROR", // chatHandler.ts:777
+  ]) {
+    assert.ok(
+      TASK_NEVER_STARTED_CODES.has(code),
+      `${code} 不发终态事件，必须列入白名单，否则界面永久卡在「运行中」`,
+    );
+  }
 });
