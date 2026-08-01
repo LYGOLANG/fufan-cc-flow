@@ -6,13 +6,15 @@ import {
 import { useUIStore } from "../../stores/uiStore";
 import { api } from "../../services/api";
 import { openProject } from "../../utils/openProject";
-import { isAbsolute } from "../../utils/hostPath";
+import { basename, isAbsolute, joinPath } from "../../utils/hostPath";
 
-/** Last path segment, for a friendly display name. */
-function baseName(p: string): string {
-  const parts = p.split(/[\\/]/).filter(Boolean);
-  return parts[parts.length - 1] || p;
-}
+/**
+ * Last path segment, for a friendly display name.
+ *
+ * 走 hostPath.basename 而不是 `split(/[\\/]/)`：POSIX 上反斜杠是**合法的
+ * 文件名字符**，无脑双分隔符切分会把 `a\b` 这个文件名切成两段。
+ */
+const baseName = (p: string): string => basename(p);
 
 interface BrowseEntry {
   name: string;
@@ -104,8 +106,11 @@ export default function FolderBrowserModal() {
   const handleCreateFolder = async () => {
     const name = newFolderName.trim();
     if (!name || !currentPath) return;
-    const sep = currentPath.includes("\\") ? "\\" : "/";
-    const newPath = currentPath + sep + name;
+    // 分隔符按**后端所在平台**取，不靠"路径里有没有反斜杠"猜。
+    // 猜法在 Linux 上会栽在两种情况：目录名含反斜杠（合法字符）时猜成 `\`；
+    // 以及 joinPath 还会处理 Windows 盘符根 "C:" + "dir" 必须补分隔符
+    // （拼成 "C:dir" 是「C 盘当前目录下的 dir」，与 "C:\dir" 是两个位置）。
+    const newPath = joinPath(currentPath, name);
     try {
       await api.createFolder(newPath);
       setCreatingFolder(false);

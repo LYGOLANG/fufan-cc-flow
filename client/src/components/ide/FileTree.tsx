@@ -29,6 +29,8 @@ import {
 import { useFileStore } from "../../stores/fileStore";
 import { useUIStore } from "../../stores/uiStore";
 import { api } from "../../services/api";
+import { relativePath, splitPath } from "../../utils/hostPath";
+import { currentHost } from "../../stores/connectionStore";
 import type { FileNode } from "../../types/file";
 
 /* ── File-type icon + color mapping ── */
@@ -90,12 +92,17 @@ function getFileIcon(name: string): FileIconInfo {
 
 /* ── @引用路径：绝对路径 → 相对项目根的 @path ── */
 function makeAtRef(absPath: string, projectPath: string): string {
-  const norm = absPath.replace(/\\/g, "/");
-  const root = (projectPath || "").replace(/\\/g, "/").replace(/\/+$/, "");
-  const rel =
-    root && norm.toLowerCase().startsWith(root.toLowerCase() + "/")
-      ? norm.slice(root.length + 1)
-      : norm;
+  // 原实现用 toLowerCase() 做前缀比较。Windows 上碰巧总是对的，Linux 后端上
+  // 会把 /proj/Src/a.ts 误判为位于 /proj/src 之下（那是两个真实存在的不同目录），
+  // 算出一个不存在的相对路径塞进提示词，模型读不到就说"文件不存在"。
+  //
+  // relativePath 按**后端所在平台**的大小写规则判定，且能识别 /proj/src2
+  // 这种「同名前缀但不在其下」的情况。
+  const rel = relativePath(absPath, projectPath || "");
+  if (rel === null || rel === "") {
+    // 不在项目根之下：退回绝对路径，但分隔符按目标平台归一
+    return `@${splitPath(absPath).join(currentHost().pathSep)}`;
+  }
   return `@${rel}`;
 }
 

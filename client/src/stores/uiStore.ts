@@ -1,10 +1,18 @@
 import { create } from "zustand";
+import { samePath } from "../utils/hostPath";
 
 /** Paths treated as "not a real project" and removed from restored project lists. */
 const IGNORED_PROJECT_PATHS: string[] = [];
-const normPath = (p: string) => (p || "").replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+/**
+ * 判等按**后端所在平台**的规则。
+ *
+ * 原实现固定 `toLowerCase()`，在 Windows 上碰巧总是对的，Linux 后端上会把
+ * `/proj/Src` 与 `/proj/src` 判成同一个项目（那是两个真实存在的不同目录）。
+ * 当前 IGNORED_PROJECT_PATHS 为空，所以这条从未真正生效过 —— 但填进内容的
+ * 那天不该是发现问题的那天。
+ */
 const isIgnoredProject = (p: string) =>
-  !p || IGNORED_PROJECT_PATHS.some((ig) => normPath(ig) === normPath(p));
+  !p || IGNORED_PROJECT_PATHS.some((ig) => samePath(ig, p));
 
 /** Resolve the initial project from local storage; empty means the user must pick one. */
 const RESOLVED_PROJECT_PATH = (() => {
