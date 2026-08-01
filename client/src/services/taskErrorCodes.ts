@@ -31,6 +31,12 @@ export const TASK_NEVER_STARTED_CODES: ReadonlySet<string> = new Set([
   // chatHandler.ts:777 —— engine.run() 抛异常时只发这一条，
   // 而 workflow_start 已经把 busy 置了 true。
   "WORKFLOW_ERROR",
+
+  // codexAgentService.ts 的 proc.on("error") —— 进程压根没 spawn 起来
+  // （可执行文件缺失、权限不足等）。Node 在 spawn 失败时只发 'error'、
+  // 不发 'close'，所以服务端那侧已补发 close；这里再兜一层，
+  // 不把「界面能否恢复」全押在服务端记得补发上。
+  "SPAWN_ERROR",
 ]);
 
 /**

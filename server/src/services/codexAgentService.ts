@@ -359,11 +359,17 @@ export class CodexAgentService extends EventEmitter {
 
     proc.on("error", (err) => {
       logger.error(`codex exec spawn error [${currentId}]: ${err.message}`);
+      this.activeProcs.delete(currentId);
       this.emit("error", {
         sessionId: currentId,
         code: "SPAWN_ERROR",
         message: err.message,
       });
+      // 必须补一个 close。Node 在 spawn 失败时只发 'error'，**不会**再发 'close'
+      // （与 proc.on("close") 那条路径不同，那里发完 PROCESS_ERROR 还会走到
+      // 下面的 emit("close")）。少了它，前端的「运行中」指示与「正在思考…」
+      // 都没有任何东西来清除 —— 界面永久卡住，用户只能刷新页面。
+      this.emit("close", { sessionId: currentId, code: 1 });
     });
   }
 }
