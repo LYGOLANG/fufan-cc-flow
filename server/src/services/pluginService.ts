@@ -34,6 +34,35 @@ interface InstalledPluginEntry {
 
 const PLUGINS_DIR = join(homedir(), ".claude", "plugins");
 const INSTALLED_PLUGINS_PATH = join(PLUGINS_DIR, "installed_plugins.json");
+/**
+ * 插件的启用状态**不在** installed_plugins.json 里，而在全局 settings.json 的
+ * `enabledPlugins`：`{ "name@marketplace": boolean }`，key 与前者完全一致。
+ */
+const CLAUDE_SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
+
+/**
+ * 读取插件启用状态表。
+ *
+ * 此前 listPlugins 直接写死 `enabled: true`，后果是一条闭环的谎言：
+ * 界面永远显示绿色「已启用」→ 用户点开关 → `togglePlugin` 确实执行了
+ * `claude plugin disable` → 前端 refetch → 又拿到写死的 true → 看起来没生效。
+ * 更糟的是 PluginManager 的点击是 `togglePlugin(name, !p.enabled)`，
+ * 而 `p.enabled` 恒为 true，所以这个按钮**只能发 disable、永远发不出 enable**
+ * —— 禁用之后再也回不来。
+ *
+ * 读不到时返回空表，调用方按「未记录 = 启用」处理：插件装上默认就是启用的，
+ * 这样不会因为一次读取失败就把所有插件显示成已禁用（那又是一次「把不知道
+ * 当成否定」）。
+ */
+async function readEnabledPlugins(): Promise<Record<string, boolean>> {
+  try {
+    const raw = await fs.readFile(CLAUDE_SETTINGS_PATH, "utf-8");
+    const settings = JSON.parse(raw) as { enabledPlugins?: Record<string, boolean> };
+    return settings.enabledPlugins ?? {};
+  } catch {
+    return {};
+  }
+}
 
 export class PluginService {
   /** 委托给共用实现（自带超时与进程清理）；保留本方法以免改动 4 个调用点 */
@@ -56,6 +85,8 @@ export class PluginService {
 
       const data = JSON.parse(raw);
       const installedMap = (data.plugins || {}) as Record<string, InstalledPluginEntry[]>;
+      // 启用状态在另一个文件里（见 readEnabledPlugins 的说明）
+      const enabledMap = await readEnabledPlugins();
       const result: PluginInfo[] = [];
 
       for (const [key, installs] of Object.entries(installedMap)) {
@@ -85,7 +116,9 @@ export class PluginService {
           author: meta.author?.name,
           version: install.version?.slice(0, 8),
           scope: install.scope || "user",
-          enabled: true,
+          // key 形如 "name@marketplace"，与 enabledPlugins 的键一致。
+          // 未记录按启用处理：装上默认就是启用的。
+          enabled: enabledMap[key] ?? true,
           marketplace,
           installPath: install.installPath,
           gitCommitSha: install.gitCommitSha,
