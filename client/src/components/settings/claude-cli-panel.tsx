@@ -66,7 +66,7 @@ export default function ClaudeCliPanel({ installed }: { installed: boolean }) {
             {claudeInfo?.version && <span className="ml-2 text-xs font-mono text-slate-500">v{claudeInfo.version}</span>}
           </div>
           <button
-            onClick={loadClaudeInfo}
+            onClick={() => void loadClaudeInfo()}
             disabled={infoLoading}
             className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors disabled:opacity-40"
             title="重新检测"
@@ -79,7 +79,7 @@ export default function ClaudeCliPanel({ installed }: { installed: boolean }) {
           <XCircle size={16} className="text-rose-err flex-shrink-0" />
           <span className="text-sm text-slate-300 flex-1">未检测到 Claude Code</span>
           <button
-            onClick={loadClaudeInfo}
+            onClick={() => void loadClaudeInfo()}
             disabled={infoLoading}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 transition-colors disabled:opacity-40"
           >

@@ -85,7 +85,7 @@ export default function CodexProviderPanel() {
             {codexInfo?.version && <span className="ml-2 text-xs font-mono text-slate-500">v{codexInfo.version}</span>}
           </div>
           <button
-            onClick={loadCodexInfo}
+            onClick={() => void loadCodexInfo()}
             disabled={codexInfoLoading}
             className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors disabled:opacity-40"
             title="重新检测"
@@ -99,7 +99,7 @@ export default function CodexProviderPanel() {
             <XCircle size={16} className="text-rose-err flex-shrink-0" />
             <span className="text-sm text-slate-300 flex-1">未检测到 Codex CLI</span>
             <button
-              onClick={loadCodexInfo}
+              onClick={() => void loadCodexInfo()}
               disabled={codexInfoLoading}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 transition-colors disabled:opacity-40"
             >

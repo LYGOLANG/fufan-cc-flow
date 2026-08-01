@@ -116,7 +116,8 @@ interface SystemState {
   claudeSettingsEnv: Record<string, string>;
   claudeSettingsSaving: boolean;
 
-  loadClaudeInfo: () => Promise<void>;
+  /** attempt 仅供内部重试递归使用，调用方不传 */
+  loadClaudeInfo: (attempt?: number) => Promise<void>;
   runDoctor: () => Promise<void>;
   runUpdate: () => Promise<void>;
   loadProxy: () => Promise<void>;
@@ -147,7 +148,8 @@ interface SystemState {
   codexLoggingIn: boolean;
   codexTestResult: CodexTestResult | null;
   codexTesting: boolean;
-  loadCodexInfo: () => Promise<void>;
+  /** attempt 仅供内部重试递归使用，调用方不传 */
+  loadCodexInfo: (attempt?: number) => Promise<void>;
   loadCodexAuthStatus: () => Promise<void>;
   codexSubscriptionLogin: () => Promise<{ success: boolean; output: string; alreadyLoggedIn?: boolean }>;
   codexLoginApiKey: (apiKey: string) => Promise<{ success: boolean; output: string }>;
@@ -161,7 +163,17 @@ export interface UsageWindow {
 }
 export type UsageSource = "anthropic" | "codex";
 
-export const useSystemStore = create<SystemState>((set) => ({
+/**
+ * CLI 探测失败后的重试次数与间隔。
+ *
+ * 应用启动时 AppLayout 一 mount 就发探测请求，而那时 Rust 刚 spawn 完
+ * sidecar，Node 后端往往还没开始监听。600/1200/1800/2400ms 累计约 6 秒，
+ * 足够覆盖冷启动，又不至于在真的没装 CLI 时让用户等太久。
+ */
+const CLI_PROBE_RETRIES = 4;
+const cliProbeDelay = (attempt: number) => 600 * (attempt + 1);
+
+export const useSystemStore = create<SystemState>((set, get) => ({
   claudeInfo: null,
   infoLoading: false,
   doctorResult: null,
@@ -191,14 +203,27 @@ export const useSystemStore = create<SystemState>((set) => ({
   codexTestResult: null,
   codexTesting: false,
 
-  loadClaudeInfo: async () => {
+  loadClaudeInfo: async (attempt = 0) => {
     set({ infoLoading: true });
     try {
       const info = await api.systemApi.getClaudeInfo();
-      set({ claudeInfo: info });
+      set({ claudeInfo: info, infoLoading: false });
     } catch {
-      set({ claudeInfo: { installed: false, platform: "unknown" } });
-    } finally {
+      // 探测失败 ≠ 未安装。
+      //
+      // 这里原先写死 { installed: false }，于是每次启动都误报"未安装 CLI"——
+      // 因为 AppLayout 一 mount 就探测，而那时 Node sidecar 常常还没监听，
+      // 请求必然失败。用户进一趟设置页触发重新探测，提示才消失。
+      //
+      // claudeInfo 保持 null（未知）：InputBar 用的是 `installed === false`，
+      // null 不会触发提示。宁可暂时不显示状态，也不能报一个错的结论。
+      if (attempt < CLI_PROBE_RETRIES) {
+        // 不清 infoLoading：重试期间仍属"检测中"，清了会让 UI 闪一下
+        setTimeout(() => void get().loadClaudeInfo(attempt + 1), cliProbeDelay(attempt));
+        return;
+      }
+      // 重试耗尽仍不下"未安装"的结论：此时更可能是后端不可用，
+      // 那是另一回事，由连接状态指示器负责表达。
       set({ infoLoading: false });
     }
   },
@@ -361,14 +386,17 @@ export const useSystemStore = create<SystemState>((set) => ({
   },
 
   // ── OpenAI Codex 引擎 ──
-  loadCodexInfo: async () => {
+  loadCodexInfo: async (attempt = 0) => {
     set({ codexInfoLoading: true });
     try {
       const info = await api.systemApi.getCodexInfo();
-      set({ codexInfo: info });
+      set({ codexInfo: info, codexInfoLoading: false });
     } catch {
-      set({ codexInfo: { installed: false, platform: "unknown" } });
-    } finally {
+      // 与 loadClaudeInfo 同一个问题：探测失败不等于未安装。详见那里的说明。
+      if (attempt < CLI_PROBE_RETRIES) {
+        setTimeout(() => void get().loadCodexInfo(attempt + 1), cliProbeDelay(attempt));
+        return;
+      }
       set({ codexInfoLoading: false });
     }
   },
