@@ -216,14 +216,14 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 - 显示任务状态、开始时间、执行结果
 - **workflow/后台 agent 生命周期接入**：SDK 流中的 `system.task_started` / `system.task_notification` / `system.background_tasks_changed` 消息经 `background_task_event` WS 事件转发前端（此前被静默丢弃）；「后台任务」标签页据此同步任务状态，「工作流」标签页顶部显示运行中区块，「审计」标签页记录事件流；payload 结构防御性解析，服务端 debug 日志记录完整负载供迭代
 
-#### F3.3 Checkpoint / Rewind（设计中）
+#### F3.3 Checkpoint / Rewind（已实现）
 
 - 在会话时间线上标记 Checkpoint
 - 支持回滚到指定 Checkpoint
 
 ---
 
-### 2.4 Phase 4 — 项目管理初始化（待开发）
+### 2.4 Phase 4 — 项目管理初始化（已完成）
 
 #### F4.1 新建项目初始化
 
@@ -271,7 +271,7 @@ Claude Code 是 Anthropic 推出的 AI 编程 CLI 工具，功能强大但对初
 
 ---
 
-### 2.5 Phase 5 — 工作流编排引擎（待开发）
+### 2.5 Phase 5 — 工作流编排引擎（已完成，见 8.1 / DEV-PLAN Phase 12-14）
 
 #### F5.1 现状与问题
 
@@ -605,7 +605,7 @@ server/src/
 | 限制 | 说明 |
 |------|------|
 | 单用户 | 后端无多用户隔离，适合个人或小团队使用 |
-| 本地运行 | 需要在与 Claude Code CLI 同一机器运行 |
+| 本地运行 | 默认在与 Claude Code CLI 同一机器运行；v0.1.24 起支持经 SSH 隧道连接远程后端（实验性，见 8.2） |
 | 无持久化 DB | 会话数据完全依赖 Claude Code CLI 的 JSONL 文件 |
 | node-pty 编译 | 需要本机 C++ 环境，部分云环境/容器可能受限 |
 
