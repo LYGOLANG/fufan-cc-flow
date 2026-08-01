@@ -73,9 +73,18 @@ export function useAutoCompact(): void {
     // 不打断后台 sub-agent),并带 Codex 能力检测。
     // 此前当普通消息发,在 Codex 引擎下等于把 "/compact" 当提问问了一遍 ——
     // 上下文纹丝不动,状态栏却显示「正在压缩」。
-    wsService.send("compact", {
+    // 必须看返回值:连接不 OPEN 时,除 send_message 外的动作会被
+    // http-chat.send 直接丢弃(compact 不在 pendingSends 兜底队列里)。
+    // 不看就先 startStreaming 的话,这一帧根本没发出去,而界面进了流式态,
+    // 又不会有任何事件回来清它 —— 永久转圈。
+    const sent = wsService.send("compact", {
       sessionId: chat.currentSessionId || undefined,
     });
+    if (!sent) {
+      chat.setStatusText("网络未连接，自动压缩未执行");
+      setTimeout(() => chat.setStatusText(""), 5000);
+      return;
+    }
     chat.startStreaming();
     chat.setStatusText(`上下文已达 ${Math.round(decision.pct)}%,正在自动压缩...`);
   }, [contextTokens, isStreaming, threshold, model, engine]);

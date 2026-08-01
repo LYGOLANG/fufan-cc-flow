@@ -92,11 +92,39 @@ export function useWebSocket() {
           setWsConnected(true);
           break;
 
-        case "_disconnected":
+        case "_disconnected": {
           // stale = 连续重连失败到「大概率不会自己好」的程度，
           // 由传输层判定（见 http-chat.ts 的 staleAfterFailures）
-          setWsConnected(false, payload.stale === true);
+          const stale = payload.stale === true;
+          setWsConnected(false, stale);
+
+          // isStreaming 的清除此前**只**依赖四个服务端事件
+          // （task_complete / process_close / aborted / error）。后端进程死掉、
+          // SSH 隧道断掉时一个都不会来，界面就永久停在「正在思考…」：
+          // 停止按钮卡住、附件按钮禁用、计时器一直走，只能刷新页面。
+          //
+          // 这里不用固定超时兜底 —— 长任务跑几十分钟很正常，误杀比卡住更糟。
+          // 判据用连接本身：连都连不上了，那几个事件就不可能再送达。
+          //
+          // 措辞要诚实：服务端有 30 秒寄存宽限，任务很可能还在跑、还在计费。
+          // 说成「任务已结束」是另一种谎。重连成功后若那一轮仍在进行，
+          // 服务端会补发 session_init 让界面重新进入流式态。
+          if (stale && store.getState().isStreaming) {
+            const notice =
+              "⚠️ **与后端的连接已断开**，这一轮的后续内容无法接收。\n\n" +
+              "任务可能仍在服务器上运行。连接恢复后会自动重新跟上；" +
+              "若长时间无法恢复，重启应用。";
+            store
+              .getState()
+              .updateAssistantContent(
+                accumulatedText ? `${accumulatedText}\n\n${notice}` : notice,
+              );
+            accumulatedText = "";
+            accumulatedThinking = "";
+            store.getState().stopStreaming();
+          }
           break;
+        }
 
         case "session_init": {
           const newSessionId = payload.sessionId as string;

@@ -36,6 +36,8 @@ export default function WorkflowManager() {
   // Workflow execution: variable input
   const [execWorkflow, setExecWorkflow] = useState<Workflow | null>(null);
   const [varValues, setVarValues] = useState<Record<string, string>>({});
+  /** 启动失败的原因（断线时这一帧会被丢弃，界面必须说出来） */
+  const [startError, setStartError] = useState<string | null>(null);
 
   useEffect(() => {
     loadWorkflows(projectPath);
@@ -56,13 +58,23 @@ export default function WorkflowManager() {
       setExecWorkflow(wf);
     } else {
       // No variables — execute directly
-      composeAndSend(wf, {});
+      if (!composeAndSend(wf, {})) {
+        setStartError("网络未连接，工作流未启动");
+        setTimeout(() => setStartError(null), 5000);
+      } else {
+        setStartError(null);
+      }
     }
   };
 
   const confirmExecute = () => {
     if (!execWorkflow) return;
-    composeAndSend(execWorkflow, varValues);
+    // 没送出去就把表单留着并给出原因，别让「表单关闭」成为一个假的成功信号
+    if (!composeAndSend(execWorkflow, varValues)) {
+      setStartError("网络未连接，工作流未启动");
+      return;
+    }
+    setStartError(null);
     setExecWorkflow(null);
     setVarValues({});
   };
@@ -77,8 +89,12 @@ export default function WorkflowManager() {
    * 引擎参数走 buildEngineParams()，与手动发消息完全同源；少带字段会让常驻
    * 进程指纹对不上、白白杀进程重启。
    */
-  const composeAndSend = (wf: Workflow, vars: Record<string, string>) => {
-    wsService.send("workflow_start", {
+  const composeAndSend = (wf: Workflow, vars: Record<string, string>): boolean => {
+    // 返回是否真的送出去了。连接不 OPEN 时这一帧会被 http-chat.send 直接丢弃
+    // （只有 send_message 有 pendingSends 兜底），而调用方随即关掉变量表单 ——
+    // 表单一关看起来就是「已启动」，实际什么都没发生，也不会有 workflow_state
+    // 事件回来纠正。
+    return wsService.send("workflow_start", {
       workflowId: wf.id,
       inputs: vars,
       engineParams: buildEngineParams(),
@@ -110,7 +126,7 @@ export default function WorkflowManager() {
               执行：{execWorkflow.name}
             </span>
           </div>
-          <button onClick={() => setExecWorkflow(null)}
+          <button onClick={() => { setExecWorkflow(null); setStartError(null); }}
             className="p-1 rounded hover:bg-white/5 text-slate-400">
             <X size={13} />
           </button>
@@ -119,6 +135,12 @@ export default function WorkflowManager() {
         <p className="text-[10px] text-slate-400">
           请填写工作流变量，然后点击"开始执行"
         </p>
+
+        {startError && (
+          <p className="text-[11px] text-rose-err rounded-md border border-rose-err/30 bg-rose-err/5 px-2 py-1.5">
+            {startError}
+          </p>
+        )}
 
         <div className="space-y-2">
           {execWorkflow.variables.map((v) => (

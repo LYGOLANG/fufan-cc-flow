@@ -124,10 +124,18 @@ export default function ContextBar() {
     // 它还带着 Codex 的能力检测——Codex 不支持 /compact，此前当普通消息发
     // 的结果是：模型把 "/compact" 当成一句提问随便答一句，上下文纹丝不动，
     // 而状态栏还显示「正在压缩上下文...」。
-    wsService.send("compact", {
+    // 必须看返回值:连接不 OPEN 时这一帧会被直接丢弃(compact 不在
+    // pendingSends 兜底队列里)。不看就 startStreaming 的话,指令没送出去、
+    // 界面却进了流式态,又没有任何事件回来清它 —— 永久停在「正在压缩上下文...」。
+    const sent = wsService.send("compact", {
       instructions: compactHint.trim() || undefined,
       sessionId: currentSessionId || undefined,
     });
+    if (!sent) {
+      useChatStore.getState().setStatusText("网络未连接，压缩指令未送达");
+      setTimeout(() => useChatStore.getState().setStatusText(""), 5000);
+      return;
+    }
 
     // Instant feedback: start streaming lifecycle immediately
     useChatStore.getState().startStreaming();
