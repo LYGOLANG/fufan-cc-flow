@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { wsService } from "../services/websocket";
+import { wsService, TASK_NEVER_STARTED_CODES } from "../services/websocket";
 import { useChatStore } from "../stores/chatStore";
 import { useUIStore } from "../stores/uiStore";
 import { useAgentStore } from "../stores/agentStore";
@@ -586,7 +586,22 @@ export function useWebSocket() {
           }
           accumulatedText = "";
           accumulatedThinking = "";
-          store.getState().stopStreaming();
+          // 只有「这一轮压根没起来」的错误才结束流式态。
+          //
+          // 此前无条件 stopStreaming()，而服务端在任务**运行中**也会发 error：
+          // COMPACT_FAILED / PROCESS_ERROR / RETRY_FAILED / EXECUTION_ERROR /
+          // UNSUPPORTED / WORKFLOW_ERROR。一旦误判结束，下面两个分支
+          //   case "assistant_thinking": if (!isStreaming) break;
+          //   case "assistant_text":     if (!isStreaming) break;
+          // 会把这一轮**剩下的全部回复静默丢弃** —— 不渲染、不入库、不留痕迹，
+          // 用户看到回复戛然而止在一个 ⚠️ 上，而模型其实还在正常输出。
+          //
+          // 与 services/websocket.ts 的项目标签 busy 判定共用同一份白名单：
+          // 两侧必须一致，否则会出现「标签在闪 / 面板说结束了」的自相矛盾。
+          const errCode = payload.code;
+          if (typeof errCode === "string" && TASK_NEVER_STARTED_CODES.has(errCode)) {
+            store.getState().stopStreaming();
+          }
           break;
         }
 

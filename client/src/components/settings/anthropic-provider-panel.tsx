@@ -83,7 +83,7 @@ export default function AnthropicProviderPanel() {
           </div>
         </div>
         <button
-          onClick={loadAuthStatus}
+          onClick={() => void loadAuthStatus()}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] border border-white/10 text-slate-300 hover:bg-white/5 transition-colors"
         >
           <RefreshCw size={11} />重新检测

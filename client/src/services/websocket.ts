@@ -31,7 +31,7 @@ const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted"]);
  * 界面说「没在跑」而实际在跑,比没有指示更糟:用户会重复发送,或以为可以
  * 关掉应用。故只认这几个明确表示"任务压根没起来"的码。
  */
-const TASK_NEVER_STARTED_CODES = new Set([
+export const TASK_NEVER_STARTED_CODES = new Set([
   "START_FAILED",
   "NO_PROJECT",
   "INVALID_REQUEST",

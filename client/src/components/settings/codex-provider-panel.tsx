@@ -163,7 +163,7 @@ export default function CodexProviderPanel() {
               </>
             )}
             <div className="flex items-center gap-2">
-              <button onClick={loadCodexAuthStatus} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 transition-colors">
+              <button onClick={() => void loadCodexAuthStatus()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 text-slate-300 hover:bg-white/5 transition-colors">
                 <RefreshCw size={12} />检测登录状态
               </button>
               {authenticated && <button onClick={handleLogout} className="px-3 py-1.5 rounded-lg text-xs border border-rose-err/20 text-rose-err hover:bg-rose-err/10">退出登录</button>}

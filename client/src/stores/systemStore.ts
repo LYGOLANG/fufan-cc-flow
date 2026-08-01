@@ -124,7 +124,8 @@ interface SystemState {
   saveProxy: (proxy: ProxySettings) => Promise<void>;
   setProxySettings: (proxy: ProxySettings) => void;
 
-  loadAuthStatus: () => Promise<void>;
+  /** attempt 仅供内部重试递归使用，调用方不传 */
+  loadAuthStatus: (attempt?: number) => Promise<void>;
   testProxy: (host: string, port: number) => Promise<void>;
   testClaude: (opts: { apiKey?: string; baseUrl?: string; model?: string; httpProxy?: string; httpsProxy?: string }) => Promise<ClaudeTestResult>;
   loadClaudeSettings: () => Promise<void>;
@@ -150,7 +151,8 @@ interface SystemState {
   codexTesting: boolean;
   /** attempt 仅供内部重试递归使用，调用方不传 */
   loadCodexInfo: (attempt?: number) => Promise<void>;
-  loadCodexAuthStatus: () => Promise<void>;
+  /** attempt 仅供内部重试递归使用，调用方不传 */
+  loadCodexAuthStatus: (attempt?: number) => Promise<void>;
   codexSubscriptionLogin: () => Promise<{ success: boolean; output: string; alreadyLoggedIn?: boolean }>;
   codexLoginApiKey: (apiKey: string) => Promise<{ success: boolean; output: string }>;
   codexLogout: () => Promise<void>;
@@ -279,14 +281,21 @@ export const useSystemStore = create<SystemState>((set, get) => ({
 
   setProxySettings: (proxy) => set({ proxySettings: proxy }),
 
-  loadAuthStatus: async () => {
+  loadAuthStatus: async (attempt = 0) => {
     set({ authStatusLoading: true });
     try {
       const status = await api.systemApi.getAuthStatus();
-      set({ authStatus: status });
+      set({ authStatus: status, authStatusLoading: false });
     } catch {
-      set({ authStatus: { installed: false, authenticated: false, authMethod: "none" } });
-    } finally {
+      // 与 loadClaudeInfo 同一个问题，且**优先级更高**：useClaudeStatus.ts 里
+      //   installed = authStatus?.installed ?? claudeInfo?.installed ?? true
+      // authStatus 排在前面。这里写死 false 会直接盖掉 claudeInfo 保持的"未知"，
+      // 让那边的修复完全失效——症状从"未安装"变成"未登录 + 红点"而已。
+      // 两处必须同步：探测失败保持 null，并重试。
+      if (attempt < CLI_PROBE_RETRIES) {
+        setTimeout(() => void get().loadAuthStatus(attempt + 1), cliProbeDelay(attempt));
+        return;
+      }
       set({ authStatusLoading: false });
     }
   },
@@ -401,12 +410,16 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     }
   },
 
-  loadCodexAuthStatus: async () => {
+  loadCodexAuthStatus: async (attempt = 0) => {
     try {
       const status = await api.systemApi.getCodexAuthStatus();
       set({ codexAuthStatus: status });
     } catch {
-      set({ codexAuthStatus: { installed: false, authenticated: false, authMethod: "none" } });
+      // 同 loadAuthStatus：探测失败不等于未登录。冷启动时后端还没监听，
+      // 写死 false 会让界面报「Codex 未登录」而真实状态未知。
+      if (attempt < CLI_PROBE_RETRIES) {
+        setTimeout(() => void get().loadCodexAuthStatus(attempt + 1), cliProbeDelay(attempt));
+      }
     }
   },
 
