@@ -34,7 +34,7 @@ export default function MessageList() {
       : providerId && providerId !== "anthropic"
         ? providerId
         : "Claude Code";
-  const { containerRef, handleScroll, scrollToBottom } = useAutoScroll([messages, streamingText], isStreaming);
+  const { containerRef, handleScroll, handleWheel, handleTouchMove, scrollToBottom } = useAutoScroll([messages, streamingText], isStreaming);
   const [loadingMore, setLoadingMore] = useState(false);
 
   // 用户发送新消息时,无论当前翻到哪里都强制滚到底部。
@@ -85,6 +85,10 @@ export default function MessageList() {
     <div
       ref={containerRef}
       onScroll={handleScroll}
+      // wheel/touchmove 必须一起绑：滚轮意图要抢在 ResizeObserver 之前登记，
+      // 只靠 onScroll 会在流式输出时被"拉回底部"覆盖掉（见 useAutoScroll 注释）
+      onWheel={handleWheel}
+      onTouchMove={handleTouchMove}
       className="flex-1 min-h-0 overflow-y-auto"
     >
       <div className="max-w-4xl mx-auto px-6 py-6 space-y-8">

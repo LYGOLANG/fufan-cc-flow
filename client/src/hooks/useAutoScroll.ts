@@ -48,6 +48,33 @@ export function useAutoScroll(deps: unknown[], instant = false) {
     el.scrollTo({ top: el.scrollHeight, behavior });
   }, []);
 
+  /**
+   * 用户的「向上」意图，必须在 scroll 事件之前就登记。
+   *
+   * 踩过的坑：流式输出时 ResizeObserver 每来一批内容就触发一次，而它只看
+   * userScrolledUp —— 那个标志却要等 scroll 事件才更新。浏览器的实际顺序是
+   *   ① 滚轮改变 scrollTop
+   *   ② 新内容到达 → layout → **ResizeObserver 回调先跑**（标志仍是 false）
+   *      → 把视图拉回底部
+   *   ③ scroll 事件这才派发 → 位置已在底部 → 判定 atBottom → 标志压根没置位
+   * 结果就是「任务运行期间根本滚不上去，任务一结束就正常了」。
+   *
+   * wheel / touchmove 在滚动发生**之前**派发，用它们抢在 ResizeObserver 前面
+   * 登记意图，竞态就不成立了。
+   */
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (e.deltaY < 0) userScrolledUp.current = true;
+  }, []);
+
+  const handleTouchMove = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // 触摸滚动方向要等位置变化才知道，这里保守处理：只要不在底部就停止跟随
+    const atBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < AT_BOTTOM_THRESHOLD;
+    if (!atBottom) userScrolledUp.current = true;
+  }, []);
+
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -79,6 +106,20 @@ export function useAutoScroll(deps: unknown[], instant = false) {
     const target = el.firstElementChild ?? el;
     const ro = new ResizeObserver(() => {
       if (userScrolledUp.current) return;
+      const node = containerRef.current;
+      if (!node) return;
+
+      // 二次确认，兜住 wheel/touchmove 覆盖不到的输入方式（PageUp、Home、
+      // 拖动滚动条）—— 它们同样只产生 scroll 事件，同样可能慢于本回调。
+      //
+      // 判据用「上一次已知位置」而不是当前距底距离：内容长高本身就会让距底
+      // 变大，拿它当判据会把正常的流式增长误判成用户上翻。而 scrollTop 变小
+      // 只可能是有人主动往回滚 —— 程序化滚动只会让它变大。
+      if (node.scrollTop < lastTop.current - 1) {
+        userScrolledUp.current = true;
+        lastTop.current = node.scrollTop;
+        return;
+      }
       scrollToEnd("auto");
     });
     ro.observe(target);
@@ -91,5 +132,5 @@ export function useAutoScroll(deps: unknown[], instant = false) {
     scrollToEnd("auto");
   }, [scrollToEnd]);
 
-  return { containerRef, handleScroll, scrollToBottom };
+  return { containerRef, handleScroll, handleWheel, handleTouchMove, scrollToBottom };
 }
