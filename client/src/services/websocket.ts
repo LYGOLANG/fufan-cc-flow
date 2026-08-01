@@ -8,7 +8,14 @@ import type { ChatConnection, ChatHandler } from "./transport/types";
  */
 const MAX_BUFFER = 2000;
 
-/** 终态事件:任务在服务端结束,可清除 busy 标记。 */
+/**
+ * 终态事件:任务在服务端结束,可清除 busy 标记。
+ *
+ * 服务端 `chatHandler.ts` 也有一个同名集合,但**语义不同**,不要"顺手对齐":
+ *   - 这里:哪些事件意味着可以熄灭「运行中」指示
+ *   - 那里:断线期间丢失后需要在重连时补发的事件
+ * 两者当前内容恰好相同,纯属巧合。真正的约束是各自的用途,不是彼此相等。
+ */
 const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted"]);
 
 /**
