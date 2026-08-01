@@ -9,7 +9,29 @@ import type { ChatConnection, ChatHandler } from "./transport/types";
 const MAX_BUFFER = 2000;
 
 /** 终态事件:任务在服务端结束,可清除 busy 标记。 */
-const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted", "error"]);
+const TERMINAL_EVENTS = new Set(["task_complete", "process_close", "aborted"]);
+
+/**
+ * 「这一轮没能开始」的错误码。只有它们才该清掉 busy。
+ *
+ * `error` 事件此前被整个当成终态,于是任何运行中的局部失败都会把「运行中」
+ * 指示灯打灭 —— 而任务还在服务端跑着。典型的误伤:
+ *   - COMPACT_FAILED:压缩失败,会话完好,这一轮照常继续
+ *   - 前端的 BACKEND_NOT_CONNECTED:闪断时发消息超时,而服务端有 30 秒寄存,
+ *     任务照常在跑、照常计费
+ *   - SDK 运行时 error:工具失败之类的局部错误,真正终结时另有 process_close
+ *
+ * 界面说「没在跑」而实际在跑,比没有指示更糟:用户会重复发送,或以为可以
+ * 关掉应用。故只认这几个明确表示"任务压根没起来"的码。
+ */
+const TASK_NEVER_STARTED_CODES = new Set([
+  "START_FAILED",
+  "NO_PROJECT",
+  "INVALID_REQUEST",
+  "NOT_FOUND",
+  "INVALID_PROJECT",
+  "INVALID_PROJECT_KEY",
+]);
 
 /**
  * 多项目连接管理器(对外仍名 wsService,保持 .send()/.subscribe() 原 API 不变)。
@@ -42,7 +64,7 @@ class WebSocketManager {
     if (!conn) {
       conn = createChatConnection(projectPath);
       const unsub = conn.subscribe((event, payload) => {
-        this.trackBusy(projectPath, event);
+        this.trackBusy(projectPath, event, payload);
         if (projectPath === this.activeProject && this.live) {
           this.notify(event, payload);
         } else if (!event.startsWith("_")) {
@@ -120,7 +142,12 @@ class WebSocketManager {
    */
   send(action: string, payload: Record<string, unknown> = {}): boolean {
     const accepted = this.conns.get(this.activeProject)?.send(action, payload) ?? false;
-    if (action === "send_message" && accepted) this.setBusy(this.activeProject, true);
+    // workflow_start 同样让项目进入"运行中"。少了它,从点下 ▷ 到第一步的
+    // session_init 到达之间(要起进程,可能几秒)标签上没有任何指示,
+    // 看起来像点了没反应。
+    if ((action === "send_message" || action === "workflow_start") && accepted) {
+      this.setBusy(this.activeProject, true);
+    }
     // abort 必须看 accepted:连接断开时这一帧会被丢弃,而服务端有 30 秒寄存宽限,
     // 任务照常在跑、照常计费。原先无条件清 busy,于是「运行中」指示灯灭了、
     // 用户以为停住了,实际什么都没发生 —— 界面说谎比没反应更糟。
@@ -149,11 +176,19 @@ class WebSocketManager {
     return this.conns.get(this.activeProject)?.connected ?? false;
   }
 
-  private trackBusy(projectPath: string, event: string) {
+  private trackBusy(projectPath: string, event: string, payload?: Record<string, unknown>) {
     if (event === "session_init") this.setBusy(projectPath, true);
     else if (TERMINAL_EVENTS.has(event)) {
       this.setBusy(projectPath, false);
       this.setAwaiting(projectPath, false); // 任务终结,清掉可能残留的"需确认"角标
+    } else if (event === "error") {
+      // 只有「这一轮压根没起来」的错误才清 busy(见 TASK_NEVER_STARTED_CODES)。
+      // 运行中的局部失败不动它 —— 任务还在跑,真正结束时自有终态事件。
+      const code = payload?.code;
+      if (typeof code === "string" && TASK_NEVER_STARTED_CODES.has(code)) {
+        this.setBusy(projectPath, false);
+        this.setAwaiting(projectPath, false);
+      }
     }
     // 后台项目冒出待确认权限:打角标提醒用户切回处理,否则 60s 后被服务端自动拒绝。
     // (活动项目会直接弹权限卡,不需要角标。)
