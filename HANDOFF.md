@@ -123,6 +123,41 @@ code-reviewer 通过，应由用户明确选择开启。
 - `scripts/verify-signature.mjs` — 发布验签（已接进 release-update.mjs）
 - `scripts/install-desktop.ps1` — 独立进程安装（ASCII-only，见死路）
 
+## 2026-08-01 三视角独立审查的结论
+
+派了三个独立视角（代码审查 / 界面说谎狩猎 / 技术债盘点）并行查，
+**最有价值的发现是：当天的每一处修复都只做了一半**，而漏掉的那半
+分别抵消或加剧了修复本身。已全部补完，教训记在这里：
+
+1. **改一个判定前，先 grep 它的所有消费者。**
+   `loadClaudeInfo` 修好了，紧挨着的 `loadAuthStatus` 没改，而后者在
+   `useClaudeStatus.ts:16` 里优先级更高 —— 修复被完全抵消，症状只是
+   从"未安装"变成"未登录"。
+2. **同一份语义在两处判定时，必须同时改。**
+   `error` 移出终态集合只改了项目标签那侧，聊天面板那侧没动，
+   结果两个指示器互相矛盾。**修一半比不修更混乱。**
+3. **测试不能复刻生产逻辑。**
+   `busyTracking.test.ts` 在测试文件里抄了一份白名单，于是漏掉
+   `UNKNOWN_PROVIDER` 时测试 100% 通过 —— 测的是抄件。判定表已抽到
+   `client/src/services/taskErrorCodes.ts`，两侧与测试共用同一份。
+4. **写了工具 + 加了测试 ≠ 落地。**
+   `hostPath.ts` 七个导出只有 `isAbsolute` 被调用过一次，其余全是死代码，
+   而 DEV-PLAN 的验收已经打了 ✅。10 个用例只证明工具自身正确，
+   证明不了任何调用点用上了它。**验收要看调用点，不看工具。**
+5. **给 store 函数加可选参数后，grep `onClick={fn}`。**
+   React 会把事件对象塞给第一个参数。两轮各中两处；第二轮是 tsc 报错拦下的。
+
+**仍未处理**（按危害排序，证据见当次审查报告）：
+- Codex 费用恒为 $0 → `maxBudget` 对 Codex 完全失效（用户以为设了上限）
+- 远程孤儿后端：健康检查走免鉴权 `/health`，会连上旧进程然后全站 401，
+  而提示词让用户"重启应用"（无效，孤儿还在）
+- `hostPath` 真正接上调用点（`uiStore.ts:5` / `FileTree.tsx:96` /
+  `FolderBrowserModal.tsx:107`）
+- 孤儿路由：`POST /sessions/:id/rollback`（能删用户文件却无调用方）、
+  `GET /system/proxy-save`（用 GET 做写操作，代理密码进 URL query）
+- 文档漂移：DEV-PLAN 头部仍写"Phase 3 待开发"、REQUIREMENTS 自相矛盾、
+  README/CLAUDE.md 完全没提远程功能
+
 ## 值得复查的模式：界面说谎
 
 两类，都已各修一处，但模式本身值得长期警惕：
