@@ -22,8 +22,24 @@ client/src-tauri/target/
 client/src-tauri/gen/
 client/src-tauri/binaries/
 client/src-tauri/server-dist/
+# .claude 同时装着两类东西，必须分开对待：
+#   框架文件（hooks / skills / agents / 指令文档）—— 是项目基础设施，必须入库
+#   运行时数据（attachments / evolution / workflows / 本机覆盖）—— 含用户原话，绝不入库
+#
+# 此前一刀切只放行 settings.json，后果有两层：
+#   1. 新 clone 的机器上，settings.json 注册的 7 个 hook 全部指向不存在的脚本
+#   2. 更糟：client/scripts/prepare-sidecar.mjs 会把 .claude 整个打进安装包，
+#      作为「+ 添加项目」的初始化模板。在 fresh clone 上打包，模板里就只剩
+#      settings.json —— 用户新建的每个项目都会拿到一份指向空气的 hook 配置。
+#      而本机因为文件还在（未跟踪但未删），打出来的包是好的，故一直没暴露。
 .claude/*
 !.claude/settings.json
+!.claude/CLAUDE.md
+!.claude/EVOLUTION.md
+!.claude/使用说明.md
+!.claude/agents/
+!.claude/hooks/
+!.claude/skills/
 .engram/
 **/.engram/
 

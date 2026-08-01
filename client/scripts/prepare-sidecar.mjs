@@ -154,6 +154,41 @@ for (const item of [".claude", ".codex", ".agents", "AGENTS.md"]) {
 // pnpm 安装元数据含本机 store 绝对路径，Node 运行时不读取它，发布包中必须删除。
 rmSync(path.join(serverDistDir, "node_modules", ".modules.yaml"), { force: true });
 
+// 模板完整性校验。
+//
+// 上面那个 existsSync 只保证目录**存在**，不保证内容还在。曾经 .gitignore
+// 把 .claude/hooks 整个排除在版本控制外，于是：维护者本机文件还在 → 打出的包
+// 是好的；任何 fresh clone → 打出的包里 settings.json 注册了 7 个不存在的脚本，
+// 用户新建的每个项目都拿到一份指向空气的配置。而全程零报错。
+//
+// 判据不能只数文件个数（将来增删就会误报），而是核对 settings.json 里真正
+// 注册了的那些脚本是否都在。
+{
+  const claudeDir = path.join(serverDistDir, ".claude");
+  const settingsPath = path.join(claudeDir, "settings.json");
+  if (!existsSync(settingsPath)) {
+    throw new Error("[prepare-sidecar] 模板缺少 .claude/settings.json");
+  }
+  const settingsText = readFileSync(settingsPath, "utf8");
+  // 从 hook 命令里提取引用到的脚本文件名，逐个核对是否随包带上了
+  const referenced = new Set(
+    [...settingsText.matchAll(/([A-Za-z0-9_-]+\.sh)/g)].map((m) => m[1]),
+  );
+  const missing = [...referenced].filter(
+    (name) => !existsSync(path.join(claudeDir, "hooks", name)),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `[prepare-sidecar] settings.json 注册的 hook 脚本未随包分发: ${missing.join(", ")}\n` +
+        `  这会让用户新建的每个项目都得到一份指向不存在脚本的配置。\n` +
+        `  多半是 .gitignore 把 .claude/hooks 排除了，检查 git ls-files .claude/hooks`,
+    );
+  }
+  console.log(
+    `[prepare-sidecar] template check ok (${referenced.size} hook scripts referenced, all present)`,
+  );
+}
+
 console.log("[prepare-sidecar] copying node runtime as sidecar binary...");
 mkdirSync(binariesDir, { recursive: true });
 rmSync(sidecarExe, { force: true });
