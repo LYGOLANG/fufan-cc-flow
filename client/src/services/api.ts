@@ -159,20 +159,9 @@ export const api = {
       }[];
       projectCwd: string | null;
     }>(`/sessions/${encodeURIComponent(sessionId)}/checkpoints`),
-  rollbackSession: (sessionId: string, messageId: string) =>
-    request<{
-      success: boolean;
-      fileResults: {
-        path: string;
-        action: "restored" | "deleted" | "skipped" | "failed";
-        error?: string;
-      }[];
-      error?: string;
-    }>(
-      `/sessions/${encodeURIComponent(sessionId)}/rollback`,
-      { method: "POST", body: JSON.stringify({ messageId }) }
-    ),
-
+  // rollbackSession 已移除：零调用方（回滚走的是下面的 rewindSession），
+  // 对应的服务端路由也一并删了 —— 那是一条没有任何界面能到达、却能
+  // restore/delete 用户真实文件的写接口。
   rewindSession: (sessionId: string, messageUuid: string, dryRun = false) =>
     request<{
       canRewind: boolean;
@@ -573,14 +562,23 @@ export const api = {
       }),
     getProxy: () =>
       request<import("../stores/systemStore").ProxySettings>("/system/proxy"),
-    saveProxy: (proxy: import("../stores/systemStore").ProxySettings) => {
-      const params = new URLSearchParams({
-        http:  proxy.httpProxy,
-        https: proxy.httpsProxy,
-        socks: proxy.socksProxy,
-      });
-      return request<{ success: boolean }>(`/system/proxy-save?${params.toString()}`);
-    },
+    // 改走 POST /system/proxy（body 传参）。
+    //
+    // 原先走的是 GET /system/proxy-save?http=...&https=...&socks=...：
+    //   - 用 GET 做写操作，语义错误
+    //   - **代理地址常带账号密码**（http://user:pass@host:port），放进 URL query
+    //     会进服务端访问日志、进浏览器/WebView 历史，是不必要的凭据外泄面
+    // 而 POST /system/proxy 早就实现好了，只是从没人调用 —— 两条路径都调
+    // writeProxy()，属重复实现。现在统一到正确的那条，GET 那条已删除。
+    saveProxy: (proxy: import("../stores/systemStore").ProxySettings) =>
+      request<{ success: boolean }>("/system/proxy", {
+        method: "POST",
+        body: JSON.stringify({
+          httpProxy: proxy.httpProxy,
+          httpsProxy: proxy.httpsProxy,
+          socksProxy: proxy.socksProxy,
+        }),
+      }),
     getAuthStatus: () =>
       request<import("../stores/systemStore").AuthStatus>("/system/auth-status"),
     testProxy: (host: string, port: number) =>

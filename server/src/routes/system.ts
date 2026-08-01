@@ -131,18 +131,12 @@ router.get("/proxy", async (_req, res) => {
 });
 
 // GET /api/system/proxy-save?http=...&https=...&socks=...
-router.get("/proxy-save", async (req, res) => {
-  try {
-    const httpProxy  = typeof req.query.http  === "string" ? req.query.http  : "";
-    const httpsProxy = typeof req.query.https === "string" ? req.query.https : "";
-    const socksProxy = typeof req.query.socks === "string" ? req.query.socks : "";
-    await writeProxy({ httpProxy, httpsProxy, socksProxy });
-    res.json({ success: true });
-  } catch (err) {
-    logger.error("writeProxy failed: " + String(err));
-    res.status(500).json({ error: String(err) });
-  }
-});
+// 原先这里还有一条 GET /proxy-save?http=...&https=...&socks=...。已删除：
+//   - 用 GET 做写操作，语义错误
+//   - **代理地址常带账号密码**（http://user:pass@host:port），放进 URL query
+//     会进服务端访问日志、进 WebView 历史，是不必要的凭据外泄面
+// 而下面的 POST /proxy 早就实现好了（同样调 writeProxy），只是一直没人调用。
+// 前端已改走 POST。
 
 // POST /api/system/proxy — writes to dedicated proxy.json (not ~/.claude/settings.json)
 // Using POST instead of PATCH to avoid Windows proxy/firewall PATCH-method blocking

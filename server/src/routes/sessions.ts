@@ -39,18 +39,12 @@ router.get("/:id/checkpoints", async (req, res) => {
 });
 
 // POST /api/sessions/:id/rollback — restore files from a checkpoint snapshot
-router.post("/:id/rollback", async (req, res) => {
-  try {
-    const { messageId } = req.body as { messageId?: string };
-    if (!messageId) {
-      return res.status(400).json({ success: false, fileResults: [], error: "messageId is required" });
-    }
-    const result = await manager.rollbackToCheckpoint(req.params.id, messageId);
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ success: false, fileResults: [], error: String(err) });
-  }
-});
+// 原先这里还有一条 POST /:id/rollback。它零调用方（前端走的是下面的 /rewind），
+// 却能直接触发 manager.rollbackToCheckpoint() —— 一个会 restore/delete 用户
+// 真实文件的操作。没有任何界面能到达的高危写接口，留着只是徒增攻击面，故移除。
+//
+// 服务层的 rollbackToCheckpoint 仍在用：/rewind 内部会在 SDK rewindFiles
+// 不可用时回落到它。删的只是这条 HTTP 入口。
 
 // POST /api/sessions/:id/rewind — SDK rewindFiles (preferred) or fallback to manual rollback
 router.post("/:id/rewind", async (req, res) => {
