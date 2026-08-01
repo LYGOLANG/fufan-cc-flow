@@ -147,16 +147,20 @@ code-reviewer 通过，应由用户明确选择开启。
 5. **给 store 函数加可选参数后，grep `onClick={fn}`。**
    React 会把事件对象塞给第一个参数。两轮各中两处；第二轮是 tsc 报错拦下的。
 
-**仍未处理**（按危害排序，证据见当次审查报告）：
-- Codex 费用恒为 $0 → `maxBudget` 对 Codex 完全失效（用户以为设了上限）
-- 远程孤儿后端：健康检查走免鉴权 `/health`，会连上旧进程然后全站 401，
-  而提示词让用户"重启应用"（无效，孤儿还在）
-- `hostPath` 真正接上调用点（`uiStore.ts:5` / `FileTree.tsx:96` /
-  `FolderBrowserModal.tsx:107`）
-- 孤儿路由：`POST /sessions/:id/rollback`（能删用户文件却无调用方）、
-  `GET /system/proxy-save`（用 GET 做写操作，代理密码进 URL query）
-- 文档漂移：DEV-PLAN 头部仍写"Phase 3 待开发"、REQUIREMENTS 自相矛盾、
-  README/CLAUDE.md 完全没提远程功能
+**审查报告上的问题已于 2026-08-01 全部清完**（v0.1.27）：
+费用上限标注适用范围、远程孤儿改带鉴权探测、hostPath 接上三处调用点、
+两条孤儿写接口移除、文档漂移修正。
+
+**当前唯一的硬缺口 —— 只有用户能做的那一步**：
+靶机需安装 Claude Code CLI 并**以运行后端的那个用户登录**。做完才能验证
+Phase 15 剩下的三项（远程下的对话 / 文件树 / 终端）。在此之前，
+远程功能的这三条只是「代码看着对」，没有任何实测支撑。
+
+```bash
+# 在靶机上
+npm i -g @anthropic-ai/claude-code
+claude   # 交互式登录
+```
 
 ## 值得复查的模式：界面说谎
 
