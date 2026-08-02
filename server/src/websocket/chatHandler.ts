@@ -436,10 +436,22 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
           const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|bmp)$/i;
           if (attachmentPaths.length > 0) {
             // Extract IDs from relative path for cleanup later
-            session.pendingAttachmentIds = attachmentPaths.map((fp) => {
-              const basename = fp.split("/").pop() || "";
-              return basename.replace(/\.[^.]+$/, "");
-            });
+            //
+            // 两处曾经的坑：
+            //   1. 只按 "/" 切 —— Windows 上 serverPath 是反斜杠形式，
+            //      basename 会等于整条路径，反推出的 id 匹配不上任何文件，
+            //      临时文件永久堆积。改为两种分隔符都切。
+            //   2. 整体覆盖 —— 同一轮内连发两条带附件的消息时，
+            //      第一条的 id 列表被冲掉，那批文件再也不会被清理。改为累加。
+            // 另外过滤掉空 id：attachmentService.deleteFile 用 startsWith(id) 找文件，
+            // 空串会匹配到目录里**第一个**文件并删掉它 —— 删的是别人的附件。
+            const ids = attachmentPaths
+              .map((fp) => {
+                const base = fp.split(/[\\/]/).pop() || "";
+                return base.replace(/\.[^.]+$/, "");
+              })
+              .filter((id) => id.length > 0);
+            session.pendingAttachmentIds = [...session.pendingAttachmentIds, ...ids];
           }
 
           // ── 供应商解析 ──
