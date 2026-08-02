@@ -63,7 +63,36 @@ export function useAutoScroll(deps: unknown[], instant = false) {
    * 登记意图，竞态就不成立了。
    */
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (e.deltaY < 0) userScrolledUp.current = true;
+    if (e.deltaY >= 0) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    // 两道闸，缺一不可 —— 否则这个"修复"比它要修的 bug 更容易触发：
+    //
+    // ① React 的 onWheel **会冒泡**（onScroll 不会）。工具卡片里有十几个
+    //    `max-h-* overflow-y-auto` 的内嵌滚动框（ToolCallCard 里 Bash 输出、
+    //    diff、参数 JSON 都是）。在那些框里往上滚一格，事件会冒泡到这里，
+    //    而外层容器**根本没动** → 不产生 scroll 事件 → handleScroll 没机会
+    //    复位 → 自动跟随永久关闭。读一眼工具输出就再也不跟随了。
+    //    判据：事件源是否就在本容器的直接滚动链上 —— 用「本容器当前能否上滚」
+    //    来兜，配合下面第 ② 条。
+    // ② 内容不足一屏时（没有滚动条）滚轮同样不产生 scroll 事件，
+    //    置位后永远无人复位。此时压根没有"上翻"这回事。
+    if (el.scrollTop <= 0) return;
+
+    // 事件发生在内层滚动容器里时，让内层自己消化：只有当事件目标到本容器之间
+    // 不存在"还能继续上滚的滚动容器"时，才认为用户是在滚外层。
+    const target = e.target as HTMLElement | null;
+    for (let n = target; n && n !== el; n = n.parentElement) {
+      const style = n instanceof HTMLElement ? getComputedStyle(n) : null;
+      const scrollable =
+        style &&
+        /(auto|scroll)/.test(style.overflowY) &&
+        n.scrollHeight > n.clientHeight;
+      if (scrollable && n.scrollTop > 0) return; // 内层还能上滚，这一格是它的
+    }
+
+    userScrolledUp.current = true;
   }, []);
 
   const handleTouchMove = useCallback(() => {
@@ -112,10 +141,18 @@ export function useAutoScroll(deps: unknown[], instant = false) {
       // 二次确认，兜住 wheel/touchmove 覆盖不到的输入方式（PageUp、Home、
       // 拖动滚动条）—— 它们同样只产生 scroll 事件，同样可能慢于本回调。
       //
-      // 判据用「上一次已知位置」而不是当前距底距离：内容长高本身就会让距底
-      // 变大，拿它当判据会把正常的流式增长误判成用户上翻。而 scrollTop 变小
-      // 只可能是有人主动往回滚 —— 程序化滚动只会让它变大。
-      if (node.scrollTop < lastTop.current - 1) {
+      // 判据不能只看「scrollTop 是否变小」。这里原先的注释断言「变小只可能是
+      // 有人主动往回滚」，**那是错的**：内容变矮时浏览器会把 scrollTop 夹到
+      // scrollHeight - clientHeight，同样让它变小。而内容变矮在本项目里很常见：
+      //   - content-visibility:auto 的消息滚出视口时收缩回估算高度
+      //   - 用户折叠一张 ToolCallCard
+      //   - 流式文本提交进消息时的瞬时回缩
+      // 只看变小的话，任务运行中折叠一个工具卡片就会永久关闭自动跟随。
+      //
+      // 改为看「距底距离」是否明显超出阈值：被夹住时 scrollTop 会紧贴新的底部
+      // （距底 ≈ 0），而真正的上翻会离底很远。
+      const distToBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
+      if (node.scrollTop < lastTop.current - 1 && distToBottom > AT_BOTTOM_THRESHOLD) {
         userScrolledUp.current = true;
         lastTop.current = node.scrollTop;
         return;

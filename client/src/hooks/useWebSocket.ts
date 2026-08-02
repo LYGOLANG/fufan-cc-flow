@@ -616,9 +616,13 @@ export function useWebSocket() {
           accumulatedThinking = "";
           // 只有「这一轮压根没起来」的错误才结束流式态。
           //
-          // 此前无条件 stopStreaming()，而服务端在任务**运行中**也会发 error：
-          // COMPACT_FAILED / PROCESS_ERROR / RETRY_FAILED / EXECUTION_ERROR /
-          // UNSUPPORTED / WORKFLOW_ERROR。一旦误判结束，下面两个分支
+          // 此前无条件 stopStreaming()，而服务端在任务**运行中**也会发 error，
+          // 典型的是 PROCESS_ERROR / RETRY_FAILED —— 它们后面都还有 close 跟上。
+          // （这条注释原先还列了 COMPACT_FAILED / EXECUTION_ERROR / UNSUPPORTED /
+          //   WORKFLOW_ERROR，是**错的**：那四条发完之后服务端不再发任何事件，
+          //   按名字归类导致它们漏出白名单，造成永久卡死。分类必须去读服务端
+          //   代码确认「发完还有没有终态」，不能看名字像不像。）
+          // 一旦误判结束，下面两个分支
           //   case "assistant_thinking": if (!isStreaming) break;
           //   case "assistant_text":     if (!isStreaming) break;
           // 会把这一轮**剩下的全部回复静默丢弃** —— 不渲染、不入库、不留痕迹，

@@ -72,11 +72,24 @@ export function relativePath(
   parent: string,
   host: HostInfo = currentHost(),
 ): string | null {
+  if (!parent) return null; // 没有基准就没有"相对"，别把绝对路径当成在根之下
   const c = pathKey(child, host);
   const p = pathKey(parent, host);
   if (c === p) return "";
   if (!c.startsWith(p.endsWith("/") ? p : `${p}/`)) return null;
-  return c.slice(p.endsWith("/") ? p.length : p.length + 1);
+
+  // 用 key 判断包含关系，但**从原串切**。
+  //
+  // 原实现 `return c.slice(...)` 切的是 pathKey 的产物 —— 在 caseSensitive
+  // 为 false 的平台（Windows / macOS）上那是个 toLowerCase 过的副本，于是
+  // 文件树里引用 ChatPanel.tsx 会插入 @client/src/components/chat/chatpanel.tsx。
+  // NTFS 大小写不敏感所以多半仍能读到，但输入框里显示的是错的路径，
+  // 落到大小写敏感的卷或 WSL 挂载点上直接读不到。
+  //
+  // 分隔符仍归一成 /：@ 引用在提示词里用正斜杠更通用，且与旧实现一致。
+  const unified = host.pathSep === "\\" ? child.replace(/\\/g, "/") : child;
+  const trimmed = unified.length > 1 ? unified.replace(/\/+$/, "") : unified;
+  return trimmed.slice(p.endsWith("/") ? p.length : p.length + 1);
 }
 
 /** 是否绝对路径。Windows 认盘符与 UNC,POSIX 认前导 /。 */

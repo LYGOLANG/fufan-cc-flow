@@ -36,14 +36,30 @@ function nextBusy(
 }
 
 test("运行中的局部失败不得熄灭指示灯", () => {
-  // 压缩失败：会话完好，这一轮照常继续
-  assert.equal(nextBusy(true, "error", { code: "COMPACT_FAILED" }), true);
-
-  // 闪断时发消息超时：服务端有 30 秒寄存，任务照常在跑、照常计费
-  assert.equal(nextBusy(true, "error", { code: "BACKEND_NOT_CONNECTED" }), true);
-
-  // SDK 运行时错误（工具失败之类）：真正终结时另有 process_close
+  // 没有 code 的 error：来源不明，保守起见不动状态 —— 真正终结时会有
+  // process_close / task_complete 跟上
   assert.equal(nextBusy(true, "error", { message: "tool failed" }), true);
+  assert.equal(nextBusy(true, "error", {}), true);
+
+  // 不在白名单里的已知码同理
+  assert.equal(nextBusy(true, "error", { code: "SOME_TRANSIENT_ISSUE" }), true);
+});
+
+test("回归：不得用「听起来像运行中错误」来分类", () => {
+  // 这条用例原先写反了，而且写反的方式很危险：它断言 COMPACT_FAILED
+  // 不该熄灯，理由是「压缩失败：会话完好，这一轮照常继续」——
+  // 这个前提与生产代码不符（chatHandler.ts:684 那条只在 claude.start() 抛异常
+  // 时发出，即进程根本没起来，之后不会有任何事件），于是用假前提把一个
+  // 「永久转圈」的缺陷固化成了「预期行为」，还让审查者以为有测试保护。
+  //
+  // 判据只有一条，且必须去读服务端代码确认：发完它还会不会有终态跟上。
+  for (const code of ["COMPACT_FAILED", "UNSUPPORTED", "EXECUTION_ERROR"]) {
+    assert.equal(
+      nextBusy(true, "error", { code }),
+      false,
+      `${code} 之后服务端不再发任何终态事件，必须熄灯，否则界面永久卡住`,
+    );
+  }
 });
 
 test("「这一轮没起来」的错误才清掉指示灯", () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle, Loader2, Save, Shield, XCircle, Zap } from "lucide-react";
 import { useSystemStore } from "../../stores/systemStore";
 
@@ -9,11 +9,35 @@ export default function ProxySettingsPanel() {
     proxySaveError,
     proxyTestResult,
     proxyTesting,
+    loadProxy,
     saveProxy,
     setProxySettings,
     testProxy,
   } = useSystemStore();
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  /** 是否已把后端的现有配置读进来 —— 读到之前不允许保存，见下方说明 */
+  const [loaded, setLoaded] = useState(false);
+
+  /**
+   * 自己加载配置。
+   *
+   * 此前 loadProxy 只在 claude-cli-panel（「模型服务」分区）mount 时调用，
+   * 而本面板在「网络与连接」分区。用户直接进这个分区时 loadProxy 从未执行，
+   * 界面显示的是 store 的初始空值 —— 后端明明存着代理，看起来却像没配过，
+   * 于是「每次打开都要重新输入」。
+   *
+   * 比显示错更危险的是写错：那时点保存会把空值写进 proxy.json，
+   * 真正的配置就此丢失。所以加载完成前禁用保存按钮。
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void loadProxy().finally(() => {
+      if (!cancelled) setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadProxy]);
 
   async function handleSave() {
     try {
@@ -118,7 +142,9 @@ export default function ProxySettingsPanel() {
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <button
             onClick={handleSave}
-            disabled={proxySaving}
+            // 未读到现有配置前不许保存：那时输入框里是空值，一点就把
+            // proxy.json 里真实的代理清掉
+            disabled={proxySaving || !loaded}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[#ca5d3d] hover:bg-amber-glow text-white transition-colors shadow-sm disabled:opacity-40"
           >
             <Save size={13} />

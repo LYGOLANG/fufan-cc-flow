@@ -37,6 +37,27 @@ export const TASK_NEVER_STARTED_CODES: ReadonlySet<string> = new Set([
   // 不发 'close'，所以服务端那侧已补发 close；这里再兜一层，
   // 不把「界面能否恢复」全押在服务端记得补发上。
   "SPAWN_ERROR",
+
+  // ── 下面三条是把 error 移出终态集合时漏掉的，独立审查发现 ──
+  //
+  // 判据没变，还是那一条：**服务端发完它，后面还会不会有终态事件跟上？**
+  // 漏掉的原因是当初只按「听起来像不像运行中的错误」分类，而没有逐条去看
+  // 服务端发完之后到底还发不发别的。教训：分类要看代码，不能看名字。
+
+  // claudeAgentService.ts:1263 —— SDK 回 is_error / error_during_execution 的
+  // result（触碰 maxBudgetUsd 上限、上下文超限、工具致命失败）时 emit 后直接
+  // return，常驻进程**不退出**，因此没有 close/task_complete 跟上。
+  // 注意 Codex 侧同名码后面有 proc.on("close")，两边不对称 —— 但多熄一次灯无害，
+  // 少熄一次就是永久卡死，所以统一收进来。
+  "EXECUTION_ERROR",
+
+  // chatHandler.ts:684 —— 无常驻进程时压缩，且 claude.start() 抛异常
+  // （CLI 路径解析失败、projectPath 为空）。进程根本没起来，之后不会有任何事件。
+  "COMPACT_FAILED",
+
+  // chatHandler.ts:642 —— Codex 引擎不支持 /compact，forward 后直接 break。
+  // 而 ContextBar 点了就 startStreaming("正在压缩上下文...")，没有这条会永久转圈。
+  "UNSUPPORTED",
 ]);
 
 /**
