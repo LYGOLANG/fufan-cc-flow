@@ -1,6 +1,13 @@
 import fs from "fs/promises";
 import path from "path";
-import { getClaudeHome, isSubPath, pathToHash } from "../utils/pathUtils.js";
+import {
+  getClaudeHome,
+  isSafeName,
+  isSubPath,
+  isValidSessionId,
+  pathToHash,
+} from "../utils/pathUtils.js";
+
 import { logger } from "../utils/logger.js";
 import type {
   SessionInfo,
@@ -10,6 +17,24 @@ import type {
   FileRollbackResult,
   RollbackResult,
 } from "../types/api.js";
+
+/**
+ * sessionId 会被直接拼进文件路径（本文件有 5 处），进函数前必须先验形。
+ *
+ * 此前本文件私有复制了一份 findSessionJsonl 却**没带校验**，而 pathUtils 那份
+ * 一直有。后果：`DELETE /api/sessions/..%2F..%2Fx` 经 Express 解码后变成
+ * `path.join(projectsDir, dir, "../../x.jsonl")` → 删掉 `~/.claude/x.jsonl`。
+ * file-history 目录同理可越界，与 backupFileName 未校验叠加即「把任意文件
+ * 内容写进项目」。
+ *
+ * 抛错而非静默返回 null：调用方拿到 500 比拿到「没找到」更接近真相，
+ * 也不至于把一次越权尝试伪装成正常的空结果。
+ */
+function assertSessionId(sessionId: string): void {
+  if (!isValidSessionId(sessionId)) {
+    throw new Error(`非法的会话 ID: ${JSON.stringify(sessionId).slice(0, 80)}`);
+  }
+}
 
 /**
  * Check if a user message is a CLI-internal message that should not be shown.
@@ -184,6 +209,7 @@ export class SessionManager {
    * Find the JSONL file path for a given session ID by scanning all project directories.
    */
   private async findSessionJsonl(sessionId: string): Promise<string | null> {
+    assertSessionId(sessionId);
     const projectsDir = path.join(getClaudeHome(), "projects");
     try {
       const dirs = await fs.readdir(projectsDir);
@@ -852,6 +878,11 @@ export class SessionManager {
     const fileResults: FileRollbackResult[] = [];
 
     for (const file of target.changedFiles) {
+      // 外层兜底：这个循环会真的删/写用户文件，任何一轮抛出未捕获异常都会让
+      // 整个函数逃逸，调用方拿到 500 且 fileResults 全丢 —— 而**前几轮已经改过
+      // 文件了**，用户得到一个半回滚的项目，还不知道哪些被动过。
+      // 宁可这一条记 failed 继续，也要保证清单完整交回。
+      try {
       const absolutePath = path.resolve(projectCwd, file.path);
 
       // Security check: ensure path is within project directory
@@ -878,8 +909,28 @@ export class SessionManager {
         }
       } else {
         // Existing file — read backup content and restore
-        const backupPath = path.join(fileHistoryDir, file.backupFileName);
+        //
+        // backupFileName 来自 JSONL（用户可编辑的文件），必须当不可信输入处理：
+        //   - 它只该是 file-history 目录下的**一层文件名**，用 isSafeName 挡住
+        //     "../../.credentials.json" 这类越界（否则会把凭据读出来写进项目）
+        //   - 取值可能是 undefined：注释里承认过历史上存在「裸字符串」的旧格式。
+        //     它既不是 null（走不到上面的删除分支）也不是字符串，
+        //     path.join(dir, undefined) 会抛 TypeError —— 而这行原本在 try 之外，
+        //     异常会逃出 per-file catch、逃出循环、逃出整个函数，
+        //     让调用方拿到 500 且 fileResults 全丢，**而循环前几轮已经真的
+        //     改过文件了**：用户得到一个半回滚的项目，还拿不到改动清单。
+        //   所以校验放在 try 之内，失败只影响这一个文件。
         try {
+          if (typeof file.backupFileName !== "string" || !isSafeName(file.backupFileName)) {
+            fileResults.push({
+              path: file.path,
+              action: "failed",
+              error: `备份文件名非法: ${JSON.stringify(file.backupFileName)}`,
+            });
+            logger.error(`[rollback] Invalid backupFileName for ${file.path}`);
+            continue;
+          }
+          const backupPath = path.join(fileHistoryDir, file.backupFileName);
           const content = await fs.readFile(backupPath);
           await fs.mkdir(path.dirname(absolutePath), { recursive: true });
           await fs.writeFile(absolutePath, content);
@@ -888,12 +939,19 @@ export class SessionManager {
         } catch (err: unknown) {
           if ((err as NodeJS.ErrnoException).code === "ENOENT") {
             fileResults.push({ path: file.path, action: "failed", error: "Backup file not found (may have been cleaned up)" });
-            logger.error(`[rollback] Backup not found: ${backupPath}`);
+            logger.error(
+              `[rollback] Backup not found: ${path.join(fileHistoryDir, String(file.backupFileName))}`,
+            );
           } else {
             fileResults.push({ path: file.path, action: "failed", error: String(err) });
             logger.error(`[rollback] Failed to restore ${file.path}: ${String(err)}`);
           }
         }
+      }
+      } catch (err: unknown) {
+        // 见循环开头的说明：漏网异常不得中断整轮回滚
+        fileResults.push({ path: file.path, action: "failed", error: String(err) });
+        logger.error(`[rollback] Unexpected error on ${file.path}: ${String(err)}`);
       }
     }
 
@@ -906,6 +964,7 @@ export class SessionManager {
    * Falls back to creating the entry if it doesn't exist.
    */
   async renameSession(sessionId: string, name: string): Promise<boolean> {
+    assertSessionId(sessionId);
     const projectsDir = path.join(getClaudeHome(), "projects");
     try {
       const dirs = await fs.readdir(projectsDir);
@@ -940,6 +999,7 @@ export class SessionManager {
   }
 
   async deleteSession(sessionId: string): Promise<boolean> {
+    assertSessionId(sessionId);
     const projectsDir = path.join(getClaudeHome(), "projects");
     try {
       const dirs = await fs.readdir(projectsDir);
