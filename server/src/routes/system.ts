@@ -18,6 +18,7 @@ import { fetchAnthropicModels, type ModelInfo } from "../utils/anthropicModels.j
 import { fetchOAuthUsage } from "../utils/anthropicUsage.js";
 import { fetchCodexUsage } from "../utils/codexUsage.js";
 import { shutdownProjectSession, shutdownAllSessions } from "../websocket/chatHandler.js";
+import { ptyService } from "../services/ptyService.js";
 import { listInterrupted, clearInterrupted } from "../services/taskRegistry.js";
 import { logger } from "../utils/logger.js";
 
@@ -86,6 +87,14 @@ router.post("/shutdown-project", (req, res) => {
 // 中止所有运行中任务、把它们登记为 interrupted(同步落盘),下次启动前端会收到提醒。
 router.post("/shutdown-all", (_req, res) => {
   const interrupted = shutdownAllSessions();
+  // 桌面壳退出走的是这条路，**不经过 index.ts 的信号处理**（Tauri 先调它，
+  // 再按进程树 kill sidecar）。所以终端清理必须在这里也做一遍，否则
+  // 关闭应用后 PTY 里的 dev server、构建进程会全部变成孤儿、继续占着端口。
+  try {
+    ptyService.closeAll();
+  } catch (err) {
+    logger.error(`[shutdown-all] pty cleanup failed: ${String(err)}`);
+  }
   res.json({ interrupted });
 });
 

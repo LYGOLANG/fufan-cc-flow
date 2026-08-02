@@ -1,8 +1,8 @@
 import type { WebSocket } from "ws";
-import { PtyService } from "../services/ptyService.js";
+import { ptyService } from "../services/ptyService.js";
 import { logger } from "../utils/logger.js";
 
-const ptyService = new PtyService();
+
 
 export function handleTerminalConnection(
   ws: WebSocket,

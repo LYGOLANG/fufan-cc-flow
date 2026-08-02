@@ -2,6 +2,7 @@ import http from "http";
 import app from "./app.js";
 import { setupWebSocket } from "./websocket/index.js";
 import { shutdownAllSessions } from "./websocket/chatHandler.js";
+import { ptyService } from "./services/ptyService.js";
 import { initTaskRegistry } from "./services/taskRegistry.js";
 import { logger } from "./utils/logger.js";
 import { isAuthEnabled } from "./middleware/auth.js";
@@ -22,6 +23,14 @@ function gracefulExit(signal: string) {
     shutdownAllSessions();
   } catch (err) {
     logger.error(`[${signal}] shutdown error: ${String(err)}`);
+  }
+  // 终端也要收。ptyService.closeAll 一直写着却零调用方 —— 退出后所有 PTY
+  // 及其中运行的 dev server、构建进程全部成为孤儿，占着端口直到用户手动去杀。
+  // 单独 try：PTY 收尾失败不该拖累已经完成的 chat 收尾。
+  try {
+    ptyService.closeAll();
+  } catch (err) {
+    logger.error(`[${signal}] pty shutdown error: ${String(err)}`);
   }
   // 给引擎中断/taskkill 一点点时间起效,再退出进程
   setTimeout(() => process.exit(0), 300).unref();

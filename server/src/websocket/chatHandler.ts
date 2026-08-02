@@ -127,6 +127,16 @@ function teardownSession(projectPath: string, session: ProjectSession) {
   if (projectPath && sessionsByProject.get(projectPath) === session) {
     sessionsByProject.delete(projectPath);
   }
+  // 监听器在这里摘，而不是在 ws close 里。
+  //
+  // 之前是 close 一触发就无条件 removeAllListeners，导致 30 秒寄存宽限期内
+  // 引擎发的一切都无人接收（详见 close 回调里的说明）。现在寄存期保留监听器，
+  // 清理统一收到这个唯一汇合点上 —— 重连认领走的是 detach() 那条路，
+  // 不经过这里，两边不会互相干扰。
+  //
+  // 放在最后：上面的 abort 会触发引擎事件，那些还需要被正常处理掉。
+  session.claude.removeAllListeners();
+  session.codex.removeAllListeners();
 }
 
 /**
@@ -829,15 +839,33 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
       return;
     }
 
-    claude.removeAllListeners();
-    codex.removeAllListeners();
-
-    // 关标签(显式 shutdown)或没有项目路径:立即收尾
+    // 关标签(显式 shutdown)或没有项目路径:立即收尾,此时才该摘监听器
     if (explicitShutdown || !projectPath) {
+      claude.removeAllListeners();
+      codex.removeAllListeners();
       teardownSession(projectPath, session);
       logger.info("WS chat connection closed (explicit shutdown)");
       return;
     }
+
+    // 寄存路径**不能**摘监听器。
+    //
+    // 原先这两行在最前面无条件执行，于是 30 秒宽限期内引擎发的一切都无人接收，
+    // 一连串后果全被这一行制造出来：
+    //   1. task_complete / close 走不到 forward → missedTerminal 永远记不上
+    //      → 「重连补发终态」那套机制**从来没有可达过**（它的单测测的是复刻出来
+    //         的规则函数，不是这条接线，所以全绿也说明不了问题）
+    //   2. markDone 不执行 → taskRegistry 里 running 记录留着 → 寄存超时
+    //      interruptProject 把一个**已正常完成**的任务记成"被中止"，
+    //      下次启动弹出假提醒
+    //   3. 附件清理不执行 → 临时文件永久堆积
+    //   4. 工作流的 step runner 监听器一并被清空 → runStep 的 Promise 永不 settle
+    //      → 断线一次工作流就永久卡住，且 session.workflowRun 不释放，
+    //        此后 workflow_start 恒返回 WORKFLOW_BUSY
+    // 而注释里一直宣称"工作流在断线期间会继续跑" —— 实际是断线即死。
+    //
+    // 监听器留着即可：forward 在 socket 不 OPEN 时会走 missedTerminal 分支，
+    // 本来就是为这个场景写的。真正的清理在 teardownSession（寄存超时或被认领）。
 
     // 页面刷新/重载/网络闪断:session 寄存等待同项目新连接认领,常驻进程与后台任务存活。
     // (注册表每项目仅一条 session,双开/半开重连已由 open 时的接管路径处理,此处必是唯一。)

@@ -108,3 +108,13 @@ export class PtyService extends EventEmitter {
     }
   }
 }
+
+/**
+ * 进程内唯一的 PTY 管理器。
+ *
+ * 原先单例建在 terminalHandler 里且不导出，于是应用退出时想收终端的地方
+ * （index.ts 的信号处理、routes/system.ts 的 /shutdown-all）根本拿不到它 ——
+ * closeAll() 写好了却零调用方，退出后 PTY 里的 dev server、构建进程
+ * 全部成为孤儿。放在这里导出，让所有收尾路径都够得着。
+ */
+export const ptyService = new PtyService();
