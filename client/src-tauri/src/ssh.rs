@@ -137,6 +137,7 @@ fn build_remote_command(cfg: &RemoteConfig) -> String {
     format!(
         "read -r CC_FLOW_AUTH_TOKEN; export CC_FLOW_AUTH_TOKEN; \
          export PORT={port}; \
+         export CC_FLOW_LOG_LEVEL=info; \
          cd '{dir}' || {{ echo 'AGENT_FLOW_BAD_DIR' >&2; exit 1; }}; \
          node dist/index.js & \
          NODE_PID=$!; \

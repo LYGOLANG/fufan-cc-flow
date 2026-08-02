@@ -51,6 +51,12 @@ pub fn spawn(app: &tauri::AppHandle) -> Result<(u16, String), Box<dyn std::error
         .env("PORT", port.to_string())
         // 后端据此启用鉴权;未设置则整体放行(pnpm dev 的形态)
         .env("CC_FLOW_AUTH_TOKEN", &auth_token)
+        // 桌面版压到 info。sidecar 的 stdout 被整个转发进应用日志,而后端的
+        // debug 会为每条 SDK 消息写一行 —— 实测约 5KB/分钟,长时间开着涨到
+        // 几十上百 MB,且每行都是一次同步文件写。开发时(直接跑 server)不设
+        // 这个变量,默认仍是 debug。排障需要完整日志时改成 "debug" 重新打包,
+        // 或在外部设 CC_FLOW_LOG_LEVEL 覆盖。
+        .env("CC_FLOW_LOG_LEVEL", "info")
         .spawn()?;
 
     // 把内置后端的 stdout/stderr 转发进应用日志,方便打包后排查"后端没起来"之类的问题。
