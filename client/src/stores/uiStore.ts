@@ -46,6 +46,11 @@ interface UIState {
   terminalHeight: number;
 
   // Connection + project
+  /**
+   * 角落的伴随角色是否显示。默认关 —— 这是个纯娱乐特性，
+   * 不该由它替用户决定界面上多个东西。
+   */
+  companionEnabled: boolean;
   wsConnected: boolean;
   /**
    * 连续重连失败到「大概率不会自己好」的程度。
@@ -114,6 +119,7 @@ interface UIState {
   setTerminalOpen: (open: boolean) => void;
   setTerminalHeight: (h: number) => void;
 
+  setCompanionEnabled: (on: boolean) => void;
   setWsConnected: (c: boolean, stale?: boolean) => void;
   setProjectPath: (p: string) => void;
   removeRecentProject: (p: string) => void;
@@ -160,6 +166,7 @@ export const useUIStore = create<UIState>((set) => ({
   terminalOpen: false,
   terminalHeight: 260,
 
+  companionEnabled: localStorage.getItem("fufan_companion") === "1",
   wsConnected: false,
   wsStale: false,
   projectPath: RESOLVED_PROJECT_PATH,
@@ -206,6 +213,11 @@ export const useUIStore = create<UIState>((set) => ({
   toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
   setTerminalOpen: (open) => set({ terminalOpen: open }),
   setTerminalHeight: (h) => set({ terminalHeight: h }),
+
+  setCompanionEnabled: (on) => {
+    localStorage.setItem("fufan_companion", on ? "1" : "0");
+    set({ companionEnabled: on });
+  },
 
   // 连上即清 stale：无论之前失败多少次，成功一次就说明这条路还活着
   setWsConnected: (c, stale) => set({ wsConnected: c, wsStale: c ? false : !!stale }),

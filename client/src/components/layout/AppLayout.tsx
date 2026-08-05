@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import RightPanel from "./RightPanel";
 import ProjectTabs from "./ProjectTabs";
+import CompanionAvatar from "../shared/CompanionAvatar";
 import ChatPanel from "../chat/ChatPanel";
 import { useSystemStore } from "../../stores/systemStore";
 import { useProviderStore } from "../../stores/providerStore";
@@ -91,6 +92,9 @@ export default function AppLayout() {
         {skillBrowserOpen && <SkillBrowserModal />}
         {createSkillModalOpen && <CreateSkillModal />}
       </Suspense>
+      {/* 角落的伴随角色。默认关闭，开了才渲染 —— 组件内部第一行就判断，
+          关着时不产生任何 DOM，也不起眨眼定时器。 */}
+      <CompanionAvatar />
     </div>
   );
 }
