@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useChatStore } from "../../stores/chatStore";
 import { useUIStore } from "../../stores/uiStore";
+
+/**
+ * Live2D 渲染层必须 lazy —— 它会拉进 PixiJS 8 + Cubism 运行时（数百 KB）。
+ * 改成静态 import 的话，不用看板娘的人也要下载这些字节。
+ * 只有配置了模型路径时才会走到这里。
+ */
+const Live2DStage = lazy(() => import("./Live2DStage"));
 
 /**
  * 界面角落里的伴随角色。
@@ -39,6 +46,8 @@ export default function CompanionAvatar() {
   const pendingPermCount = useChatStore((s) => s.pendingPermissions.size);
   const companionEnabled = useUIStore((s) => s.companionEnabled);
   const setCompanionEnabled = useUIStore((s) => s.setCompanionEnabled);
+  const companionModelUrl = useUIStore((s) => s.companionModelUrl);
+  const setCompanionModelUrl = useUIStore((s) => s.setCompanionModelUrl);
 
   const [mood, setMood] = useState<Mood>("idle");
   const [blink, setBlink] = useState(false);
@@ -108,6 +117,21 @@ export default function CompanionAvatar() {
           {face.hint}
         </div>
       )}
+      {/* 配了模型就用 Live2D。加载失败时清空配置退回 SVG ——
+          与其让用户对着一块空白，不如退到一定能显示的东西。 */}
+      {companionModelUrl && (
+        <div style={{ pointerEvents: "auto" }}>
+          <Suspense fallback={null}>
+            <Live2DStage
+              modelUrl={companionModelUrl}
+              size={220}
+              onError={() => setCompanionModelUrl("")}
+            />
+          </Suspense>
+        </div>
+      )}
+
+      {!companionModelUrl && (
       <button
         onClick={() => setCompanionEnabled(false)}
         title="点击隐藏（可在设置里重新打开）"
@@ -138,6 +162,7 @@ export default function CompanionAvatar() {
           </g>
         </svg>
       </button>
+      )}
     </div>
   );
 }

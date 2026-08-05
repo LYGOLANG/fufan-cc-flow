@@ -10,6 +10,8 @@ import { useUIStore } from "../../stores/uiStore";
 export default function CompanionPanel() {
   const enabled = useUIStore((s) => s.companionEnabled);
   const setEnabled = useUIStore((s) => s.setCompanionEnabled);
+  const modelUrl = useUIStore((s) => s.companionModelUrl);
+  const setModelUrl = useUIStore((s) => s.setCompanionModelUrl);
 
   return (
     <section
@@ -41,6 +43,38 @@ export default function CompanionPanel() {
       >
         {enabled ? "已开启 · 点击关闭" : "开启"}
       </button>
+
+      {enabled && (
+        <div className="mt-4 pt-4 border-t border-white/5 space-y-2.5">
+          <label className="block text-xs text-slate-400">
+            Live2D 模型地址
+            <span className="text-slate-500 ml-1">（留空则用内置的简笔角色）</span>
+          </label>
+          <input
+            type="text"
+            value={modelUrl}
+            onChange={(e) => setModelUrl(e.target.value.trim())}
+            placeholder="http://localhost:xxxx/model/xxx.model3.json"
+            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-glow/40 transition-colors font-mono"
+          />
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            填了才会加载 Live2D 运行时（PixiJS + Cubism，数百 KB），
+            不填就一个字节都不下载。
+          </p>
+          <div className="rounded-lg border border-amber-glow/20 bg-amber-glow/5 px-3 py-2">
+            <p className="text-[10px] text-amber-glow/90 leading-relaxed">
+              还需要 <code className="font-mono">live2dcubismcore.min.js</code>：它是 Live2D
+              官方的专有运行时，<b>不能随应用分发</b>，得你自己从 Cubism SDK for Web 里取出来，
+              用 <code className="font-mono">&lt;script&gt;</code> 引入。缺它时这里会直接报错，
+              不会静默显示空白。
+            </p>
+            <p className="text-[10px] text-slate-400 leading-relaxed mt-1.5">
+              授权：个人及年营收 1000 万日元以下免费。自用没问题；
+              将来若要公开分发含 Live2D 的版本，需要另行申请。
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

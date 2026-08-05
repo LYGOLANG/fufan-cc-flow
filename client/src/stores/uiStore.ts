@@ -51,6 +51,8 @@ interface UIState {
    * 不该由它替用户决定界面上多个东西。
    */
   companionEnabled: boolean;
+  /** Live2D 模型入口 URL（.model3.json）。空则用内置的 SVG 角色。 */
+  companionModelUrl: string;
   wsConnected: boolean;
   /**
    * 连续重连失败到「大概率不会自己好」的程度。
@@ -120,6 +122,7 @@ interface UIState {
   setTerminalHeight: (h: number) => void;
 
   setCompanionEnabled: (on: boolean) => void;
+  setCompanionModelUrl: (url: string) => void;
   setWsConnected: (c: boolean, stale?: boolean) => void;
   setProjectPath: (p: string) => void;
   removeRecentProject: (p: string) => void;
@@ -167,6 +170,7 @@ export const useUIStore = create<UIState>((set) => ({
   terminalHeight: 260,
 
   companionEnabled: localStorage.getItem("fufan_companion") === "1",
+  companionModelUrl: localStorage.getItem("fufan_companionModel") || "",
   wsConnected: false,
   wsStale: false,
   projectPath: RESOLVED_PROJECT_PATH,
@@ -213,6 +217,11 @@ export const useUIStore = create<UIState>((set) => ({
   toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
   setTerminalOpen: (open) => set({ terminalOpen: open }),
   setTerminalHeight: (h) => set({ terminalHeight: h }),
+
+  setCompanionModelUrl: (url) => {
+    localStorage.setItem("fufan_companionModel", url);
+    set({ companionModelUrl: url });
+  },
 
   setCompanionEnabled: (on) => {
     localStorage.setItem("fufan_companion", on ? "1" : "0");
