@@ -410,6 +410,23 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
           });
           break;
         }
+        // 工作流运行期间不接受手动消息 —— 两路输入抢同一个会话必然串数据。
+        //
+        // claudeStepRunner 的监听器不做轮次隔离：它收到**任何** task_complete
+        // 就结算当前步。用户手动那轮若先完成，这一步会把用户对话的结果当成
+        // 自己的产出写进 outputVar，污染后续所有引用该变量的步骤；与此同时
+        // 编排已推进到下一步，而模型还在处理上一步的提示词。
+        //
+        // 给事件加轮次标记也能解，但那只是让步骤别认错结果，两路输入抢一个
+        // 串行会话的根本冲突还在（谁先谁后不可控、上下文互相污染）。
+        // 会话本来就是串行的，这里直接挡住更诚实。
+        if (session.workflowRun) {
+          forward("error", {
+            code: "WORKFLOW_BUSY",
+            message: "工作流正在运行，请等它结束或先点停止，再发送消息",
+          });
+          break;
+        }
         try {
           const proxy = await readProxy();
           let prompt = p.prompt as string;
@@ -625,6 +642,19 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
         if (!session.activeSessionId) {
           const liveId = claude.getActiveSessionId();
           if (liveId) session.activeSessionId = liveId;
+        }
+        // 工作流在跑就先停编排,再中断引擎。
+        //
+        // 少了这一步的后果:abort 只调 claude.interrupt,而被 interrupt 那一轮的
+        // result 在引擎侧被主动吞掉(既不发 task_complete 也不发 error),
+        // 于是 step runner 的 Promise 永不 settle —— 面板停在「运行中」,
+        // workflowRun 不释放,此后 workflow_start 恒返回 WORKFLOW_BUSY。
+        // 用户点了停止,结果把工作流永久锁死了。
+        //
+        // 顺序不能反:先 abort 编排让它别再发下一步,再中断当前这一轮。
+        if (session.workflowRun) {
+          session.workflowRun.abort("用户已停止");
+          session.workflowRun = null;
         }
         markDone(projectPath, session.activeSessionId); // 用户主动中止,不算"被中止"
         if (session.activeSessionId) {

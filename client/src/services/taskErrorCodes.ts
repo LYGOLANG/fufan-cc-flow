@@ -58,6 +58,11 @@ export const TASK_NEVER_STARTED_CODES: ReadonlySet<string> = new Set([
   // chatHandler.ts:642 —— Codex 引擎不支持 /compact，forward 后直接 break。
   // 而 ContextBar 点了就 startStreaming("正在压缩上下文...")，没有这条会永久转圈。
   "UNSUPPORTED",
+
+  // chatHandler.ts 的 send_message / workflow_start 两处 —— 工作流运行期间
+  // 拒绝新的输入。forward 后直接 break，没有终态跟上；而前端 send() 已经
+  // 乐观把 busy 置了 true。
+  "WORKFLOW_BUSY",
 ]);
 
 /**

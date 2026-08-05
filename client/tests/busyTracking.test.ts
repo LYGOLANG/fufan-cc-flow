@@ -105,6 +105,9 @@ test("回归：不发终态事件的错误码必须在白名单里", () => {
     "UNKNOWN_PROVIDER", // chatHandler.ts:442
     "PROVIDER_NOT_CONFIGURED", // chatHandler.ts:450
     "WORKFLOW_ERROR", // chatHandler.ts:777
+    // 工作流运行期间拒绝新输入：forward 后直接 break，无终态跟上，
+    // 而 send() 已乐观把 busy 置 true
+    "WORKFLOW_BUSY",
   ]) {
     assert.ok(
       TASK_NEVER_STARTED_CODES.has(code),
