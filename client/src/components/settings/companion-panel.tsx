@@ -58,19 +58,20 @@ export default function CompanionPanel() {
             className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-glow/40 transition-colors font-mono"
           />
           <p className="text-[10px] text-slate-500 leading-relaxed">
-            填了才会加载 Live2D 运行时（PixiJS + Cubism，数百 KB），
-            不填就一个字节都不下载。
+            默认用随包的 haru 模型。填了才会加载 Live2D 运行时
+            （PixiJS + Cubism，约 840KB），清空则退回内置的简笔角色、一个字节都不下载。
           </p>
+          <button
+            onClick={() => setModelUrl("/live2d/haru/haru_greeter_t03.model3.json")}
+            className="px-2.5 py-1 rounded-md text-[11px] border border-white/10 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+          >
+            恢复默认模型
+          </button>
           <div className="rounded-lg border border-amber-glow/20 bg-amber-glow/5 px-3 py-2">
-            <p className="text-[10px] text-amber-glow/90 leading-relaxed">
-              还需要 <code className="font-mono">live2dcubismcore.min.js</code>：它是 Live2D
-              官方的专有运行时，<b>不能随应用分发</b>，得你自己从 Cubism SDK for Web 里取出来，
-              用 <code className="font-mono">&lt;script&gt;</code> 引入。缺它时这里会直接报错，
-              不会静默显示空白。
-            </p>
-            <p className="text-[10px] text-slate-400 leading-relaxed mt-1.5">
-              授权：个人及年营收 1000 万日元以下免费。自用没问题；
-              将来若要公开分发含 Live2D 的版本，需要另行申请。
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              Live2D 授权：个人及年营收 1000 万日元以下免费。自用没问题；
+              将来若要公开分发含 Live2D 的版本，需要向 Live2D 另行申请。
+              随包的 haru 是官方示例模型，同样适用这条。
             </p>
           </div>
         </div>

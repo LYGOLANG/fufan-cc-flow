@@ -7,6 +7,18 @@
     <title>Agent Flow</title>
     <!-- 字体改为自托管(src/index.css 内 @fontsource import),不再外链 Google Fonts:
          CSP 白名单会拦截外链样式表/字体,且国内网络下常拉不动 -->
+    <!--
+      Live2D Cubism Core。必须用普通 <script> 引入：它不是 ES 模块，
+      靠往 window 上挂 Live2DCubismCore 全局对象工作，import 不进来。
+
+      放在这里而不是按需注入，是因为脚本加载是异步的 —— 按需注入会让
+      Live2DStage 在 Core 就绪前就去 new 模型。202KB，只有开了看板娘的人
+      才会真正用到它，但所有人都会下载这一个文件。这是为了简单付的代价，
+      要省的话得改成动态插 <script> 并等 onload。
+
+      Live2D 的授权：个人及年营收 1000 万日元以下免费。
+    -->
+    <script src="/live2d/live2dcubismcore.min.js"></script>
   </head>
   <body>
     <div id="root"></div>

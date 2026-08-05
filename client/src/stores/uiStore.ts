@@ -170,7 +170,11 @@ export const useUIStore = create<UIState>((set) => ({
   terminalHeight: 260,
 
   companionEnabled: localStorage.getItem("fufan_companion") === "1",
-  companionModelUrl: localStorage.getItem("fufan_companionModel") || "",
+  // 默认用随包的 haru（Cubism 4 官方示例模型）。开箱即有，不必先去找素材。
+  // 显式存过空串的用户按空处理 —— 那是他主动选了内置简笔角色，别覆盖他的选择。
+  companionModelUrl:
+    localStorage.getItem("fufan_companionModel") ??
+    "/live2d/haru/haru_greeter_t03.model3.json",
   wsConnected: false,
   wsStale: false,
   projectPath: RESOLVED_PROJECT_PATH,

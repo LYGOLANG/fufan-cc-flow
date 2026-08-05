@@ -38,27 +38,67 @@ async function isWindowFocused(): Promise<boolean> {
   }
 }
 
+/**
+ * 共享的 AudioContext。
+ *
+ * 不能在要播放的那一刻才 new：浏览器/WebView 的自动播放策略下，
+ * 新建的 AudioContext 处于 suspended 状态，而解除挂起必须发生在**用户手势的
+ * 调用栈里**。任务完成是后台事件，那时再 resume 已经晚了 —— 表现就是
+ * 「通知弹了但没有声音」，且不报任何错。
+ *
+ * 所以改成：首次用户交互时就把它建起来并解挂，之后一直复用。
+ */
+let audioCtx: AudioContext | null = null;
+
+function ensureAudioContext(): AudioContext | null {
+  const Ctx =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
+  if (!Ctx) return null;
+  if (!audioCtx) {
+    try {
+      audioCtx = new Ctx();
+    } catch {
+      return null;
+    }
+  }
+  // 已经挂起的话尽力恢复。在用户手势栈里调用才会真正生效。
+  if (audioCtx.state === "suspended") void audioCtx.resume();
+  return audioCtx;
+}
+
+/**
+ * 在首次用户交互时解锁音频。由 App 启动时调用一次。
+ *
+ * 监听 once + 捕获阶段：只要用户点过一次界面、按过一次键，之后的提示音
+ * 就都能出声。不这么做的话，用户可能整个会话都听不到任何提示。
+ */
+export function installAudioUnlock(): void {
+  const unlock = () => {
+    ensureAudioContext();
+  };
+  window.addEventListener("pointerdown", unlock, { once: true, capture: true });
+  window.addEventListener("keydown", unlock, { once: true, capture: true });
+}
+
 /** 播放一声提示音。用 Web Audio 合成，不引入音频文件、不增加包体积。 */
 function beep(): void {
   try {
-    const Ctx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-    // 两声短促的中频音，不刺耳也不容易被忽略
+    // 中频短音，不刺耳也不容易被忽略
     osc.frequency.value = 880;
     gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.14);
-    osc.onended = () => void ctx.close();
+    osc.stop(ctx.currentTime + 0.2);
+    // 不 close：这个 context 要复用。close 掉下次又得重新解锁。
   } catch {
     /* 音频不可用不影响主流程 */
   }

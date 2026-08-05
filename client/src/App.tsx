@@ -13,6 +13,7 @@ import { installHeartbeat } from "./utils/heartbeat";
 import { installCrashReporter } from "./utils/crashReporter";
 import { useUIStore } from "./stores/uiStore";
 import { useConnectionStore } from "./stores/connectionStore";
+import { installAudioUnlock } from "./utils/taskNotify";
 
 export default function App() {
   // Connect WebSocket (always, regardless of projectPath)
@@ -28,6 +29,11 @@ export default function App() {
   // 寄存认领都可能是崩因),以最小状态启动并挂横幅告知,打破「加载即崩」循环
   useEffect(() => {
     void (async () => {
+      // 首次用户交互时解锁音频。自动播放策略下 AudioContext 建出来就是
+      // suspended，而解挂必须发生在用户手势的调用栈里 —— 等任务完成那一刻
+      // 再 resume 已经晚了，表现是「通知弹了但没声音」且不报错。
+      installAudioUnlock();
+
       // 先拿到「连的是哪台后端、它的路径语义如何」——路径比较、目录选择、
       // 外链转发都依赖它。安全模式下同样要取:它本身不碰会话,而缺了它
       // 路径处理会退回按本机平台猜,在远程连接下全是错的。
