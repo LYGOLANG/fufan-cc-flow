@@ -87,6 +87,9 @@
         手动：/release-builder。前置：项目代码
     [goal-creator]
         手动：/goal-creator。用户想把整个目标交给 /goal 自驱时，生成指令交用户发送
+    [stock-research]
+        自动：用户要某只股票的研报或日报时。手动：/stock-research
+        先在资料目录查已有的，够新就直接用，不够新或没有才联网取数生成
     [skill-builder]
         自动：EVOLUTION 提议新 Skill 且用户确认后。手动：/skill-builder
     [evolution-engine]
