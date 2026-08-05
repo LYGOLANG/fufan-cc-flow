@@ -51,6 +51,18 @@ interface ProjectSession {
    * 两个编排交替往同一个会话发消息只会互相打断。
    */
   workflowRun: WorkflowEngine | null;
+  /**
+   * 轮次代号。每次发起新一轮 +1，每次 abort 也 +1。
+   *
+   * 用来作废「正在启动中」的那一轮：send_message 要连过读代理、取供应商、
+   * claude.start() 三个 await（几百毫秒到 2 秒），而 abort 是同步的。
+   * 用户在这个窗口里点停止时，markDone 先跑（此时还没有 running 记录可删），
+   * 随后 start 返回又 registerRunning 写回一条 —— 任务已被中断却永远挂在
+   * running 里，退出应用时被报成「上次被中止」。
+   *
+   * start 返回后比对代号：变了说明这一轮已被作废，不再登记。
+   */
+  turnSeq: number;
   /** 解除当前 socket 与本 session 的绑定(摘监听器 + 把该 socket 的 close 变空操作)。 */
   detach: () => void;
   /** 寄存宽限计时器;非 null 表示当前无 socket 绑定、正等待重连认领。 */
@@ -205,6 +217,7 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
     activeModel: null,
     pendingAttachmentIds: [],
     workflowRun: null,
+    turnSeq: 0,
     detach: () => {},
     parkTimer: null,
     missedTerminal: null,
@@ -427,6 +440,9 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
           });
           break;
         }
+        // 记下这一轮的代号。下面要连过三个 await 才真正启动，期间用户随时可能
+        // 点停止 —— abort 会 +1 作废本轮，start 返回后靠它判断要不要登记。
+        const myTurn = ++session.turnSeq;
         try {
           const proxy = await readProxy();
           let prompt = p.prompt as string;
@@ -543,6 +559,13 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               permissionMode,
               images: imagePaths.length > 0 ? imagePaths : undefined,
             });
+            // 同 Claude 分支：启动期间被 abort 作废就不登记，
+            // 否则留下永远不会被 markDone 的幽灵 running 记录
+            if (session.turnSeq !== myTurn) {
+              logger.info(`[${sid}] 启动期间已被停止，跳过登记`);
+              codex.abort(sid);
+              break;
+            }
             session.activeSessionId = sid;
             session.activeEngine = "codex";
             session.activeCompat = null;
@@ -606,6 +629,14 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
               httpProxy: proxy.httpProxy || undefined,
               httpsProxy: proxy.httpsProxy || undefined,
             });
+            // 启动期间被 abort 作废了：不登记，也不认领这个会话。
+            // 否则会留下一条永远不会被 markDone 的幽灵记录，
+            // 退出应用时被当成「上次被中止的任务」弹提醒。
+            if (session.turnSeq !== myTurn) {
+              logger.info(`[${sid}] 启动期间已被停止，跳过登记`);
+              claude.interrupt(sid);
+              break;
+            }
             session.activeSessionId = sid;
             session.activeEngine = "claude";
             session.activeModel = model ?? null;
@@ -639,6 +670,12 @@ export function handleChatConnection(ws: WebSocket, projectPath: string) {
         // 恰好落在这个窗口里,原先整个分支空转,连 aborted 都不发,任务照常跑起来,
         // 用户得点第二次才有效。
         // 服务层自己知道当前活跃会话,拿它兜底即可闭合这个窗口。
+        // 作废「正在启动中」的那一轮。send_message 要连过三个 await 才真正
+        // 启动，用户在那个窗口里点停止时，下面的 markDone 无记录可删，
+        // 而 start 返回后会 registerRunning 写回一条 —— 任务已中断却永远挂在
+        // running 里。+1 让那一轮在返回时发现自己已被作废。
+        session.turnSeq += 1;
+
         if (!session.activeSessionId) {
           const liveId = claude.getActiveSessionId();
           if (liveId) session.activeSessionId = liveId;
