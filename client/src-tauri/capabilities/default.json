@@ -9,6 +9,7 @@
     "core:default",
     "updater:default",
     "process:default",
-    "opener:allow-open-url"
+    "opener:allow-open-url",
+    "notification:default"
   ]
 }

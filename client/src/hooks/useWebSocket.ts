@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { wsService, TASK_NEVER_STARTED_CODES } from "../services/websocket";
 import { useChatStore } from "../stores/chatStore";
 import { useUIStore } from "../stores/uiStore";
+import { notifyTaskDone } from "../utils/taskNotify";
 import { useAgentStore } from "../stores/agentStore";
 import { useConfigStore } from "../stores/configStore";
 import { useAuditStore } from "../stores/auditStore";
@@ -534,6 +535,18 @@ export function useWebSocket() {
             outputTokens:    u?.output_tokens,
             cacheReadTokens: u?.cache_read_input_tokens,
           });
+
+          // 任务结束提醒。内部会先判断窗口是否在前台 —— 用户正看着时不打扰。
+          // 不 await：通知失败或权限被拒都不该拖住事件处理。
+          {
+            const proj = useUIStore.getState().projectPath;
+            const name = proj ? proj.split(/[\\/]/).filter(Boolean).pop() : "";
+            const secs = Math.round(((payload.durationMs as number) || 0) / 1000);
+            void notifyTaskDone(
+              name ? `${name} · 任务完成` : "任务完成",
+              secs > 0 ? `用时 ${secs} 秒` : "已结束",
+            );
+          }
           // Update context window gauge
           if (u) {
             const total = (u.input_tokens ?? 0) +
@@ -652,6 +665,13 @@ export function useWebSocket() {
               (Array.isArray(payload.suggestions) && payload.suggestions.length > 0),
           };
           store.getState().addPermissionRequest(permReq);
+
+          // 权限确认比任务完成更需要提醒：**60 秒不确认就自动拒绝**，
+          // 用户切走一会儿回来，任务已经因为没人点而中断了。
+          void notifyTaskDone(
+            "需要确认权限",
+            `${permReq.toolName || "工具"} 等待授权，60 秒后自动拒绝`,
+          );
 
           // Flush accumulated text
           if (accumulatedText) {

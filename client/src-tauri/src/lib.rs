@@ -70,6 +70,9 @@ pub fn run() {
         // 安装完成后经 plugin-process 的 relaunch 重启应用
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // 任务完成通知。长任务跑起来用户多半切走干别的了，
+        // 界面内的任何指示那时都看不见 —— 系统通知是唯一能穿透窗口的方式。
+        .plugin(tauri_plugin_notification::init())
         // 外链用系统默认浏览器打开:桌面壳里点 http(s) 链接若走 WebView 自身导航,
         // 会把应用整个变成浏览器且无返回入口(用户视角=应用卡死在网页上)。
         // 只给"打开 URL"能力,不给 shell 执行权限。

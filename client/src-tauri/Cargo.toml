@@ -26,6 +26,9 @@ tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# 任务完成通知。核心价值是「你没看着屏幕时告诉你」——长任务跑起来用户多半
+# 切走干别的了，界面内的任何指示（状态栏、看板娘）那时都看不见。
+tauri-plugin-notification = "2"
 tokio = { version = "1", features = ["sync"] }
 # 只用来生成接口访问令牌。选 getrandom 而非 rand:它已经在依赖树里(tauri 的
 # 传递依赖),直接取 OS 熵源,不引入额外的传递依赖。
