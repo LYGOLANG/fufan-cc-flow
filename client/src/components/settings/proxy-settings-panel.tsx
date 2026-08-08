@@ -5,6 +5,7 @@ import { useSystemStore } from "../../stores/systemStore";
 export default function ProxySettingsPanel() {
   const {
     proxySettings,
+    proxyLoaded,
     proxySaving,
     proxySaveError,
     proxyTestResult,
@@ -15,8 +16,6 @@ export default function ProxySettingsPanel() {
     testProxy,
   } = useSystemStore();
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
-  /** 是否已把后端的现有配置读进来 —— 读到之前不允许保存，见下方说明 */
-  const [loaded, setLoaded] = useState(false);
 
   /**
    * 自己加载配置。
@@ -27,16 +26,12 @@ export default function ProxySettingsPanel() {
    * 于是「每次打开都要重新输入」。
    *
    * 比显示错更危险的是写错：那时点保存会把空值写进 proxy.json，
-   * 真正的配置就此丢失。所以加载完成前禁用保存按钮。
+   * 真正的配置就此丢失。所以读到之前禁用保存按钮。「读到了」以 store 的
+   * proxyLoaded 为准 —— 它只在请求成功时置真；失败（后端冷启动）会自动
+   * 重试，耗尽也保持未知、保持锁定。加载完成 ≠ 加载成功。
    */
   useEffect(() => {
-    let cancelled = false;
-    void loadProxy().finally(() => {
-      if (!cancelled) setLoaded(true);
-    });
-    return () => {
-      cancelled = true;
-    };
+    void loadProxy();
   }, [loadProxy]);
 
   async function handleSave() {
@@ -144,7 +139,7 @@ export default function ProxySettingsPanel() {
             onClick={handleSave}
             // 未读到现有配置前不许保存：那时输入框里是空值，一点就把
             // proxy.json 里真实的代理清掉
-            disabled={proxySaving || !loaded}
+            disabled={proxySaving || !proxyLoaded}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-[#ca5d3d] hover:bg-amber-glow text-white transition-colors shadow-sm disabled:opacity-40"
           >
             <Save size={13} />
@@ -162,6 +157,11 @@ export default function ProxySettingsPanel() {
             )}
             测试代理
           </button>
+          {!proxyLoaded && (
+            <span className="text-xs text-slate-500">
+              正在读取已保存的代理配置…
+            </span>
+          )}
           {saveMsg && (
             <span className="text-xs text-emerald-ok">{saveMsg}</span>
           )}

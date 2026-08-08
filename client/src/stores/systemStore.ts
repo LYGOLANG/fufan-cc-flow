@@ -97,6 +97,8 @@ interface SystemState {
   updateOutput: string | null;
   updateLoading: boolean;
   proxySettings: ProxySettings;
+  /** 是否成功从后端读到过代理配置。false = 未知，不是"没配过" */
+  proxyLoaded: boolean;
   proxySaving: boolean;
   proxySaveError: string | null;
 
@@ -120,7 +122,7 @@ interface SystemState {
   loadClaudeInfo: (attempt?: number) => Promise<void>;
   runDoctor: () => Promise<void>;
   runUpdate: () => Promise<void>;
-  loadProxy: () => Promise<void>;
+  loadProxy: (attempt?: number) => Promise<void>;
   saveProxy: (proxy: ProxySettings) => Promise<void>;
   setProxySettings: (proxy: ProxySettings) => void;
 
@@ -183,6 +185,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   updateOutput: null,
   updateLoading: false,
   proxySettings: { httpProxy: "", httpsProxy: "", socksProxy: "" },
+  proxyLoaded: false,
   proxySaving: false,
   proxySaveError: null,
   authStatus: null,
@@ -252,12 +255,17 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     }
   },
 
-  loadProxy: async () => {
+  loadProxy: async (attempt = 0) => {
     try {
       const proxy = await api.systemApi.getProxy();
-      set({ proxySettings: proxy });
+      set({ proxySettings: proxy, proxyLoaded: true });
     } catch {
-      // ignore
+      // 读失败 ≠ 没配过：冷启动时后端还没监听。proxyLoaded 保持 false（未知），
+      // 面板靠它锁住保存按钮 —— 否则输入框里的初始空值一经保存就会
+      // 清掉 proxy.json 里的真配置。与 loadClaudeInfo 同一套冷启动重试。
+      if (attempt < CLI_PROBE_RETRIES) {
+        setTimeout(() => void get().loadProxy(attempt + 1), cliProbeDelay(attempt));
+      }
     }
   },
 
