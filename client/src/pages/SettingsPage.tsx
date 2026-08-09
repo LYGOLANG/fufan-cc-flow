@@ -3,7 +3,6 @@ import { ArrowUpCircle, Globe, Server, Settings, TerminalSquare, X } from "lucid
 import AnthropicProviderPanel from "../components/settings/anthropic-provider-panel";
 import AppUpdatePanel from "../components/settings/AppUpdatePanel";
 import BudgetPanel from "../components/settings/budget-panel";
-import CompanionPanel from "../components/settings/companion-panel";
 import ClaudeCliPanel from "../components/settings/claude-cli-panel";
 import CodexProviderPanel from "../components/settings/codex-provider-panel";
 import ProvidersPanel, { type ProviderStatusView } from "../components/settings/ProvidersPanel";
@@ -174,7 +173,6 @@ export default function SettingsPage() {
                 <SectionHeader title="应用" description="管理 Agent Flow 自身的版本、桌面更新与任务预算。" />
                 <AppUpdatePanel />
                 <BudgetPanel />
-                <CompanionPanel />
               </div>
             )}
           </div>

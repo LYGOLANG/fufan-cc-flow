@@ -4,6 +4,365 @@
 
 ## 当前任务
 
+## 【2026-08-09】伴随角色功能已整体移除（用户决定）
+
+v0.1.45 修好了建窗，但窗口仍会进入关不掉的黑框态（用户实报，日志显示
+CloseRequested→Destroyed 后仍有残留窗口，得从外部 WM_CLOSE 处决）。
+用户拍板：**去掉这个功能**。v0.1.46 起代码里不再有它。
+
+删除清单（前端）：`src/companion/`、`utils/{companionBridge,desktopCompanion,
+companionCharacters}.ts`、`components/shared/{CompanionAvatar,Live2DStage}.tsx`、
+`components/settings/companion-panel.tsx`、`types/pixi-unsafe-eval.d.ts`、
+`companion.html`、`live2d-lab.html`、`public/live2d/`（12MB 模型）。
+断引用：App.tsx 两个 useEffect、AppLayout 的 `<CompanionAvatar/>`、
+SettingsPage 的面板、uiStore 的 companionEnabled/companionModelUrl 及 setter、
+index.html 的 Cubism Core `<script>`。
+Rust：`commands/companion.rs`、mod.rs 声明、lib.rs 的 import/四条命令注册/
+on_window_event 插桩/CC_FLOW_AUTO_COMPANION 钩子。
+配置：capabilities 去掉 companion 窗口与**七条窗口权限**（start-dragging/
+set-size/set-position/outer-position/inner-size/scale-factor/close/hide/show/
+always-on-top —— 已 grep 确认仅挂件在用，taskNotify 只用 isFocused/isMinimized）。
+vite.config 恢复单入口并删掉按入口裁剪 modulePreload 的逻辑。
+依赖：`pnpm remove @jannchie/pixi-live2d-display pixi.js`。
+脚本：live2d-lab.mjs / verify-live2d.mjs / gen-companion-stills.mjs /
+debug-companion-invoke.mjs。
+
+验证：typecheck 0、lint 0 error、cargo check 通过、测试 199+92 全过、
+生产构建产物 companion/live2d 命中 0（阳性对照 index- 命中 4）。
+
+**localStorage 残键**（`fufan_companion*`）留在用户机器上但已无人读取，无害。
+
+### 【已结案 v0.1.45，代码已删】桌面挂件黑框的两个根因（留作方法论）
+
+即便功能删了，这两条对**将来任何多窗口需求**仍然成立：
+
+1. **`additionalBrowserArgs` 必须全窗口一致**。它在 tauri.conf.json 里是按
+   窗口配的，运行时 builder 建的第二个窗口不会自动继承 → wry 用默认参数 →
+   违反 WebView2「共享同一 user-data-dir 的 webview 环境参数必须完全一致」→
+   `0x8007139F ERROR_INVALID_STATE`，第二个 webview 永远建不出来。
+2. **Windows 上同步 command 里建 webview 窗口会死锁**（Tauri 文档明文警告）：
+   controller 创建要主线程泵消息，而同步 command 正占着主线程 → 冻 60 秒
+   （WebView2 内部超时）→ 看门狗误判主窗口断流强制 reload → 留下永不导航的
+   黑壳窗口。必须 `async fn`。
+
+**排障方法论（这轮连毙四个假设）**：
+- ~~缓存中毒~~：取证文件来源 URL 是 `127.0.0.1:4173`（vite preview 残留），
+  **证物错认——看缓存条目先看它的来源 URL**。
+- ~~WebView2 .72 regression~~：钉回 .59 照样黑。**时间相关性 ≠ 因果**。
+- ~~profile 降级损坏~~ / ~~启动早期时序~~：fresh profile、运行期点击照样死。
+- 定位靠：Rust 侧建窗后 +3s/+10s 自检（存在性/可见性/**URL**）、全局
+  on_window_event、300ms 轮询的 Win32 窗口生命周期监视器、PrintWindow 抢首帧。
+  `FailedToReceiveMessage` + get_webview_window 返回 Some + 零窗口事件
+  = **原生窗口已死而 Tauri 不知情**。
+- **grep 日志别只搜业务关键词**：wry 的 `failed to create webview` 不含
+  "companion"，按业务词搜整整漏了三轮。
+- 调试钩子里 `block_on` 建窗 = 窗口建在临时线程上，线程一退即被 Windows
+  连带销毁（生而即死 1.1s）。要模拟真实 invoke 路径得用 `async_runtime::spawn`。
+
+两个叠加的根因（都修了才通）：
+
+1. **`additionalBrowserArgs` 只配在主窗口上**（tauri.conf.json 是按窗口配置的），
+   挂件用 builder 运行时建窗时没带 → wry 用默认参数（少了
+   `--disable-renderer-accessibility`）→ 违反 WebView2 铁律「共享同一
+   user-data-dir 的所有 webview 环境参数必须完全一致」→ 第二个 webview 的
+   controller 创建报 `0x8007139F ERROR_INVALID_STATE`。
+   修：`open_companion` 现读 `app.config().app.windows[0].additional_browser_args`
+   传给 builder，改配置永不漂移。
+2. **`open_companion` 是同步 command** —— Tauri 文档明确警告 Windows 上同步
+   command 里建 webview 窗口会死锁（controller 创建需要主线程泵消息，主线程
+   却被 command 占着）。表现为点击后主线程冻 61 秒（WebView2 内部 60s 超时）、
+   watchdog 误判主窗口断流强制 reload、留下一个永不导航的黑壳窗口。
+   修：`open_companion` 改 `async fn`（Tauri 调度到 tokio 池，建窗代理回空闲主循环）。
+
+**排障教训（这轮连毙四个错误假设，各自的死因）**：
+- ~~缓存中毒~~：取证文件的来源 URL 是 `127.0.0.1:4173`（vite preview 残留），
+  证物错认。**看缓存条目先看它的来源 URL 再下结论。**
+- ~~WebView2 .72 升级 regression~~：钉回 .59 照样黑。时间相关性 ≠ 因果。
+- ~~profile 降级损坏~~：fresh profile 照样死。
+- ~~启动早期时序~~：INVALID_STATE 其实任何时刻都发生，只是同步/异步路径
+  表现不同（60s 挂死 vs ~300ms 静默拆窗）。
+- 定位靠的是：Rust 侧插桩（建窗后 +3s/+10s 自检窗口存在性/可见性/**URL**、
+  全局 on_window_event 记录）+ 300ms 轮询的 Win32 窗口生命周期监视器 +
+  PrintWindow 抢首帧截图。`FailedToReceiveMessage` + get_webview_window 返回
+  Some + 零窗口事件 = 原生窗口已死而 Tauri 不知情。
+- **grep 日志别只搜业务关键词**：wry 的 `failed to create webview` 不含
+  "companion"，按业务词搜整整漏了三轮。
+- 调试钩子里 `block_on` 建窗 = 窗口建在临时线程上，线程一退窗口即被 Windows
+  连带销毁（生而即死 1.1s）——钩子要用 `async_runtime::spawn` 模拟真实 invoke 路径。
+- 排障插桩保留在代码里（全部环境变量门控）：`CC_FLOW_AUTO_COMPANION=1` 自动建窗
+  + `CC_FLOW_AUTO_COMPANION_DELAY_MS` 延迟 + `CC_FLOW_COMPANION_MINIMAL/NOBG`
+  参数裁剪 + companion 窗口事件日志。生产不设变量则行为不变。
+
+**未提交**：companion.rs / lib.rs 携带整个挂件特性的历史未提交改动（v0.1.31 起
+连续 14 个版本没 commit），今天的修复混在其中。等用户拍板做一次完整的特性提交。
+
+### 2026-08-08 v0.1.44 已打包并安装（11:27 装机成功，app.exe 已确认 0.1.44 运行中）
+
+`release/Agent Flow_0.1.44_x64-setup.exe`（109,075,477 字节）+ 424 字节 `.sig`。
+核验过：代理修复文案在 SettingsPage chunk（阳性对照命中）；staged server-dist
+内容含 8/5 三提交标记（turnSeq、附件守卫）——**mtime 显示 8/2 是拷贝保留的旧
+时间戳，别再被它吓一次，认内容不认 mtime**（prepare:sidecar 在 beforeBuildCommand
+里刷新）；隐私审计三处命中全是假阳性（credential 同名库代码 / UI 占位符
+`C:\Users\you\...` / placeholder 前缀 `sk-ant-api03`），无真实泄露。
+npm audit 未跑（只打包不发布，发布环节再跑）。版本号 bump（tauri.conf.json /
+Cargo.toml → 0.1.44）未单独提交——这两个文件还压着挂件那轮的未提交改动，
+沿用 0.1.31 以来「打包不 commit」的现状。
+
+### 2026-08-08 代理持久化一轮（已完结）
+
+用户报「每次打开都要重新输入网络代理」。查实：bug 本体 8/2 已修（`7a54c10`，
+面板不自加载），且已随 v0.1.43 装机——安装产物 `server-dist` 内容验证过，
+`proxy.json` 完好存着 `127.0.0.1:7897`。本轮补掉该修复漏的半个洞并已提交
+（`6c512c9`）：loadProxy 失败被吞、面板把「加载尝试过」当「加载成功」解锁
+保存，冷启动窗口内一点保存就清空真配置。现门闸以 store 新增的 `proxyLoaded`
+为准（仅成功置真 + 冷启动重试 4 次）。**未装机**——改动只在源码里，要等下次
+打包才生效；下次打包顺带带上。进化信号队列同轮清空，落了两条规则
+（code-review 持久化闭环 / evolution-engine 先验时效）。
+
+### 已确认修好（有证据）
+
+- **看门狗误判**：日志里 `watchdog ... silent` 事件**清零**（此前每 22 秒一条、
+  累计 `consecutive #24`，一直在强制 reload 主窗口、打断用户会话）。
+  根因：Chromium 节流不可见窗口的 `setInterval`，而用户主窗口在第二显示器上。
+  改动见 `watchdog.rs`：判定阈值 15s→60s，且**窗口不可见时根本不判死**。
+- **`Number(null)` 陷阱（两处）**：`Number(localStorage.getItem(k))` 在没设过时
+  返回 **0**，而 0 恰好是合法档位索引 → 「从没设置过」被当成「选了最小档」。
+  `DesktopCompanion.readSizeIdx` 与 `desktopCompanion.currentSize` 都已改为先判 null。
+- **窗口内角色脚被裁**：日和 zoom 1.25 时渲染高 275px 塞进 220px 画布，
+  底部 38px（正好是鞋）被切。改回 zoom 1.0，并给探针加了**内容触底检测**。
+- **画布强制正方形导致「一小条人 + 大片空白」**：实测日和只占画布宽度 21%。
+  现按各角色实测比例收窄（aspect 0.44/0.8/0.54），人物占宽提到 47%/75%/63%。
+- **窗口内角色不能缩放**：工具条补了 `＋ －`，四档 180/220/300/400。
+
+### v0.1.38：「文字和图片隔太开 / 一思考图片就不见」的真正根源
+
+**Live2D 插件与 PixiJS `resolution > 1` 不兼容。** dpr=1.5（用户的屏幕）时
+人物被整体缩小约 1.5 倍（实测占画布高 89% → 62%），缩出来的空白全在人物
+上方 —— 气泡孤零零挂在顶端，人缩在底部，深色背景里根本注意不到。
+修法：`Live2DStage` 锁 `resolution: 1`（代价是高 DPI 下轻微发虚）。
+
+**为什么我之前的验证全绿而用户全错：verify 脚本跑在 dpr=1。**
+`deviceScaleFactor` 必须按用户真实 dpr（1.5）再验一遍才算数 ——
+这与「验证环境必须注入生产 CSP」是同一条教训的两个面：
+**验证环境与生产差一个维度，那个维度上的 bug 就结构性地看不见。**
+
+配套改动：
+- 气泡 absolute 悬浮贴头顶（原来是流内元素，出现时会把角色往下推）
+- `×` 不再彻底消失，原位留一个半透明 ✨ 小圆点，点击恢复
+  （「操作后进入看不出怎么回来的状态」已坑过两次：空串 modelUrl、点 ×）
+- Suspense fallback 用静态立绘（加载那几秒不再空白）
+- `Number(null)` 陷阱**第三处**：CompanionAvatar.readSizeIdx（前两处修的时候
+  漏了它，默认档位一直被压成最小档 180）
+- leveldb 取证不可靠：.ldb 块是 snappy 压缩的，grep 出的明文可能是历史值，
+  **不能当作当前 localStorage 的证据**
+
+### 【已结案 v0.1.40】桌面挂件一片空白 —— 真凶：透明窗口令渲染进程崩溃
+
+**铁证**：用户截图（2026-08-07）里挂件窗口位置出现**白底 ☹ 的 sad-tab
+崩溃页** —— WebView2 渲染进程在透明窗口上直接崩溃。主窗口同一套
+additionalBrowserArgs 从不崩，唯一差异就是 `transparent(true)`。
+
+为什么盲查了四个版本（v0.1.36~39）：**透明窗口 + 崩溃页在多数时刻呈现为
+「完全空白」**，与「页面没加载」「CSS 全透明」「WebGL 画不出」在屏幕上
+完全无法区分。历轮先后错怪了 index.css、WebGL 合成、premultipliedAlpha、
+HTTP 缓存 —— 每个假设都修了点真问题（所以没白干），但都不是这个的根因。
+Crashpad reports 目录为空、事件日志无 1000，renderer 是被静默杀的，
+唯一可见证据就是那个 sad-tab。
+
+修法（v0.1.40）：挂件窗口改**不透明** + `background_color(19,17,28)`，
+页面本来就是深色卡片设计，视觉几乎无差。`transparent(true)` 别改回去。
+
+顺带修好：挂件 URL 带 `?v=版本` 破 WebView2 升级缓存；设置面板选角色/
+调档位经 storage 事件跨窗口同步（此前挂件只在启动时读一次 localStorage，
+「设置里选角色挂件没反应」是实报 bug）；四层可见指纹保留（HTML 占位块 /
+卡片底 / 静态图 / 版本角标），以后一张截图定位断层。
+
+### 【历史】排查轨迹（保留作方法论参考）
+
+排查轨迹（**每一步都推翻了上一步的假设，别再重走**）：
+1. ~~黑块 = 透明失败~~ → 去掉 index.css（`html{background:#13111C}` + 全屏噪点层）
+   后**透明确实生效了**，能透出桌面图标。
+2. ~~透明好了但 WebGL 在分层窗口画不出来~~ → 加了静态立绘兜底 + `readPixels`
+   首帧自检。装上后截图：**连静态图都不显示**。静态图是纯 `<img>`，不碰 WebGL——
+   **所以根本不是 WebGL 问题，是页面没渲染出任何东西。**
+3. 当前手段：`companion.html` 的 `#root` 里放了一个**纯 HTML 占位块**（橙框深底，
+   写「伴随角色 加载中…」）。React 挂载会清掉它。三种情况从此可区分：
+   - 看到橙框 → HTML 加载了，JS/React 没跑起来
+   - 看到角色 → 正常
+   - 仍全空 → 连 HTML 都没加载（URL 解析 / 资源没进包）
+
+**下一步**：让用户开一次「设置 → 应用 → 伴随角色 → 放到桌面上」，
+然后用下面的方法截图判定。**不要再靠推理猜，这一路上推理错了三次。**
+
+```powershell
+# 找挂件窗口坐标（EnumWindows 过滤 app.exe 的进程，标题含「伴随角色」）
+# 再用 System.Drawing 的 CopyFromScreen 只截那一小块，不要截全屏（涉及隐私）
+```
+
+已验证入包：`dist/companion.html` 含占位块文本、阴性对照为 0、签名通过。
+
+**v0.1.34 桌面挂件（独立置顶透明窗口）** —— 打包中。
+
+角色可以脱离主窗口，作为一个独立的置顶小窗浮在桌面上；支持拖动、四档缩放、
+换角色；任务结束时用气泡报**这一轮改了哪些文件、跑了几条命令、花了多少钱**，
+需要确认权限时也会喊人。
+
+新增/改动：
+- `src-tauri/src/commands/companion.rs` — 窗口生命周期 + 跨窗口推送
+- `src-tauri/capabilities/default.json` — **windows 加 "companion"**，
+  并显式授 start-dragging / set-size / set-position 等（`core:default` 不含它们）
+- `client/companion.html` + `client/src/companion/` — 挂件的**独立入口**
+  （不复用 index.html：常驻窗口不该把整个 Agent Flow 加载进去）
+- `client/src/utils/companionBridge.ts` — 主窗口 → 挂件的状态桥 + 摘要生成
+- `client/src/utils/desktopCompanion.ts` — 开关（真相源是 Rust 侧窗口在不在）
+- `vite.config.ts` — 双入口 + **按入口裁剪 modulePreload**
+
+三条刻意的取舍：
+1. **不做点击穿透**。需要全局鼠标钩子 + 按角色轮廓动态切换，多显示器/DPI
+   缩放下不稳。窗口本身贴着角色大小，拖到角落即可。
+2. **跨窗口通信必须经 Rust**。前端 `emit` 只在自己这个 WebView 内广播，
+   主窗口直接 emit 挂件收不到 —— 走 `companion_push` 命令由 AppHandle 定向发。
+3. **推送是节流的**。只在情绪变化或一轮结束时发；流式期间每个 token 都会让
+   store 变一次，照单全发等于让挂件每秒重渲染几十次而显示内容没变。
+4. **挂件开关不在前端存 boolean**，每次问 Rust 窗口在不在 —— 用户可以直接点
+   挂件上的 × 关掉，前端那份状态立刻就开始说谎。
+
+已验证（**注入生产 CSP 的真实浏览器**，两个入口各三个角色全绿）：
+挂件页人物占比 16%/21%/12%、哨兵角 4/4、白角 0/4；主应用页同样占比、白角 0/4。
+cargo check 通过、typecheck 0、lint 0 error、测试 199+92 全过。
+
+**尚未验证（只有装了才知道）**：透明窗口在 Windows 上的实际观感、置顶行为、
+系统拖拽、跨窗口事件是否真的送达。浏览器验证覆盖不到多窗口。
+
+**v0.1.32 看板娘真正渲染出来了** —— 打包中。三个角色实测截图存于
+`release/live2d-verify/*-canvas.png`，全身居中、背景透明。
+
+### 元凶：import 了要求 Cubism 2 运行时的包主入口
+
+`@jannchie/pixi-live2d-display` 有三个入口。主入口 `index.es.js` 的**模块顶层**
+写着：
+
+```js
+if (!window.Live2D) throw new Error("Could not find Cubism 2 runtime...")
+```
+
+我们只随包带了 Cubism **4** 的 Core（三个模型也都是 Cubism 4），于是这个
+`import()` 在求值那一刻就抛，模型一个字节都没开始加载。**必须用
+`@jannchie/pixi-live2d-display/cubism4` 子路径入口**（它只检查
+`window.Live2DCubismCore`）。`moduleResolution: "bundler"` 支持子路径。
+
+症状极具误导性：看板娘静默退回简笔脸，看起来像「模型没打进安装包」，
+而包里什么都不缺——v0.1.30 和 v0.1.31 两版都栽在这上面。
+
+### 第二个：白底方块 = premultipliedAlpha
+
+Cubism 渲染器内部用 `gl.clearColor(1, 1, 1, 0)` 清屏。在预乘画布里这是个
+**非法组合**（RGB 分量大于 alpha），浏览器合成时吐出纯白。
+`Application.init()` 必须带 `premultipliedAlpha: false`。
+
+`backgroundAlpha: 0` 本身一直是生效的——对照实验里空 Application 确实透明，
+白底只在加载模型之后出现。**没有那个对照组，几乎必然会去错怪 PixiJS。**
+
+### 第三个：取景参数方向性错误
+
+第一版凭直觉给 zoom 2.4~2.6（想着「全身太小要放大」），实际竖版模型的人物
+本来就几乎占满自己的画布，正确值在 **1.25** 附近。而米粒的画布是**横版**
+4500x3000 且人物偏右，必须用 `focusX: 0.72` 把取景推过去——写死居中会把她
+大半个人推出画框。三组参数全部靠实验台肉眼比对确定，不是估的。
+
+### 第四、五个：CSP 挡住了 PixiJS 的两条路（v0.1.33 修）
+
+v0.1.32 装进应用后报
+`Current environment does not allow unsafe-eval, please use pixi.js/unsafe-eval`。
+**浏览器验证全绿却漏掉了它** —— 因为 vite dev/preview **不会应用
+tauri.conf.json 里的 CSP**，只有 Tauri WebView 才注入。验证环境比生产宽松，
+这类问题就永远看不见。
+
+两条都被 `script-src 'self'` 挡住：
+1. PixiJS 默认用 `new Function()` 生成 shader/uniform 同步代码 →
+   副作用导入 `pixi.js/unsafe-eval`（模块顶层自调 selfInstall），
+   **必须在 `new Application()` 之前**。它的 exports 没带 types，
+   需要 `client/src/types/pixi-unsafe-eval.d.ts` 里的 `declare module`。
+2. PixiJS 默认从 `blob:` URL 起 worker 解码贴图，而 worker-src 未单独设置时
+   回退到 script-src（不含 blob:）→ `Assets.setPreferences({ preferWorkers: false })`。
+   选择关 worker 而非给 CSP 开 blob: 口子：只有三个模型的贴图要解，主线程够用。
+
+**verify-live2d.mjs 现在按 tauri.conf.json 现读并注入同一份 CSP**，
+第二条正是靠它在装机之前就抓到的。
+
+### 新增的验证基础设施（这次的最大收获）
+
+- `client/live2d-lab.html` — 取景实验台，**不进生产构建**（vite build 只打
+  index.html，已验证 dist 里没有它）。改一行刷新即可，不必重打安装包。
+- `scripts/live2d-lab.mjs` — 逐个 case 截图对比。**一个 case 一次页面加载**：
+  每个 PixiJS Application 占一个 WebGL context，一页里摆七个会被浏览器静默
+  回收掉最老的几个，表现为前几格全空白、和「渲染失败」一模一样。
+- `scripts/verify-live2d.mjs` — 生产构建的端到端验证，三个角色逐个渲染 +
+  像素判定 + 截图存证。
+
+用 `chromium.launch({ channel: "msedge" })` 借系统 Edge，不下载 chromium。
+
+**CSP 自检那段别删。** 注入 CSP 之后，「修好了」和「CSP 压根没注进去」
+在结果上完全一样（都通过），必须有独立证据证明 CSP 真的在起作用。
+坑在于：**不能用 `page.evaluate` 试 `new Function`** —— Playwright 走
+CDP Runtime.evaluate，天然绕过页面 CSP，不管注没注进去都报「可用」。
+现在的做法是 route 伪造一个同源脚本 `/__csp_selftest.js`（preview 里并不
+存在这个文件），由**页面自己**加载执行它、把结论写到 window，再读出来。
+另外 CSP 要走 `<meta>` 注入进 HTML，改 HTTP 响应头实测不生效。
+
+**v0.1.31 伴随角色（Live2D）三选一 + 拖拽 + 变装** —— 打包完成、签名有效，
+**未安装 / 未提交 / 未发布**（用户明确要求不要自动重启他的应用，等他说）。
+
+产物：`release/updates/AgentFlow_0.1.31_x64-setup.exe`（107,577,569 字节）
+验签：`node scripts/release-update.mjs` 内已跑过，alg=ED keyid=19d9f96e097fbd06，
+签名记录的文件名与产物一致。
+发布命令（等用户拍板）：
+```
+gh release create v0.1.31 --repo LYGOLANG/fufan-cc-flow-releases --title "v0.1.31" \
+  --notes-file <说明文件> "release/updates/AgentFlow_0.1.31_x64-setup.exe" \
+  "release/updates/latest.json"
+```
+
+用户反馈链：「图片太丑」→「没有声音」→「要三个美少女而不是一个表情」
+→「全装 + 可拖拽 + 变装」。
+
+关键发现（v0.1.30 装了但用户看到的仍是 SVG 简笔脸）：
+**`fufan_companionModel` 被误写成空串，且 `?? 默认值` 挡不住空串。**
+设置面板的输入框 onChange 直写 localStorage，用户点进去再点走就存了空串，
+之后无论怎么重装都退回简笔脸（localStorage 不随安装包更新）。
+修法：换键 `fufan_companionModel2` + 一次性迁移（丢弃已下架的 haru 路径），
+并把自定义地址收进折叠区、只有按「应用」才落盘。
+
+本版改动：
+- `client/src/utils/companionCharacters.ts`（新）— 三个角色 + **取景参数**。
+  取景不是调味品：这些是全身模型，等比塞进 220px 方框脸不到 30px，
+  必须放大到超出画布再靠 focusY 把取景推到头肩。
+- `client/public/live2d/{hiyori,mao,rice}/` — 换掉 haru，取自
+  Live2D/CubismWebSamples 官方示例（12.1MB）。三个都有 Idle+TapBody，
+  真央另有 8 个表情。
+- `Live2DStage.tsx` — 加 mood 驱动（表情按**序号**取，不写死模型的表情名）、
+  点击播 TapBody；**修了一个缩放 bug**：`model.width` 在 `scale.set()` 后
+  返回的是已缩放宽度，原代码又乘一次 scale，等于平方级缩小。
+- `CompanionAvatar.tsx` — 拖拽（专用把手，不跟 Live2D 的点击互动抢手势）、
+  变装（循环切换）、隐藏；坐标存 `fufan_companionPos`，**每次渲染都 clamp**
+  （换显示器/改分辨率后旧坐标可能整个落在屏幕外，那时角色点不着）。
+
+验证已过：typecheck 0 error、lint 0 error、测试 199+92 全过、
+懒加载边界正确（入口 chunk 260K 不含 pixi；844K 的 pixi chunk 只被
+Live2DStage 引用）、三个模型与 Cubism Core 都进了 dist。
+
+**下一步**：打包完 → 核对产物内含三个模型 → 等用户说「重启」再装
+（用户明确要求不要自动重启他的软件）。
+
+历史遗留待办：
+- 线上 Release 最新仍是 v0.1.27，v0.1.28～v0.1.31 未发布
+- 远程功能三项验收未实测（卡在靶机没装 Claude Code CLI，只有用户能做）
+- stock-research Skill 未实跑（用户的资料目录 `桌面\条件单` 不存在）
+
+---
+
+**下面是历史记录。**
+
 **Phase 15 + 16 代码完成**，v0.1.24 已安装并通过本机回归。
 
 Phase 16（跨机语义）已完成 5/6 项，详见 DEV-PLAN。新增基础设施：
@@ -199,7 +558,65 @@ v0.1.25 修的那个「每次启动误报未安装 CLI」，根因是探测失�
 `onClick={fn}` 这类直接当回调传的地方 —— React 会把事件对象塞给第一个参数。
 这次四处「重新检测」按钮全中，而它们恰好是用户绕过该 bug 的唯一手段。
 
+## 验证手段本身必须先被验证（2026-08-05 第三次栽在这上面）
+
+同一个错误已经换三种形态出现过，模式是：**用一个没被检验过的手段去检验结论，
+得到全绿或全红，然后相信它。**
+
+1. 测试文件里抄了一份生产判定表 → 漏一个码也 100% 通过（测的是抄件）
+2. `ls assets/index-*.js` 匹配到 6 个文件被当成一个文件名传给 grep
+   → 全部报错走 `|| echo 0` → 「主 chunk 零命中」的结论是假的
+3. Git Bash `grep -ac` 搜 27MB 的 app.exe → 全部返回 0，
+   看着像「模型没进包」，实为 grep 对大二进制失效
+4. **看板娘这一轮，同一个错误连犯四次**（2026-08-05）：
+   ① Playwright 的 `evaluate(字符串)` 按**表达式**求值，`() => {...}` 的求值
+      结果是函数对象本身而非返回值 → 探针恒返回 undefined；
+   ② 在页面里 `ctx.drawImage(webglCanvas)` 读像素：PixiJS 默认
+      `preserveDrawingBuffer=false`，缓冲区合成后即丢弃 → **人物明明渲染
+      出来了，探针却报「非透明占比 0」**，差点据此判定渲染失败；
+   ③ 元素截图的 `omitBackground` 不可靠，底下页面背景被合成进来 →
+      「不透明占比」恒为 1，**白底和透明底给出完全相同的读数**，于是
+      探针报「全部通过」而背景其实是白的。改判颜色（白角计数）才有意义；
+   ④ 实验台里忘了写缩放，模型按原始 2976x4175 塞进 220x220 画布，只显示
+      左上角一块透明区 → 又一次「看起来像渲染失败」。
+   **共同点：失败和成功在读数上无法区分。** 每次识破都是靠对照
+   （空 Application 对照组、已知好的那一格、肉眼看截图）。
+5. `verify-signature.mjs` 裸跑报「✅ 验签通过」，但它读的是
+   `release/updates/latest.json` —— 那份可能是**几个版本之前**的。
+   刚打完 0.1.31 跑它，验的是 0.1.27，输出里那行小字
+   「版本: 0.1.27」是唯一破绽。**先跑 `release-update.mjs` 刷新 updates
+   目录再验**，或者盯着输出里的版本号和包大小对一遍。
+
+**规矩：任何"扫一遍确认没有 X"的验证，必须同时跑一个已知存在的阳性对照。**
+第 3 条正是靠阳性对照（`index-` 必然在包内）当场识破的；没有它就会去
+返工一个根本不存在的问题。改用 PowerShell 读字节：
+
+```powershell
+$s=[System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($exe))
+$s.Contains('index-')   # 阳性对照，必须 True
+$s.Contains('hiyori')   # 待验目标
+```
+
+阴性对照同样有用：这次 `haru`（已删）与 `NOTICE`（build 之后才写的）
+双双缺席，反过来证明了搜索确实在按内容判断。
+
 ## 死路（别重走）
+
+- **打包不带 `TAURI_SIGNING_PRIVATE_KEY` 会静默产出「不可用于更新」的包**：
+  `package-desktop.mjs:66` 检测到没私钥就写临时覆盖配置关掉 updater 产物，
+  **日志里没有任何警告**，exit code 照样 0，安装包也照样能装。
+  唯一症状是 `bundle/nsis/` 下缺了那个 424 字节的 `.sig`。
+  发现它靠的是跟前几版横向对比（0.1.29/0.1.30 都有 sig，0.1.31 没有）。
+  打包前一律先设：
+  ```bash
+  export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/fufan-ccflow.key)"
+  export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
+  ```
+  （本项目这版 Tauri CLI 只认私钥**内容**，不认 `_PATH` 变体。）
+- **Tauri 嵌入前端资源时只有路径名是明文，内容被压缩**：所以在 app.exe 里
+  搜得到 `hiyori`、`NOTICE.md` 这类文件名，搜不到 `Free Material` 这类文件
+  **内容**。验证「某段文案是否进了产物」要去 `client/dist/assets/*.js` 搜，
+  那里是未压缩的；在 exe 里搜内容得到的「没找到」毫无意义。
 
 - WS 鉴权不能写在 connection 回调里 `ws.close()`：那时握手已完成，无令牌也能连上。
   必须用 `verifyClient` 在升级阶段拒绝。

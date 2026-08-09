@@ -16,6 +16,9 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+      },
       output: {
         // vendor 分组:框架与重量级渲染链各自成 chunk,业务代码更新时用户
         // 无需重新下载未变化的第三方库(独立 hash 长效缓存)
