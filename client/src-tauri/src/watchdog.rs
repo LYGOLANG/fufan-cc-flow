@@ -27,8 +27,16 @@ use tauri::{AppHandle, Manager};
 
 /// 前端心跳间隔(前端侧同值),看门狗按其倍数判定
 const HEARTBEAT_INTERVAL_MS: u64 = 5_000;
-/// 连续多少个心跳周期收不到消息即判定渲染进程已死
-const MISSED_BEATS_BEFORE_DEAD: u64 = 3;
+/// 连续多少个心跳周期收不到消息即判定渲染进程已死。
+///
+/// **从 3（15 秒）放宽到 12（60 秒）**：实测误判把用户的主窗口反复重载了
+/// 24 次（日志 `consecutive #24`）。根因是 Chromium 会节流不可见窗口里的
+/// setInterval —— 窗口被完全遮挡、挪到没在看的显示器上、或系统进入低功耗时，
+/// 心跳间隔会被拉长到分钟级，而那时渲染进程完全健康。
+///
+/// 误判的代价比迟判大得多：reload 会打断正在进行的会话，而真崩溃时晚 45 秒
+/// 恢复只是多等一会儿。判定条件里另外加了「窗口不可见就不判死」，见 spawn。
+const MISSED_BEATS_BEFORE_DEAD: u64 = 12;
 /// 看门狗轮询周期
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
 /// 启动后的宽限期:首屏加载 + JS 初始化期间不判定
@@ -139,6 +147,19 @@ pub fn spawn(app: AppHandle, heartbeat: Arc<Heartbeat>) {
 
         loop {
             std::thread::sleep(POLL_INTERVAL);
+
+            // 窗口不可见（最小化、或被系统挂起）时不判死：那时 Chromium 会
+            // 节流甚至冻结 JS 定时器，心跳断流是**预期行为**而非崩溃。
+            // 这里顺手把心跳时间推到当下，避免窗口一恢复可见就因为攒下的
+            // 静默期立刻被判死。
+            if let Some(win) = app.get_webview_window("main") {
+                let invisible =
+                    win.is_minimized().unwrap_or(false) || !win.is_visible().unwrap_or(true);
+                if invisible {
+                    heartbeat.last_beat_ms.store(now_ms(), Ordering::Relaxed);
+                    continue;
+                }
+            }
 
             let last = heartbeat.last_beat_ms.load(Ordering::Relaxed);
             let silence = now_ms().saturating_sub(last);
