@@ -4,6 +4,24 @@
 
 ## 当前任务
 
+## 【2026-08-10】v0.1.46 已发布上线
+
+https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/tag/v0.1.46
+线上从 v0.1.27 一步跳到 v0.1.46（中间 18 个版本从未公开发布，一次带上）。
+
+发布后端点实测：`releases/latest/download/latest.json` HTTP 200、version 0.1.46、
+签名与本地逐字一致、安装包 HTTP 200 且 Content-Length 97771534 与本地相同。
+
+**发布说明写「对外净差异」而不是内部流水**：看板娘从未公开发布过（加它、
+修它、删它都发生在未发布的版本区间），说明里一个字都不该提，否则用户看到
+「移除了一个我从没见过的功能」只会困惑。
+
+**踩坑记（第 N 次「验证手段本身没被验证」）**：`Invoke-WebRequest -UseBasicParsing`
+对 `application/octet-stream` 返回的 `.Content` 是 **byte[] 不是字符串**，
+直接 `ConvertFrom-Json` 会得到一个字段全空的对象 —— 看起来像「线上 latest.json
+是空的」这种要命的结论，实际文件完全正确。必须先
+`[System.Text.Encoding]::UTF8.GetString($r.Content)` 再解析。
+
 ## 【2026-08-09】伴随角色功能已整体移除（用户决定）— v0.1.46 已装机验证
 
 装机实测：app.exe 0.1.46 运行中、sidecar 正常、挂件窗口不存在、
