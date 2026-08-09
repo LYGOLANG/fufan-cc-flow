@@ -4,7 +4,17 @@
 
 ## 当前任务
 
-## 【2026-08-09】伴随角色功能已整体移除（用户决定）
+## 【2026-08-09】伴随角色功能已整体移除（用户决定）— v0.1.46 已装机验证
+
+装机实测：app.exe 0.1.46 运行中、sidecar 正常、挂件窗口不存在、
+安装目录 live2d/ 已清、启动日志零错误。安装包 109MB → 97.8MB（-11MB）。
+exe 内容验证 companion.html / live2d / hiyori 全 False（阳性对照 index- True）。
+已提交 `422ebee`（净删 9658 行）。
+
+**注意打包与源码的时序**：首轮 0.1.46 打包启动早于最后几处清理
+（`__APP_VERSION__`、playwright/pngjs），产物与源码不一致，已重打一次。
+`package:desktop` 内含 `pnpm build`，改完源码要重打才算数。
+
 
 v0.1.45 修好了建窗，但窗口仍会进入关不掉的黑框态（用户实报，日志显示
 CloseRequested→Destroyed 后仍有残留窗口，得从外部 WM_CLOSE 处决）。
