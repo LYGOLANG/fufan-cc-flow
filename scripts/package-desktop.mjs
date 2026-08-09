@@ -4,6 +4,17 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// 整个打包进程树（pnpm → tauri → cargo → rustc → makensis）降为低优先级。
+// 不降的话 Rust 编译高峰会把正在运行的 Agent Flow 的渲染进程饿到心跳断流,
+// 看门狗误判崩溃反复 reload 主窗口 —— 用户视角是「打包时软件卡死/加载不出」
+// (2026-08-07 实测,watchdog 日志 consecutive #2/#3)。子进程继承优先级,
+// 在入口设一次即可。打包慢几十秒无所谓,用户的前台会话不能卡。
+try {
+  os.setPriority(process.pid, 10); // 10 = Windows BELOW_NORMAL / Unix nice 10
+} catch {
+  /* 权限不足就算了,不因此中断打包 */
+}
+
 const repoRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const releaseDir = path.join(repoRoot, "release");
 const tauriReleaseDir = path.join(repoRoot, "client", "src-tauri", "target", "release");
