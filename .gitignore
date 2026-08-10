@@ -53,3 +53,8 @@ duojiao-yutou-recipe.png
 
 # 本地调试工具产物
 .playwright-cli/
+
+# 个股研报与日报：本地个人资料，不进公开仓库
+# （本仓库是 public 且装了 commit 自动推送的 hook，漏配就会被推上公网）
+research/
+daily/
