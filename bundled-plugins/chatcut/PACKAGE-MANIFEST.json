@@ -1,0 +1,104 @@
+{
+  "plugin": "chatcut",
+  "version": "0.1.0",
+  "stagedAt": "C:\\Users\\Administrator\\Desktop\\chatcut\\dist\\chatcut",
+  "fileCount": 19,
+  "totalBytes": 2029564,
+  "files": [
+    {
+      "path": ".claude-plugin/plugin.json",
+      "size": 501,
+      "sha256": "c4e46a65a7c794e02258d682955f9b348cb5b2cc7f23e61387cf5012ffd4bdbb"
+    },
+    {
+      "path": ".mcp.json",
+      "size": 152,
+      "sha256": "5ad3787109dfe62e250b210bf0277fed2dc50f78404c9e144966d8a4a37e4019"
+    },
+    {
+      "path": "dist/contracts/evidence.schema.json",
+      "size": 2619,
+      "sha256": "f661fdb3d56880f4208198604acf4f9e1f47d66f6ad3b3fa7b468bd68e3808fa"
+    },
+    {
+      "path": "dist/contracts/request.schema.json",
+      "size": 3544,
+      "sha256": "947f63df7d3a659898366b83de4a997c47102d66eaada2a05391bd8062f44ebc"
+    },
+    {
+      "path": "dist/contracts/result.schema.json",
+      "size": 4132,
+      "sha256": "c73c571d974caaf1d134b1b6a04a394d0da1670282dfe8980bb0efd6e90747f5"
+    },
+    {
+      "path": "dist/contracts/state.schema.json",
+      "size": 9285,
+      "sha256": "f8c13e8e191e7ff2f88f37d7c92756be26bbd49f748fa37eddad276854461bf1"
+    },
+    {
+      "path": "dist/rules/default.json",
+      "size": 2930,
+      "sha256": "504fd2bb523e389360f7104e06883cc1df558ca69b0387fe13bd3b38f99f7bbc"
+    },
+    {
+      "path": "dist/server/index.mjs",
+      "size": 1548734,
+      "sha256": "c39842d511d772e1a3732737d0e274c2406ee1ecec80c5ba2f8e6a9a180e230b"
+    },
+    {
+      "path": "dist/templates/annotation/layer.css",
+      "size": 2159,
+      "sha256": "220ef3ccb837b46d399a2b1e038b3c8351288c6185c2d7e4e76e7f84bf650a29"
+    },
+    {
+      "path": "dist/templates/annotation/layer.html",
+      "size": 1474,
+      "sha256": "4ca400f7d25754e91fbce7810f2e4f87714276abd97a4e9766f636f37506653f"
+    },
+    {
+      "path": "dist/ui/assets/index-BZeUpsHq.js",
+      "size": 318901,
+      "sha256": "49b21c4a837c4cef263320d2206f724d21886c02b25febc1305559d6c3924c36"
+    },
+    {
+      "path": "dist/ui/assets/index-HVoq7nob.css",
+      "size": 35729,
+      "sha256": "0b594595549dba8da5acaf9fe8580142b35a245f6a15b91e77d598b8f75b6023"
+    },
+    {
+      "path": "dist/ui/index.html",
+      "size": 1036,
+      "sha256": "107d10d21527e3ac13e5c2f9b6a67b17d289dbc1716af8e5facf444737dc77e2"
+    },
+    {
+      "path": "dist/vendor/gsap.min.js",
+      "size": 72927,
+      "sha256": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    {
+      "path": "skills/chatcut-annotate/SKILL.md",
+      "size": 4262,
+      "sha256": "29971bab81ede5f1f8a9dfc3343d9ccb9bac1f094f796bdd31ff30062c7567dd"
+    },
+    {
+      "path": "skills/chatcut-captions/SKILL.md",
+      "size": 5629,
+      "sha256": "153aa4c9f5304c25d534107642631ee1fb52d496b5f64af9b35516331022c9b9"
+    },
+    {
+      "path": "skills/chatcut-export/SKILL.md",
+      "size": 3221,
+      "sha256": "3f593140e0ad16dddbd8a5f41f1c401d5725a90f06419dee4517bb568a1508e0"
+    },
+    {
+      "path": "skills/chatcut-narration/SKILL.md",
+      "size": 4847,
+      "sha256": "5c059fd2671383c836196921832e661883677454b9daf19a3d96b2b2a6a1e882"
+    },
+    {
+      "path": "skills/chatcut-workspace/SKILL.md",
+      "size": 7482,
+      "sha256": "9a79a75caa568648f7f541fb3b27cf7ab4cabfbc0abf772aa4af4cb9e6502551"
+    }
+  ]
+}

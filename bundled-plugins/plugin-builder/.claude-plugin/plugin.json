@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "interactive-plugin-builder",
+  "displayName": "Plugin Builder",
+  "version": "1.0.0",
+  "description": "A Claude Code-first coding harness for building installable interactive agent plugins through requirement interviews, runtime design, vertical planning, live coding, and host verification.",
+  "author": {
+    "name": "FEICAI Club"
+  },
+  "keywords": [
+    "plugin-builder",
+    "mcp",
+    "interactive-plugin",
+    "coding-harness",
+    "claude-code"
+  ]
+}

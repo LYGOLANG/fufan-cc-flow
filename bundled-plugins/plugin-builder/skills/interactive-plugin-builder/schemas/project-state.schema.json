@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://feicai.example/schemas/interactive-plugin-builder/project-state.schema.json",
+  "title": "Plugin Project State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "pluginId", "phase", "qualityGate", "currentTask", "artifacts", "targets", "blockers", "nextAction", "updatedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "pluginId": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "phase": {"enum": ["IDEA", "SPEC_READY", "DESIGN_READY", "PLAN_READY", "BUILDING", "CHECKING", "COMPLETE"]},
+    "qualityGate": {"enum": ["NOT_CHECKED", "SPEC_VALID", "DESIGN_VALID", "PLAN_VALID", "FAIL", "BUILD_VALID", "HOST_VERIFIED", "SHIPPABLE", "BLOCKED_EXTERNAL"]},
+    "currentTask": {"type": ["string", "null"]},
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": {"type": ["string", "null"]}
+    },
+    "targets": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tier", "status", "evidence"],
+        "properties": {
+          "tier": {"enum": ["required", "optional", "experimental"]},
+          "status": {"enum": ["NOT_BUILT", "BUILD_VALID", "HOST_VERIFIED", "BLOCKED", "DEFERRED"]},
+          "evidence": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "string"},
+          {
+            "type": "object",
+            "required": ["id", "summary"],
+            "properties": {
+              "id": {"type": "string"},
+              "summary": {"type": "string"},
+              "owner": {"type": "string"},
+              "nextAction": {"type": "string"}
+            }
+          }
+        ]
+      }
+    },
+    "nextAction": {"type": "string", "minLength": 1},
+    "updatedAt": {"type": "string", "format": "date-time"}
+  }
+}

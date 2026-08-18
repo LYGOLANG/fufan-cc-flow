@@ -1,0 +1,308 @@
+/* ── 基座 ── */
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--ip-desk);color:var(--ip-ink);font-family:var(--ip-font);font-size:14px;line-height:1.6;font-feature-settings:"cv05","ss01";-webkit-font-smoothing:antialiased;transition:background var(--ip-slow) var(--ip-ease),color var(--ip-slow) var(--ip-ease)}
+a{color:var(--ip-ink);text-decoration:none;border-bottom:1px solid var(--ip-ink-6);transition:border-color var(--ip-fast) var(--ip-ease)}
+a:hover{border-bottom-color:var(--ip-ink)}
+::selection{background:var(--ip-ink);color:var(--ip-paper)}
+:focus-visible{outline:1.5px solid var(--ip-ink);outline-offset:2px;border-radius:3px}
+svg{display:block}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--ip-ink-6);border:3px solid transparent;background-clip:content-box;border-radius:var(--ip-r-pill)}
+::-webkit-scrollbar-thumb:hover{background:var(--ip-ink-4);background-clip:content-box}
+
+/* ══ 01 · 排印 TYPOGRAPHY ══════════════════════════════════════════ */
+.ink-display{font-size:clamp(38px,5.4vw,64px);font-weight:800;line-height:.98;letter-spacing:-.032em;text-wrap:balance}
+.ink-h1{font-size:27px;font-weight:700;line-height:1.2;letter-spacing:-.018em;text-wrap:pretty}
+.ink-h2{font-size:19px;font-weight:700;line-height:1.3;letter-spacing:-.012em;text-wrap:pretty}
+.ink-h3{font-size:15px;font-weight:600;line-height:1.4;letter-spacing:-.006em}
+.ink-body{font-size:14px;font-weight:400;line-height:1.65;color:var(--ip-ink-2);text-wrap:pretty}
+.ink-lede{font-size:16px;font-weight:400;line-height:1.6;color:var(--ip-ink-2);text-wrap:pretty}
+.ink-note{font-size:12.5px;line-height:1.55;color:var(--ip-ink-4);text-wrap:pretty}
+/* 微标签：全大写 + 大字距 —— 图表来源行的语法，贯穿整套 UI */
+.ink-label{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ip-ink-4);line-height:1.2}
+.ink-label--ink{color:var(--ip-ink)}
+.ink-src{font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ip-ink-4);line-height:1.4}
+.ink-num{font-family:var(--ip-mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum";letter-spacing:-.01em}
+.ink-figure{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.ink-code{font-family:var(--ip-mono);font-size:12px;background:var(--ip-well);padding:1px 5px;border-radius:4px;color:var(--ip-ink-1)}
+.ink-kbd{display:inline-block;font-family:var(--ip-mono);font-size:11px;font-weight:600;padding:2px 6px;min-width:22px;text-align:center;color:var(--ip-ink-2);border:var(--ip-hair) solid var(--ip-rule);border-bottom-width:2px;border-radius:5px;background:var(--ip-paper-hi)}
+.ink-quiet{color:var(--ip-ink-4)}
+.ink-strike{text-decoration:line-through;text-decoration-color:var(--ip-red);text-decoration-thickness:1.5px;color:var(--ip-ink-4)}
+
+/* ══ 02 · 线与家具 RULES & FURNITURE ═══════════════════════════════ */
+.ink-rule{border:0;border-top:var(--ip-hair) solid var(--ip-rule);margin:0}
+.ink-rule--ink{border-top-color:var(--ip-rule-ink)}
+.ink-rule--dash{border-top-style:dashed;border-top-color:var(--ip-ink-6)}
+.ink-rule--v{width:var(--ip-hair);align-self:stretch;background:var(--ip-rule);border:0}
+/* 账本纸：等距横线，给列表和表格垫底 */
+.ink-ledger{background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,var(--ip-rule-soft) 27px,var(--ip-rule-soft) 27.5px)}
+/* 网格纸：细 8px + 粗 48px 双层，给一切画布垫底 */
+.ink-graph{background-color:var(--ip-well);background-image:
+  linear-gradient(var(--ip-rule-soft) .5px,transparent .5px),linear-gradient(90deg,var(--ip-rule-soft) .5px,transparent .5px),
+  linear-gradient(var(--ip-rule) .5px,transparent .5px),linear-gradient(90deg,var(--ip-rule) .5px,transparent .5px);
+  background-size:8px 8px,8px 8px,48px 48px,48px 48px}
+.ink-dotgrid{background-color:var(--ip-well);background-image:radial-gradient(var(--ip-ink-6) .8px,transparent .8px);background-size:14px 14px}
+/* 刻度导轨：一排真刻度，图表的"家具" */
+.ink-ticks{display:flex;align-items:flex-end;gap:3px;height:10px}
+.ink-ticks i{display:block;width:1px;height:4px;background:var(--ip-ink-6)}
+.ink-ticks i:nth-child(5n+1){height:9px;background:var(--ip-ink-4)}
+/* 旁注引线 */
+.ink-leader{flex:1;border-bottom:var(--ip-hair) dashed var(--ip-ink-6);transform:translateY(-4px)}
+
+/* ══ 03 · 容器 CONTAINERS ══════════════════════════════════════════ */
+.ink-card{background:var(--ip-paper);border-radius:var(--ip-r-card);padding:22px 24px;transition:background var(--ip-slow) var(--ip-ease)}
+.ink-card--ruled{box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule)}
+.ink-card--ink{background:var(--ip-ink);color:var(--ip-paper)}
+.ink-card--ink .ink-label,.ink-card--ink .ink-body,.ink-card--ink .ink-note{color:var(--ip-ink-6)}
+.ink-panel{background:var(--ip-paper);border-radius:var(--ip-r-box);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule)}
+.ink-well{background:var(--ip-well);border-radius:var(--ip-r-box)}
+.ink-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 0 10px;border-bottom:var(--ip-hair) solid var(--ip-rule);margin-bottom:14px}
+.ink-toolbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--ip-paper);border-radius:var(--ip-r-box);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);flex-wrap:wrap}
+.ink-toolbar--flush{border-radius:0;box-shadow:0 var(--ip-hair) 0 var(--ip-rule)}
+.ink-group{display:inline-flex;align-items:center;border-radius:var(--ip-r-ctl);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);overflow:hidden}
+.ink-group>*{border-radius:0!important;box-shadow:none!important}
+.ink-group>*+*{box-shadow:inset var(--ip-hair) 0 0 var(--ip-rule)!important}
+.ink-stack{display:flex;flex-direction:column;gap:10px}
+.ink-row{display:flex;align-items:center;gap:10px}
+.ink-spread{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* ══ 04 · 按钮 BUTTON ══════════════════════════════════════════════
+   四型：solid（主）· ruled（次）· quiet（弱）· danger（破坏）
+   无位移、无阴影：状态只靠明度变化。 */
+.ink-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:32px;padding:0 14px;font:600 13px/1 var(--ip-font);letter-spacing:-.005em;color:var(--ip-ink);background:transparent;border:0;border-radius:var(--ip-r-ctl);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);cursor:pointer;user-select:none;white-space:nowrap;transition:background var(--ip-fast) var(--ip-ease),color var(--ip-fast) var(--ip-ease),box-shadow var(--ip-fast) var(--ip-ease),opacity var(--ip-fast)}
+.ink-btn:hover:not(:disabled),.ink-btn.is-hover{background:var(--ip-paper-hi);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-5)}
+.ink-btn:active:not(:disabled),.ink-btn.is-active{background:var(--ip-well);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-3)}
+.ink-btn:focus-visible,.ink-btn.is-focus{outline:1.5px solid var(--ip-ink);outline-offset:2px}
+.ink-btn:disabled,.ink-btn.is-disabled{color:var(--ip-ink-5);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);background:transparent;cursor:not-allowed}
+.ink-btn--solid{background:var(--ip-ink);color:var(--ip-paper);box-shadow:none}
+.ink-btn--solid:hover:not(:disabled),.ink-btn--solid.is-hover{background:var(--ip-ink-2);box-shadow:none}
+.ink-btn--solid:active:not(:disabled),.ink-btn--solid.is-active{background:var(--ip-ink-1);box-shadow:none}
+.ink-btn--solid:disabled,.ink-btn--solid.is-disabled{background:var(--ip-ink-6);color:var(--ip-paper);box-shadow:none}
+.ink-btn--quiet{box-shadow:none;color:var(--ip-ink-2)}
+.ink-btn--quiet:hover:not(:disabled),.ink-btn--quiet.is-hover{background:var(--ip-well);color:var(--ip-ink);box-shadow:none}
+.ink-btn--quiet:active:not(:disabled),.ink-btn--quiet.is-active{background:var(--ip-ink-7);box-shadow:none}
+.ink-btn--quiet:disabled,.ink-btn--quiet.is-disabled{box-shadow:none}
+.ink-btn--danger{color:var(--ip-red);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-red)}
+.ink-btn--danger:hover:not(:disabled),.ink-btn--danger.is-hover{background:var(--ip-red);color:var(--ip-paper);box-shadow:none}
+.ink-btn--danger:active:not(:disabled),.ink-btn--danger.is-active{background:var(--ip-red);color:var(--ip-paper);box-shadow:none;opacity:.82}
+.ink-btn--sm{height:25px;padding:0 9px;font-size:11.5px;gap:5px;border-radius:5px}
+.ink-btn--lg{height:40px;padding:0 20px;font-size:14.5px}
+.ink-btn--icon{width:32px;padding:0}
+.ink-btn--icon.ink-btn--sm{width:25px}
+.ink-btn[aria-pressed="true"]{background:var(--ip-ink);color:var(--ip-paper);box-shadow:none}
+
+/* 分段控件：一张纸上切几格 */
+.ink-seg{display:inline-flex;padding:2px;background:var(--ip-well);border-radius:9px;gap:2px}
+.ink-seg button{height:26px;padding:0 12px;font:600 12px/1 var(--ip-font);color:var(--ip-ink-3);background:transparent;border:0;border-radius:7px;cursor:pointer;transition:background var(--ip-fast) var(--ip-ease),color var(--ip-fast) var(--ip-ease)}
+.ink-seg button:hover{color:var(--ip-ink)}
+.ink-seg button[aria-selected="true"]{background:var(--ip-paper);color:var(--ip-ink);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule)}
+
+/* ══ 05 · 表单 FORM —— 纸上的表格：默认只有一条底线 ══════════════ */
+.ink-field{display:block;width:100%;height:32px;padding:0 10px;font:500 13px/1 var(--ip-font);color:var(--ip-ink);background:transparent;border:0;border-radius:var(--ip-r-ctl);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);appearance:none;transition:background var(--ip-fast) var(--ip-ease),box-shadow var(--ip-fast) var(--ip-ease)}
+textarea.ink-field{height:auto;padding:9px 10px;line-height:1.55;resize:vertical;min-height:74px}
+.ink-field::placeholder{color:var(--ip-ink-5)}
+.ink-field:hover:not(:disabled):not(:focus),.ink-field.is-hover{box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-5)}
+.ink-field:focus,.ink-field.is-focus{outline:0;background:var(--ip-paper-hi);box-shadow:inset 0 0 0 1.5px var(--ip-ink)}
+.ink-field:disabled,.ink-field.is-disabled{color:var(--ip-ink-5);background:var(--ip-well);cursor:not-allowed}
+.ink-field.is-bad{box-shadow:inset 0 0 0 1.5px var(--ip-red)}
+.ink-field--num{font-family:var(--ip-mono);font-variant-numeric:tabular-nums;text-align:right}
+/* 内联数值：CAD / 3D / 时间线里最常用的那种可拖拽标签数值 */
+.ink-scrub{display:inline-flex;align-items:center;height:26px;border-radius:5px;box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);overflow:hidden;background:var(--ip-paper)}
+.ink-scrub b{display:flex;align-items:center;padding:0 7px;height:100%;font:700 9.5px/1 var(--ip-font);letter-spacing:.14em;color:var(--ip-ink-4);background:var(--ip-well);cursor:ew-resize}
+.ink-scrub input{width:58px;min-width:0;height:100%;padding:0 7px;border:0;background:transparent;font:500 12px/1 var(--ip-mono);font-variant-numeric:tabular-nums;text-align:right;color:var(--ip-ink)}
+.ink-scrub input:focus{outline:0;background:var(--ip-paper-hi)}
+.ink-scrub:focus-within{box-shadow:inset 0 0 0 1.5px var(--ip-ink)}
+/* 开关：不用色，用墨的有无 */
+.ink-switch{position:relative;display:inline-flex;width:38px;height:21px;flex:none;cursor:pointer}
+.ink-switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:inherit;z-index:1}
+.ink-switch i{position:absolute;inset:0;border-radius:var(--ip-r-pill);background:transparent;box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-5);transition:background var(--ip-base) var(--ip-ease),box-shadow var(--ip-base) var(--ip-ease)}
+.ink-switch i::after{content:"";position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--ip-ink-4);transition:transform var(--ip-base) var(--ip-ease),background var(--ip-base) var(--ip-ease)}
+.ink-switch input:checked+i{background:var(--ip-ink);box-shadow:none}
+.ink-switch input:checked+i::after{transform:translateX(17px);background:var(--ip-paper)}
+.ink-switch input:focus-visible+i{outline:1.5px solid var(--ip-ink);outline-offset:2px}
+.ink-switch input:disabled+i{opacity:.4;cursor:not-allowed}
+/* 勾选 / 单选：纸上打钩 */
+.ink-check{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--ip-ink-1);user-select:none}
+.ink-check input{position:absolute;opacity:0;width:0;height:0}
+.ink-check i{position:relative;width:15px;height:15px;flex:none;border-radius:3.5px;box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-5);transition:background var(--ip-fast) var(--ip-ease),box-shadow var(--ip-fast) var(--ip-ease)}
+.ink-check--radio i{border-radius:50%}
+.ink-check i::after{content:"";position:absolute;left:4.5px;top:1px;width:4px;height:8px;border:solid var(--ip-paper);border-width:0 1.8px 1.8px 0;transform:rotate(42deg) scale(.4);opacity:0;transition:opacity var(--ip-fast) var(--ip-ease),transform var(--ip-fast) var(--ip-ease)}
+.ink-check--radio i::after{left:4px;top:4px;width:7px;height:7px;border:0;border-radius:50%;background:var(--ip-paper);transform:scale(.3)}
+.ink-check input:checked+i{background:var(--ip-ink);box-shadow:none}
+.ink-check input:checked+i::after{opacity:1;transform:rotate(42deg) scale(1)}
+.ink-check--radio input:checked+i::after{transform:scale(1)}
+.ink-check input:focus-visible+i{outline:1.5px solid var(--ip-ink);outline-offset:2px}
+.ink-check input:disabled~*{color:var(--ip-ink-5)}
+.ink-check input:disabled+i{opacity:.45}
+/* 滑杆：轨道是尺，端头是胶囊 */
+.ink-range{-webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;cursor:pointer}
+.ink-range::-webkit-slider-runnable-track{height:3px;border-radius:var(--ip-r-pill);background:var(--ip-ink-6)}
+.ink-range::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5.5px;border-radius:50%;background:var(--ip-ink);border:2px solid var(--ip-paper)}
+.ink-range::-moz-range-track{height:3px;border-radius:var(--ip-r-pill);background:var(--ip-ink-6)}
+.ink-range::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ip-ink);border:2px solid var(--ip-paper)}
+.ink-range:focus-visible::-webkit-slider-thumb{outline:1.5px solid var(--ip-ink);outline-offset:2px}
+/* 字段行 */
+.ink-formrow{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:12px;padding:7px 0;border-bottom:var(--ip-hair) dashed var(--ip-rule)}
+.ink-formrow:last-child{border-bottom:0}
+.ink-formrow>span:first-child{font-size:11.5px;color:var(--ip-ink-4);letter-spacing:.02em}
+
+/* ══ 06 · 标记 MARKS：徽标 / 标签 / 状态点 ════════════════════════ */
+.ink-badge{display:inline-flex;align-items:center;gap:5px;height:19px;padding:0 7px;font:700 9.5px/1 var(--ip-font);letter-spacing:.13em;text-transform:uppercase;color:var(--ip-ink-2);border-radius:4px;box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);white-space:nowrap}
+.ink-badge--solid{background:var(--ip-ink);color:var(--ip-paper);box-shadow:none}
+.ink-badge--dash{box-shadow:none;outline:var(--ip-hair) dashed var(--ip-ink-5);outline-offset:-1px}
+.ink-badge--red{color:var(--ip-red);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-red)}
+.ink-badge--blue{color:var(--ip-blue);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-blue)}
+.ink-chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 6px 0 10px;font-size:12px;font-weight:500;color:var(--ip-ink-1);background:var(--ip-well);border-radius:var(--ip-r-pill)}
+.ink-chip button{width:14px;height:14px;display:grid;place-items:center;border:0;background:transparent;color:var(--ip-ink-4);cursor:pointer;border-radius:50%;font-size:12px;line-height:1}
+.ink-chip button:hover{background:var(--ip-ink);color:var(--ip-paper)}
+/* 状态点：不靠颜色区分，靠形状 —— 实心/空心/虚线/斜杠 */
+.ink-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none}
+.ink-dot--done{background:var(--ip-ink)}
+.ink-dot--idle{background:transparent;box-shadow:inset 0 0 0 1.2px var(--ip-ink-5)}
+.ink-dot--warn{background:transparent;box-shadow:inset 0 0 0 1.2px var(--ip-ink);background-image:repeating-linear-gradient(45deg,var(--ip-ink) 0 1.5px,transparent 1.5px 3px)}
+.ink-dot--bad{background:var(--ip-red)}
+.ink-dot--run{background:var(--ip-blue);animation:ink-pulse 1.4s var(--ip-ease) infinite}
+@keyframes ink-pulse{0%,100%{opacity:1}50%{opacity:.28}}
+
+/* ══ 07 · 导航 NAV：标签页 / 面包屑 / 树 / 列表 ═══════════════════ */
+.ink-tabs{display:flex;gap:0;border-bottom:var(--ip-hair) solid var(--ip-rule)}
+.ink-tabs button{position:relative;height:34px;padding:0 14px;font:600 13px/1 var(--ip-font);color:var(--ip-ink-4);background:transparent;border:0;cursor:pointer;transition:color var(--ip-fast) var(--ip-ease)}
+.ink-tabs button:hover{color:var(--ip-ink-2)}
+.ink-tabs button[aria-selected="true"]{color:var(--ip-ink)}
+.ink-tabs button[aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--ip-ink)}
+.ink-crumb{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ip-ink-4);flex-wrap:wrap}
+.ink-crumb b{font-weight:600;color:var(--ip-ink)}
+.ink-crumb i{font-style:normal;color:var(--ip-ink-6)}
+.ink-tree{font-size:12.5px;user-select:none}
+.ink-tree div{display:flex;align-items:center;gap:7px;height:26px;padding:0 8px;border-radius:5px;color:var(--ip-ink-1);cursor:pointer;transition:background var(--ip-fast) var(--ip-ease)}
+.ink-tree div:hover{background:var(--ip-well)}
+.ink-tree div[aria-selected="true"]{background:var(--ip-ink);color:var(--ip-paper)}
+.ink-tree div[aria-selected="true"] .ink-num,.ink-tree div[aria-selected="true"] .ink-quiet{color:var(--ip-ink-7)}
+.ink-tree .tw{width:9px;font-size:8px;color:var(--ip-ink-4);flex:none}
+.ink-list{display:flex;flex-direction:column}
+.ink-list>*{display:flex;align-items:center;gap:10px;min-height:38px;padding:6px 10px;border-bottom:var(--ip-hair) solid var(--ip-rule-soft);transition:background var(--ip-fast) var(--ip-ease)}
+.ink-list>*:last-child{border-bottom:0}
+.ink-list>*:hover{background:var(--ip-paper-hi)}
+.ink-menu{min-width:190px;padding:5px;background:var(--ip-paper-hi);border-radius:var(--ip-r-box);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-4)}
+.ink-menu button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;height:28px;padding:0 9px;font:500 12.5px/1 var(--ip-font);color:var(--ip-ink-1);background:transparent;border:0;border-radius:5px;cursor:pointer;text-align:left}
+.ink-menu button:hover{background:var(--ip-ink);color:var(--ip-paper)}
+.ink-menu button:hover .ink-kbd{background:transparent;color:var(--ip-ink-7);border-color:var(--ip-ink-3)}
+.ink-menu button[disabled]{color:var(--ip-ink-5);pointer-events:none}
+.ink-menu hr{border:0;border-top:var(--ip-hair) solid var(--ip-rule);margin:5px 3px}
+.ink-menu .ink-red{color:var(--ip-red)}
+.ink-menu .ink-red:hover{background:var(--ip-red);color:var(--ip-paper)}
+
+/* ══ 08 · 表格 TABLE：账本纸 ══════════════════════════════════════ */
+.ink-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.ink-table th{font:700 9.5px/1 var(--ip-font);letter-spacing:.15em;text-transform:uppercase;color:var(--ip-ink-4);text-align:left;padding:0 10px 7px;border-bottom:var(--ip-hair) solid var(--ip-ink-6);white-space:nowrap}
+.ink-table td{padding:7px 10px;border-bottom:var(--ip-hair) solid var(--ip-rule-soft);color:var(--ip-ink-1);vertical-align:middle;white-space:nowrap}
+.ink-table tbody tr:hover td{background:var(--ip-paper-hi)}
+.ink-table tbody tr[aria-selected="true"] td{background:var(--ip-well)}
+.ink-table .n{font-family:var(--ip-mono);font-variant-numeric:tabular-nums;text-align:right}
+.ink-table .rownum{color:var(--ip-ink-4);font-family:var(--ip-mono);font-size:10.5px;text-align:right;width:34px}
+.ink-cell-edit{box-shadow:inset 0 0 0 1.5px var(--ip-ink);border-radius:3px}
+
+/* ══ 09 · 进度与量度 PROGRESS & METER ═════════════════════════════ */
+.ink-bar{height:5px;background:var(--ip-ink-7);border-radius:var(--ip-r-pill);overflow:hidden}
+.ink-bar>i{display:block;height:100%;background:var(--ip-ink);border-radius:var(--ip-r-pill);transition:width var(--ip-slow) var(--ip-ease)}
+.ink-bar--blue>i{background:var(--ip-blue)}
+.ink-bar--red>i{background:var(--ip-red)}
+/* 不确定进度：一段墨在尺上来回 */
+.ink-bar--indet>i{width:34%;animation:ink-sweep 1.3s var(--ip-ease) infinite}
+@keyframes ink-sweep{0%{transform:translateX(-105%)}100%{transform:translateX(300%)}}
+/* 刻度量表：可数单位，一格一个百分点的十分之一 */
+.ink-meter{display:flex;gap:2px;align-items:flex-end;height:16px}
+.ink-meter i{flex:1;height:100%;background:var(--ip-ink-7);border-radius:1px}
+.ink-meter i.on{background:var(--ip-ink)}
+.ink-meter i.on.blue{background:var(--ip-blue)}
+/* 骨架：不闪光，只做纸上的空格 */
+.ink-skel{background:var(--ip-ink-7);border-radius:4px;height:10px;animation:ink-breathe 1.5s var(--ip-ease) infinite}
+@keyframes ink-breathe{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* ══ 10 · 浮层 OVERLAY：无阴影，靠墨线和遮罩分层 ══════════════════ */
+.ink-tip{display:inline-block;padding:4px 8px;font-size:11.5px;font-weight:500;line-height:1.35;color:var(--ip-paper);background:var(--ip-ink);border-radius:5px;max-width:220px}
+.ink-tip--note{color:var(--ip-ink);background:var(--ip-paper-hi);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-4)}
+.ink-toast{display:flex;align-items:flex-start;gap:10px;min-width:min(280px,100%);max-width:380px;padding:11px 13px;background:var(--ip-paper-hi);border-radius:var(--ip-r-box);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-4)}
+.ink-toast--ink{background:var(--ip-ink);color:var(--ip-paper);box-shadow:none}
+.ink-toast--ink .ink-note{color:var(--ip-ink-6)}
+.ink-scrim{position:fixed;inset:0;background:var(--ip-scrim);display:grid;place-items:center;padding:24px;z-index:90;animation:ink-fade var(--ip-base) var(--ip-ease)}
+@keyframes ink-fade{from{opacity:0}to{opacity:1}}
+.ink-modal{width:min(440px,100%);background:var(--ip-paper);border-radius:var(--ip-r-card);padding:22px;box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-4);animation:ink-rise var(--ip-base) var(--ip-ease)}
+@keyframes ink-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* 内联批注：校对红只在这里出现 */
+.ink-note-block{display:flex;gap:9px;padding:10px 12px;border-radius:var(--ip-r-box);background:var(--ip-well);font-size:12.5px;line-height:1.55;color:var(--ip-ink-2)}
+.ink-note-block--red{background:var(--ip-red-soft);color:var(--ip-red)}
+.ink-note-block--blue{background:var(--ip-blue-soft);color:var(--ip-blue)}
+.ink-note-block b{color:inherit;font-weight:700;flex:none}
+
+/* ══ 11 · AGENT 蓝黑墨 —— 只有 Agent 能用蓝 ═══════════════════════ */
+.ink-agent{position:relative;box-shadow:inset 0 0 0 1.5px var(--ip-blue)}
+.ink-agent-tag{display:inline-flex;align-items:center;gap:6px;height:20px;padding:0 8px 0 6px;font:700 9.5px/1 var(--ip-font);letter-spacing:.14em;text-transform:uppercase;color:var(--ip-paper);background:var(--ip-blue);border-radius:4px}
+[data-theme="carbon"] .ink-agent-tag{color:var(--ip-desk)}
+/* Agent 工作中：一条蓝墨在纸边缘走 */
+.ink-agent-run{position:relative;overflow:hidden}
+.ink-agent-run::after{content:"";position:absolute;left:0;top:0;height:2px;width:38%;background:var(--ip-blue);animation:ink-sweep 1.5s var(--ip-ease) infinite}
+/* Agent 的笔迹：逐字落墨 */
+.ink-agent-caret::after{content:"";display:inline-block;width:6px;height:1.05em;margin-left:2px;background:var(--ip-blue);vertical-align:-2px;animation:ink-blink .9s steps(1) infinite}
+@keyframes ink-blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.ink-agent-diff{background:var(--ip-blue-soft);color:var(--ip-blue);border-bottom:1.5px solid var(--ip-blue);padding:0 1px}
+
+/* ══ 12 · 专业画布原语 PRO CANVAS PRIMITIVES ══════════════════════ */
+.ink-canvas{position:relative;border-radius:var(--ip-r-box);overflow:hidden;box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule)}
+/* 时间线 */
+.ink-ruler{position:relative;height:22px;background:var(--ip-paper);border-bottom:var(--ip-hair) solid var(--ip-rule);overflow:hidden}
+.ink-ruler .t{position:absolute;bottom:0;width:1px;background:var(--ip-ink-6)}
+.ink-ruler .t.maj{background:var(--ip-ink-4)}
+.ink-ruler .lb{position:absolute;top:2px;font:600 8.5px/1 var(--ip-mono);color:var(--ip-ink-4);letter-spacing:.04em}
+.ink-track{position:relative;height:34px;border-bottom:var(--ip-hair) solid var(--ip-rule-soft);background:var(--ip-paper)}
+.ink-track:nth-child(even){background:var(--ip-paper-hi)}
+.ink-clip{position:absolute;top:5px;height:24px;border-radius:5px;background:var(--ip-ink);color:var(--ip-paper);display:flex;align-items:center;padding:0 7px;font:600 10px/1 var(--ip-font);letter-spacing:.02em;overflow:hidden;cursor:grab;transition:background var(--ip-fast) var(--ip-ease)}
+.ink-clip--ghost{background:transparent;color:var(--ip-ink-2);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-5)}
+.ink-clip--hatch{background:var(--ip-well);color:var(--ip-ink-2);background-image:repeating-linear-gradient(45deg,var(--ip-ink-7) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-6)}
+.ink-clip[aria-selected="true"]{box-shadow:0 0 0 1.5px var(--ip-ink),0 0 0 3px var(--ip-paper)}
+.ink-playhead{position:absolute;top:0;bottom:0;width:1px;background:var(--ip-ink);z-index:4;pointer-events:none}
+.ink-playhead::before{content:"";position:absolute;top:0;left:-4px;border:4px solid transparent;border-top:6px solid var(--ip-ink)}
+/* 波形 */
+.ink-wave{display:flex;align-items:center;gap:1px;height:76px;padding:0 2px}
+.ink-wave i{flex:1;background:var(--ip-ink-5);border-radius:var(--ip-r-pill);transition:background var(--ip-fast) var(--ip-ease)}
+.ink-wave i.sel{background:var(--ip-ink)}
+.ink-selection{position:absolute;top:0;bottom:0;background:rgba(28,28,26,.055);border-left:var(--ip-hair) dashed var(--ip-ink);border-right:var(--ip-hair) dashed var(--ip-ink)}
+[data-theme="carbon"] .ink-selection{background:rgba(237,235,228,.06)}
+/* 节点 */
+.ink-node{position:absolute;width:150px;background:var(--ip-paper);border-radius:9px;box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-5);font-size:11.5px;overflow:hidden}
+.ink-node header{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 8px;background:var(--ip-ink);color:var(--ip-paper);font:700 9.5px/1.3 var(--ip-font);letter-spacing:.12em;text-transform:uppercase}
+.ink-node ul{list-style:none;padding:5px 0}
+.ink-node li{display:flex;align-items:center;justify-content:space-between;padding:3px 8px;color:var(--ip-ink-2);font-size:11px}
+.ink-node[data-state="agent"]{box-shadow:inset 0 0 0 1.5px var(--ip-blue)}
+.ink-node[data-state="agent"] header{background:var(--ip-blue)}
+.ink-node[data-state="bad"]{box-shadow:inset 0 0 0 1.5px var(--ip-red)}
+.ink-node[data-state="bad"] header{background:var(--ip-red)}
+.ink-port{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--ip-paper);box-shadow:inset 0 0 0 1.5px var(--ip-ink);z-index:3}
+/* 视口 / 标注 */
+.ink-plate{position:relative;display:grid;place-items:center;background:var(--ip-well);overflow:hidden}
+.ink-bbox{position:absolute;box-shadow:inset 0 0 0 1.5px var(--ip-ink)}
+.ink-bbox>b{position:absolute;top:-17px;left:-1.5px;height:16px;display:flex;align-items:center;padding:0 5px;font:700 9px/1 var(--ip-font);letter-spacing:.1em;text-transform:uppercase;background:var(--ip-ink);color:var(--ip-paper);border-radius:3px 3px 0 0;white-space:nowrap}
+.ink-bbox--red{box-shadow:inset 0 0 0 1.5px var(--ip-red)}
+.ink-bbox--red>b{background:var(--ip-red)}
+.ink-bbox--dash{box-shadow:none;outline:1.5px dashed var(--ip-ink-4);outline-offset:-1px}
+.ink-handle{position:absolute;width:6px;height:6px;background:var(--ip-paper);box-shadow:inset 0 0 0 1.2px var(--ip-ink)}
+/* 缩略图轨（PPT / 故事板 / 素材） */
+.ink-thumb{position:relative;flex:none;border-radius:6px;background:var(--ip-paper);box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-rule);overflow:hidden;cursor:pointer;transition:box-shadow var(--ip-fast) var(--ip-ease)}
+.ink-thumb:hover{box-shadow:inset 0 0 0 var(--ip-hair) var(--ip-ink-4)}
+.ink-thumb[aria-selected="true"]{box-shadow:inset 0 0 0 1.5px var(--ip-ink)}
+.ink-thumb>span{position:absolute;left:4px;top:4px;font:700 8.5px/1 var(--ip-mono);color:var(--ip-ink-4)}
+/* 拖放插入导轨 */
+.ink-drop{height:2px;background:var(--ip-ink);border-radius:2px;position:relative}
+.ink-drop::before,.ink-drop::after{content:"";position:absolute;top:-2px;width:6px;height:6px;border-radius:50%;background:var(--ip-ink)}
+.ink-drop::before{left:-3px}
+.ink-drop::after{right:-3px}
+.ink-slot{display:grid;place-items:center;min-height:52px;border-radius:var(--ip-r-box);outline:var(--ip-hair) dashed var(--ip-ink-5);outline-offset:-1px;color:var(--ip-ink-4);font-size:11.5px}
+/* 缩放/分栏把手 */
+.ink-resizer{width:5px;cursor:col-resize;position:relative;flex:none}
+.ink-resizer::after{content:"";position:absolute;left:2px;top:0;bottom:0;width:1px;background:var(--ip-rule)}
+.ink-resizer:hover::after{background:var(--ip-ink);width:1.5px}
+
+/* 降级 */
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chatcut.local/contracts/request.schema.json",
+  "title": "ChatCut UI to Agent Request Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requestId", "operation", "projectId", "projectVersion", "createdAt"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "pattern": "^req-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "由 UI 生成的全局唯一 ID，用于幂等与审计。幂等检查必须先于版本检查执行。"
+    },
+    "operation": {
+      "enum": [
+        "clip.import",
+        "clip.arrange",
+        "narration.rewrite",
+        "narration.synthesize",
+        "timeline.retime",
+        "annotation.author",
+        "annotation.define",
+        "annotation.render",
+        "captions.generate",
+        "export.render"
+      ]
+    },
+    "projectId": { "type": "string", "minLength": 1 },
+    "projectVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "提交时 UI 所见的权威状态版本，用于 stale result 保护。"
+    },
+    "userIntent": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "用户的自然语言意图，供 Agent 理解；不作为机器判据。"
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clipIds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "segIds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "annIds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "cueIds": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "timeRangeSec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "properties": {
+            "start": { "type": "number", "minimum": 0 },
+            "end": { "type": "number", "minimum": 0 }
+          }
+        }
+      },
+      "description": "使用稳定 ID 表达选择，不传屏幕坐标，消除自然语言中的指代歧义。空数组不是合法选择：它表达的是「选中了零个对象」，与「不带 selection」意思完全不同，Agent 认领后无事可做（F-043）。要表达「全体」就省略该字段。"
+    },
+    "assetRefs": {
+      "type": "array",
+      "description": "大文件一律只传引用与元数据。禁止传输媒体字节或 Base64。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assetId", "path", "kind"],
+        "properties": {
+          "assetId": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["video", "audio", "image", "overlay", "captions", "project"] },
+          "durationSec": { "type": "number", "minimum": 0 },
+          "width": { "type": "integer", "minimum": 1 },
+          "height": { "type": "integer", "minimum": 1 },
+          "fps": { "type": "number", "minimum": 0 },
+          "hasAudio": { "type": "boolean" },
+          "contentHash": { "type": "string" }
+        }
+      }
+    },
+    "framePreviewPath": {
+      "type": "string",
+      "description": "仅标注定位类操作附带的单帧截图路径。只传路径，不传字节。"
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

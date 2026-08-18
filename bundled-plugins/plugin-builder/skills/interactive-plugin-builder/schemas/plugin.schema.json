@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://feicai.example/schemas/interactive-plugin-builder/plugin.schema.json",
+  "title": "Interactive Plugin Builder IR",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "plugin",
+    "product",
+    "targets",
+    "ui",
+    "agent",
+    "contracts",
+    "mcp",
+    "state",
+    "permissions",
+    "jobs",
+    "acceptance",
+    "nonGoals",
+    "paths"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "version",
+        "type",
+        "form",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+        },
+        "type": {
+          "const": "interactive-agent-plugin"
+        },
+        "form": {
+          "enum": [
+            "companion-web-app",
+            "mcp-app",
+            "hybrid"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primaryUser",
+        "coreOutcome",
+        "guiNecessity",
+        "specFile",
+        "designFile",
+        "planFile"
+      ],
+      "properties": {
+        "primaryUser": {
+          "type": "string",
+          "minLength": 1
+        },
+        "coreOutcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "guiNecessity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "specFile": {
+          "type": "string",
+          "pattern": "^\\./"
+        },
+        "designFile": {
+          "type": "string",
+          "pattern": "^\\./"
+        },
+        "planFile": {
+          "type": "string",
+          "pattern": "^\\./"
+        }
+      }
+    },
+    "targets": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/target"
+      }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "framework",
+        "complexityClass",
+        "preferredDisplayMode",
+        "standaloneDevMode"
+      ],
+      "properties": {
+        "required": {
+          "const": true
+        },
+        "framework": {
+          "type": "string",
+          "minLength": 1
+        },
+        "complexityClass": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ]
+        },
+        "preferredDisplayMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "standaloneDevMode": {
+          "type": "boolean"
+        },
+        "kit": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime",
+        "uiCanTriggerAgent",
+        "contextPolicy",
+        "resultPolicy"
+      ],
+      "properties": {
+        "runtime": {
+          "const": "host"
+        },
+        "uiCanTriggerAgent": {
+          "const": true
+        },
+        "contextPolicy": {
+          "enum": [
+            "references-first",
+            "structured-context",
+            "host-message"
+          ]
+        },
+        "resultPolicy": {
+          "enum": [
+            "domain-tools-only",
+            "proposal-first",
+            "mixed"
+          ]
+        }
+      }
+    },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestSchema",
+        "resultSchema",
+        "stateSchema",
+        "evidenceSchema"
+      ],
+      "properties": {
+        "requestSchema": {
+          "type": "string",
+          "pattern": "^\\./"
+        },
+        "resultSchema": {
+          "type": "string",
+          "pattern": "^\\./"
+        },
+        "stateSchema": {
+          "type": "string",
+          "pattern": "^\\./"
+        },
+        "evidenceSchema": {
+          "type": "string",
+          "pattern": "^\\./"
+        }
+      }
+    },
+    "mcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transport",
+        "renderTool",
+        "appOnlyTools",
+        "agentTools",
+        "longRunningTools",
+        "resources"
+      ],
+      "properties": {
+        "transport": {
+          "enum": [
+            "stdio",
+            "streamable-http"
+          ]
+        },
+        "renderTool": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*$"
+            }
+          ]
+        },
+        "appOnlyTools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "agentTools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "longRunningTools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "uri"
+            ],
+            "properties": {
+              "uri": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mimeType": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "directory",
+        "schemaVersion",
+        "reopenRequired",
+        "projectIsolation"
+      ],
+      "properties": {
+        "scope": {
+          "enum": [
+            "project",
+            "user",
+            "session"
+          ]
+        },
+        "directory": {
+          "type": "string",
+          "pattern": "^\\.[a-z0-9][a-z0-9._-]*$"
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reopenRequired": {
+          "type": "boolean"
+        },
+        "projectIsolation": {
+          "type": "boolean"
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filesystem",
+        "network",
+        "secrets",
+        "destructiveActions"
+      ],
+      "properties": {
+        "filesystem": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "scope",
+              "access"
+            ],
+            "properties": {
+              "scope": {
+                "enum": [
+                  "project",
+                  "explicit-external-selection",
+                  "user-config"
+                ]
+              },
+              "access": {
+                "enum": [
+                  "read",
+                  "write",
+                  "read-write"
+                ]
+              },
+              "purpose": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "network": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "origin",
+              "purpose"
+            ],
+            "properties": {
+              "origin": {
+                "type": "string",
+                "minLength": 1
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "required",
+              "purpose"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "purpose": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "destructiveActions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "jobs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "cancel",
+        "retry",
+        "reconnect",
+        "idempotencyRequired"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "cancel": {
+          "type": "boolean"
+        },
+        "retry": {
+          "type": "boolean"
+        },
+        "reconnect": {
+          "type": "boolean"
+        },
+        "idempotencyRequired": {
+          "type": "boolean"
+        }
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "optional"
+      ],
+      "properties": {
+        "required": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^AC-\\d{3,}$"
+          }
+        },
+        "optional": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^AC-\\d{3,}$"
+          }
+        }
+      }
+    },
+    "nonGoals": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "codeRoot",
+        "distRoot",
+        "stateDirectory",
+        "evidenceIndex"
+      ],
+      "properties": {
+        "codeRoot": {
+          "type": "string",
+          "pattern": "^\\./[a-z0-9]"
+        },
+        "distRoot": {
+          "type": "string",
+          "pattern": "^\\./"
+        },
+        "stateDirectory": {
+          "type": "string",
+          "pattern": "^\\.[a-z0-9][a-z0-9._-]*$"
+        },
+        "evidenceIndex": {
+          "type": "string",
+          "pattern": "^\\./"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier",
+        "runtimeProfile",
+        "uiMode",
+        "fallback",
+        "requiredStatus"
+      ],
+      "properties": {
+        "tier": {
+          "enum": [
+            "required",
+            "optional",
+            "experimental"
+          ]
+        },
+        "runtimeProfile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uiMode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fallback": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requiredStatus": {
+          "enum": [
+            "HOST_VERIFIED",
+            "BUILD_VALID",
+            "DEFERRED"
+          ]
+        }
+      }
+    }
+  }
+}

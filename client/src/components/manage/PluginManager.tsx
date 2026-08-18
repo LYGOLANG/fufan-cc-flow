@@ -19,6 +19,8 @@ import {
 import { usePluginStore } from "../../stores/pluginStore";
 import { useMarketplaceStore } from "../../stores/marketplaceStore";
 import MarketplacePanel from "./MarketplacePanel";
+import LocalPluginInstall from "./LocalPluginInstall";
+import BundledPlugins from "./BundledPlugins";
 
 const SCOPE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
   user:    { bg: "bg-purple-500/10",  text: "text-purple-400", label: "用户级" },
@@ -147,9 +149,22 @@ export default function PluginManager() {
       </div>
 
       {view === "marketplace" ? (
-        <MarketplacePanel onInstalled={loadPlugins} />
+        <div className="space-y-3">
+          {/* 装插件这件事都在「市场」里找，而不是散落在「已安装」页 ——
+              后者是查看现状的地方。顺序：随包内置的（点一下就装）→
+              本地文件夹（自己挑）→ 线上市场。 */}
+          <BundledPlugins onInstalled={loadPlugins} />
+          <LocalPluginInstall onInstalled={loadPlugins} />
+          <MarketplacePanel onInstalled={loadPlugins} />
+        </div>
       ) : (
         <>
+          {/* 内置插件在「已安装」页也露一次。
+              原来只放在「市场」页，用户要先点「插件」再点「市场」两层才看得见 ——
+              实报「没有看到」。装完它会正常出现在下方已安装列表里，这里的卡片
+              自己变成「已安装」，不会造成两处状态打架。 */}
+          <BundledPlugins onInstalled={loadPlugins} />
+
           {/* Actions */}
           <div className="flex items-center gap-2">
             <button

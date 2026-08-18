@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "chatcut",
+  "displayName": "ChatCut 课程视频剪辑",
+  "version": "0.1.0",
+  "description": "把操作录屏与 HyperFrames 动态图形片段合成为一集带 TTS 旁白、画面标注与字幕的课程视频成片。",
+  "author": {
+    "name": "FEICAI Club"
+  },
+  "keywords": [
+    "video-editing",
+    "ffmpeg",
+    "hyperframes",
+    "tts",
+    "captions",
+    "annotation",
+    "claude-code"
+  ]
+}

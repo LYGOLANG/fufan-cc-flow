@@ -1,6 +1,13 @@
 node_modules/
 client/.cache/
-dist/
+# 只排除本仓库自己的构建输出，不要用通配的 `dist/`：那会连
+# bundled-plugins/*/dist 一起吞掉，而那些是随包分发插件的运行实体
+# (chatcut 的 .mcp.json 直接指向 dist/server/index.mjs)，漏提交的话
+# fresh clone 打出的包里插件装上即坏且全程不报错。
+# 另注：对已被排除目录内的 `!` 例外无效(git 不进入被排除目录)，
+# 只能在源头把规则写精确。.claude/hooks 曾踩过同一个坑。
+/client/dist/
+/server/dist/
 .env
 .env.*
 !.env.example

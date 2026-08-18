@@ -1,0 +1,14 @@
+{
+  "name": "personal",
+  "owner": {
+    "name": "[Your Name]"
+  },
+  "plugins": [
+    {
+      "name": "[plugin-id]",
+      "source": "./plugins/[plugin-id]",
+      "description": "[one-line description]",
+      "category": "Productivity"
+    }
+  ]
+}

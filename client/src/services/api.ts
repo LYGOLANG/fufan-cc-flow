@@ -2,7 +2,7 @@ import type { FileNode, FileContent } from "../types/file";
 import type { ProviderInfo, ProviderTestResult } from "../types/provider";
 import type { McpServer } from "../types/mcp";
 import type { SkillInfo, SkillDetail, SkillGenerateResult } from "../types/skill";
-import type { PluginInfo } from "../types/plugin";
+import type { PluginInfo, BundledPluginInfo } from "../types/plugin";
 import { httpBase, authHeaders } from "./endpoint";
 
 // Base is resolved per-call: relative "/api" under Vite dev (proxied), or a direct
@@ -316,6 +316,30 @@ export const api = {
     request(`/plugins/${encodeURIComponent(name)}`, {
       method: "PATCH",
       body: JSON.stringify({ enabled }),
+    }),
+
+  // ── 随包内置插件 / 本地文件夹安装 ──
+  //
+  // **必须走 request()，不能用裸 fetch("/api/...")。** 桌面版的后端是 sidecar，
+  // 跑在 127.0.0.1 的随机端口上且要带鉴权头；相对路径在 Tauri WebView 里根本
+  // 打不到它。这个坑吃过一次：内置插件列表恒为空 → 组件按「没有内置插件」
+  // 整块隐藏 → 界面上什么都没有，而后端明明返回正常。
+  getBundledPlugins: () =>
+    request<{ plugins: BundledPluginInfo[] }>("/plugins/bundled"),
+  installBundledPlugin: (id: string) =>
+    request<{ success: boolean }>("/plugins/bundled/install", {
+      method: "POST",
+      body: JSON.stringify({ id }),
+    }),
+  inspectLocalPlugin: (path: string) =>
+    request<{ plugin: BundledPluginInfo }>("/plugins/local/inspect", {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    }),
+  installLocalPlugin: (path: string) =>
+    request<{ success: boolean }>("/plugins/local/install", {
+      method: "POST",
+      body: JSON.stringify({ path }),
     }),
 
   // ── Marketplace ──

@@ -1,0 +1,67 @@
+/* chatcut 标注层样式模板。
+ *
+ * DEC-013：中文系统字体必须显式声明 @font-face，否则 `hyperframes lint` 直接以退出码 1
+ * 失败（font_family_without_font_face），或渲染时静默 fallback 成豆腐块。
+ * src: local(...) 只查本机字体，不产生任何网络请求。
+ */
+@font-face { font-family: "Microsoft YaHei"; src: local("Microsoft YaHei"); }
+@font-face { font-family: "SimHei"; src: local("SimHei"); }
+
+/* 任何一处不透明背景都会静默杀死 alpha 通道（S1 实测）。 */
+html, body { margin: 0; padding: 0; background: transparent; }
+
+#root {
+  position: relative;
+  width: __W__px;
+  height: __H__px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.clip { position: absolute; inset: 0; background: transparent; }
+
+/* 入场起点。非 0：S1 实测 autoAlpha:0 起手会让层的第 0 帧全空（DEC-007）。 */
+#ann { opacity: __ENTRANCE_START_OPACITY__; }
+
+.hl, .ring, .focus, .card, .chip, .arw { position: absolute; }
+
+.hl {
+  border-style: solid; border-width: 8px; border-radius: 10px;
+  box-sizing: border-box; background: transparent;
+}
+.ring {
+  border-style: solid; border-width: 6px; border-radius: 999px;
+  box-sizing: border-box; background: transparent;
+}
+.focus {
+  border-style: solid; border-width: 6px; border-radius: 12px;
+  box-sizing: border-box; background: transparent;
+}
+.arw { left: 0; top: 0; pointer-events: none; }
+
+.card {
+  box-sizing: border-box;
+  border-style: solid; border-width: 4px; border-radius: 16px;
+  background: rgba(10, 13, 18, 0.82);
+  display: flex; align-items: center; justify-content: flex-start;
+  padding: 18px 24px;
+}
+.card-t {
+  font-family: "Microsoft YaHei", "SimHei", Inter, system-ui, sans-serif;
+  font-weight: 700; color: #FFFFFF; line-height: 1.32;
+  overflow-wrap: anywhere;
+}
+
+.chip {
+  box-sizing: border-box;
+  background: rgba(10, 13, 18, 0.82);
+  border-radius: 10px;
+  display: flex; align-items: center;
+  padding: 0 __CHIP_PAD_X__px;
+  overflow: hidden;
+}
+.chip-t {
+  font-family: "Microsoft YaHei", "SimHei", Inter, system-ui, sans-serif;
+  font-weight: 700; color: #FFFFFF; line-height: 1;
+  white-space: nowrap;
+}

@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "note": "规则来源为用户 ep04-ep13 十集课程视频的手工改写积累。屏幕上的文字保持原样，只改送 TTS 的文本。",
+  "protectedTerms": [
+    "GitHub Actions",
+    "Task Scheduler",
+    "OpenCode",
+    "HyperFrames",
+    "JavaScript",
+    "TypeScript",
+    "Python",
+    "Node",
+    "YAML",
+    "JSON",
+    "Markdown",
+    "cron",
+    "crontab",
+    "pipeline",
+    "Pipeline",
+    "secrets",
+    "checkout",
+    "workflow",
+    "Server",
+    "articles",
+    "arXiv",
+    "Claude",
+    "Codex"
+  ],
+  "exact": {
+    "model_client.py": "model client 点 py",
+    "mcp_knowledge_server.py": "M C P knowledge server 点 py",
+    "rss_sources.yaml": "rss sources 点 yaml",
+    "run_collect.bat": "run collect 点 bat",
+    "test-bad.json": "test bad 点 json",
+    "opencode.json": "opencode 点 json",
+    "settings.json": "settings 点 json",
+    "AGENTS.md": "A G E N T S 点 md",
+    "SKILL.md": "S K I L L 点 md",
+    "python3": "python 三",
+    "json.loads": "json loads",
+    "tools/list": "tools list",
+    "dry-run": "dry run",
+    "game-changing": "game changing",
+    "setup-python": "setup python",
+    "workflow_dispatch": "workflow dispatch",
+    "ctrl-p": "control P",
+    "cs.CL": "cs 点 C L",
+    "cs.AI": "cs 点 A I",
+    "tool.execute.after": "tool execute after",
+    ".github/workflows": "点 github 斜杠 workflows",
+    "2>&1": "把错误也一并收进同一个文件",
+    "SDD": "S D D",
+    "JSON-RPC": "J S O N R P C",
+    "search_articles": "search articles",
+    "collect_rss": "collect rss",
+    "check_quality": "check quality",
+    "validate_json": "validate json",
+    "Python 3.11": "Python 三点一一",
+    "Python 3.12": "Python 三点一二"
+  },
+  "patterns": [
+    {
+      "id": "http-status",
+      "re": "(?<![0-9])(4\\d{2}|5\\d{2})(?![0-9])",
+      "kind": "digits-to-cn",
+      "note": "HTTP 状态码逐位念：401 → 四零一"
+    },
+    {
+      "id": "exit-code",
+      "re": "退出码\\s*([0-9]+)",
+      "kind": "exit-code-cn",
+      "note": "退出码1 → 退出码一"
+    },
+    {
+      "id": "short-flag",
+      "re": "(?<=\\s)-([a-zA-Z])(?![a-zA-Z-])",
+      "kind": "dash-flag",
+      "note": "单字母 flag：-v → 杠 v"
+    },
+    {
+      "id": "file-ext",
+      "re": "\\.(md|py|json|yaml|yml|bat|ts|tsx|js|mjs|sh|txt|csv|mp4|srt)\\b",
+      "kind": "dot-ext",
+      "note": ".md → 点 md"
+    }
+  ],
+  "acronyms": [
+    "API", "LLM", "HTTP", "HTTPS", "SDK", "MCP", "RSS", "CLI", "URL", "UTC",
+    "JSON-RPC", "RAG", "USB", "AI", "ID", "TTS", "ASR", "UI", "UX", "CI", "CD",
+    "GPU", "CPU", "OS", "SSE", "CSS", "HTML", "DOM", "SQL", "VOD", "FPS"
+  ],
+  "wordSeparators": {
+    "underscore": " ",
+    "hyphenInIdentifier": " ",
+    "slashInIdentifier": " "
+  },
+  "stdioTerms": {
+    "stdin": "标准输入",
+    "stdout": "标准输出",
+    "stderr": "标准错误",
+    "stdio": "标准输入输出"
+  }
+}

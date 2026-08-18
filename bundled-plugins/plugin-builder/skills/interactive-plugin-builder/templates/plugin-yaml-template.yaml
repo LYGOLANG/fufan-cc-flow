@@ -1,0 +1,88 @@
+schemaVersion: 1
+
+plugin:
+  id: "[plugin-id]"
+  title: "[Plugin Name]"
+  version: "0.1.0"
+  type: "interactive-agent-plugin"
+  form: "companion-web-app"
+  description: "[one observable Plugin outcome]"
+
+product:
+  primaryUser: "[primary user]"
+  coreOutcome: "[core outcome]"
+  guiNecessity: "[why direct manipulation is necessary]"
+  specFile: "./Plugin-Spec.md"
+  designFile: "./Plugin-Design.md"
+  planFile: "./PLUGIN-DEV-PLAN.md"
+
+targets:
+  claude-code:
+    tier: "required"
+    runtimeProfile: "claude-code-browser"
+    uiMode: "browser-or-preview"
+    fallback: "request-queue"
+    requiredStatus: "HOST_VERIFIED"
+
+ui:
+  required: true
+  kit: "neural-pro"
+  framework: "react-typescript-vite"
+  complexityClass: "A"
+  preferredDisplayMode: "workspace"
+  standaloneDevMode: true
+
+agent:
+  runtime: "host"
+  uiCanTriggerAgent: true
+  contextPolicy: "references-first"
+  resultPolicy: "domain-tools-only"
+
+contracts:
+  requestSchema: "./contracts/request.schema.json"
+  resultSchema: "./contracts/result.schema.json"
+  stateSchema: "./contracts/state.schema.json"
+  evidenceSchema: "./contracts/evidence.schema.json"
+
+mcp:
+  transport: "stdio"
+  renderTool: null
+  appOnlyTools: []
+  agentTools: []
+  longRunningTools: []
+  resources: []
+
+state:
+  scope: "project"
+  directory: ".[plugin-id]"
+  schemaVersion: 1
+  reopenRequired: true
+  projectIsolation: true
+
+permissions:
+  filesystem:
+    - scope: "project"
+      access: "read-write"
+      purpose: "Store project-owned Plugin state and generated assets."
+  network: []
+  secrets: []
+  destructiveActions: []
+
+jobs:
+  enabled: false
+  cancel: false
+  retry: false
+  reconnect: false
+  idempotencyRequired: true
+
+acceptance:
+  required: []
+  optional: []
+
+nonGoals: []
+
+paths:
+  codeRoot: "./[plugin-id]"
+  distRoot: "./dist"
+  stateDirectory: ".[plugin-id]"
+  evidenceIndex: "./evidence/check/evidence.json"

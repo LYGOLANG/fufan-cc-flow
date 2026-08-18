@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://feicai.example/schemas/interactive-plugin-builder/evidence.schema.json",
+  "title": "Plugin Verification Evidence Index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "pluginId", "revision", "generatedAt", "items"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "pluginId": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "revision": {"type": "string"},
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidenceId", "target", "checkId", "action", "status", "artifactPath", "timestamp"],
+        "properties": {
+          "evidenceId": {"type": "string", "pattern": "^EVID-\\d{3,}$"},
+          "target": {"type": "string"},
+          "checkId": {"type": "string"},
+          "relatedIds": {"type": "array", "items": {"type": "string"}},
+          "action": {"type": "string", "minLength": 1},
+          "command": {"type": ["string", "null"]},
+          "exitCode": {"type": ["integer", "null"]},
+          "status": {"enum": ["PASS", "FAIL", "NOT_APPLICABLE", "NOT_VERIFIED"]},
+          "artifactPath": {"type": "string", "minLength": 1},
+          "timestamp": {"type": "string", "format": "date-time"},
+          "environment": {"type": "object"},
+          "notes": {"type": "string"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "[plugin-id]",
+  "version": "0.1.0",
+  "description": "[one-line description]",
+  "author": {
+    "name": "[author name]"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "[Plugin Name]",
+    "shortDescription": "[short description shown in the plugin list]",
+    "longDescription": "[longer description for the details page]",
+    "developerName": "[author name]",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "defaultPrompt": [
+      "[one starter prompt under 50 characters]"
+    ]
+  }
+}

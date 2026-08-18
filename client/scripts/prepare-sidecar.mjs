@@ -139,7 +139,10 @@ function isTemplateExcluded(root, source) {
 }
 
 console.log("[prepare-sidecar] bundling project templates...");
-for (const item of [".claude", ".codex", ".agents", "AGENTS.md"]) {
+// bundled-plugins：随包分发但**不自动安装**的插件（界面在「拓展 → 插件 →
+// 市场」列出，装不装由用户点按钮决定）。必须随包，否则换台电脑装完
+// Agent Flow 就少了内置插件，而界面仍然列着它 —— 又一次界面说谎。
+for (const item of [".claude", ".codex", ".agents", "AGENTS.md", "bundled-plugins"]) {
   const src = path.join(repoRoot, item);
   if (existsSync(src)) {
     cpSync(src, path.join(serverDistDir, item), {

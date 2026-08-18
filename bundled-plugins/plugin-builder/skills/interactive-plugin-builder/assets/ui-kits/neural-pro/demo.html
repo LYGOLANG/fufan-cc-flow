@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugin UI Kit · Neural Pro</title>
+<link rel="stylesheet" href="./tokens.css">
+<link rel="stylesheet" href="./components.css">
+<style>
+  .demo-wrap { max-width: 980px; margin: 0 auto; padding: 48px 24px 80px; }
+  .demo-sec { margin-top: 44px; }
+  .demo-sec > .pk-label { display: block; margin-bottom: 14px; }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .demo-grid-sm { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .demo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .demo-stack { display: flex; flex-direction: column; gap: 12px; }
+  .demo-node { position: relative; width: 180px; }
+</style>
+</head>
+<body class="pk">
+<div class="demo-wrap">
+
+  <div class="demo-row" style="justify-content:space-between;margin-bottom:8px">
+    <span class="pk-label">Plugin UI Kit · Neural Pro</span>
+    <button class="pk-btn pk-btn--outline pk-btn--sm" onclick="pkToast('主题已切换：' + pkTheme())">切换明暗</button>
+  </div>
+  <h1 class="pk-display">细字、深空，<strong>一线极光</strong></h1>
+  <p class="pk-muted" style="max-width:560px;margin:8px 0 0">中性为体，极光为魂：整套系统唯一的彩色属于 Agent。暗色是影棚（画布、剪辑、节点、仪表盘默认），亮色是展厅（展板、审核台默认）。</p>
+
+  <div class="demo-sec">
+    <span class="pk-label">按钮 · 五态四型</span>
+    <div class="demo-row">
+      <button class="pk-btn pk-btn--primary">主要操作</button>
+      <button class="pk-btn pk-btn--outline">次要</button>
+      <button class="pk-btn pk-btn--quiet">安静</button>
+      <button class="pk-btn pk-btn--danger">删除</button>
+      <button class="pk-btn pk-btn--primary" disabled>禁用</button>
+      <span class="pk-kbd">⌘</span><span class="pk-kbd">↵</span>
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">输入与选择</span>
+    <div class="demo-grid">
+      <div class="demo-stack">
+        <input class="pk-field" placeholder="输入项目名称…">
+        <select class="pk-field"><option>Rec.709</option><option>DCI-P3</option></select>
+      </div>
+      <div class="demo-stack">
+        <label class="demo-row" style="gap:8px"><input type="checkbox" class="pk-switch" checked> <span style="font-size:13px">自动保存</span></label>
+        <label class="demo-row" style="gap:8px"><input type="checkbox" class="pk-switch"> <span style="font-size:13px">高精度预览</span></label>
+      </div>
+      <div class="demo-row">
+        <button class="pk-chip is-on" data-pk-toggle>全部</button>
+        <button class="pk-chip" data-pk-toggle>节点</button>
+        <button class="pk-chip" data-pk-toggle>片段</button>
+        <button class="pk-chip" data-pk-toggle>历史</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">状态与徽标 · 语义色不占用极光</span>
+    <div class="demo-row">
+      <span class="pk-pill pk-pill--ok">已验证</span>
+      <span class="pk-pill pk-pill--warn">2 待审</span>
+      <span class="pk-pill pk-pill--bad">1 冲突</span>
+      <span class="pk-pill pk-pill--info">同步中</span>
+      <span class="pk-pill pk-pill--line">草稿</span>
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">Agent 活动 · 唯一的彩色</span>
+    <div class="pk-panel" style="overflow:hidden">
+      <div style="padding:16px 18px">
+        <div class="pk-prop"><span class="k">任务</span><span class="v">重建 LUT 缓存</span></div>
+        <div class="pk-prop"><span class="k">进度</span><span class="v">3 / 5</span></div>
+        <div class="pk-progress" style="margin-top:12px"><i style="width:64%"></i></div>
+      </div>
+      <div class="pk-glowbar">
+        <span class="msg"><b>Agent</b> 正在处理请求</span>
+        <div class="track"><i></i></div>
+        <span class="pk-mono" style="color:var(--pk-ink-3)">00:41</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">卡片 · 属性行 · 选中光环</span>
+    <div class="demo-grid">
+      <div class="pk-card">
+        <p class="pk-title" style="margin-bottom:2px">色彩分级</p>
+        <p class="pk-mono" style="color:var(--pk-ink-3);margin:0 0 10px">node_grade_04</p>
+        <div class="pk-prop"><span class="k">曝光</span><span class="v">+0.30</span></div>
+        <div class="pk-prop"><span class="k">对比度</span><span class="v">1.12</span></div>
+        <div class="pk-prop"><span class="k">缓存</span><span class="v" style="color:var(--pk-ok)">已就绪</span></div>
+      </div>
+      <div class="pk-card pk-selected demo-node" style="width:auto">
+        <p class="pk-title" style="margin-bottom:2px">选中态</p>
+        <p class="pk-muted" style="margin:0;font-size:12px">蓝色光环来自极光带，只用于当前对象</p>
+      </div>
+      <div class="pk-card">
+        <div class="pk-tabs" data-pk-tab-group="g1" style="margin:-6px 0 12px">
+          <button class="pk-tab is-on" data-pk-tab="a">属性</button>
+          <button class="pk-tab" data-pk-tab="b">历史</button>
+        </div>
+        <div data-pk-tab-panel="a" data-pk-tab-panel-group="g1">
+          <div class="pk-prop"><span class="k">色温</span><span class="v">5600K</span></div>
+        </div>
+        <div data-pk-tab-panel="b" data-pk-tab-panel-group="g1" hidden>
+          <div class="pk-prop"><span class="k">上次修改</span><span class="v">2 分钟前</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">表格 · 32px 行高</span>
+    <div class="pk-panel" style="overflow-x:auto;padding:4px 14px 8px">
+      <table class="pk-table">
+        <thead><tr><th>片段</th><th>时长</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+        <tbody>
+          <tr><td>开场镜头</td><td class="pk-mono">00:12:04</td><td><span class="pk-pill pk-pill--ok">已渲染</span></td><td style="text-align:right"><button class="pk-btn pk-btn--quiet pk-btn--sm">打开</button></td></tr>
+          <tr><td>转场 A</td><td class="pk-mono">00:03:18</td><td><span class="pk-pill pk-pill--warn">排队中</span></td><td style="text-align:right"><button class="pk-btn pk-btn--quiet pk-btn--sm">打开</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">空状态 · 骨架屏 · 提示</span>
+    <div class="demo-grid">
+      <div class="pk-card pk-empty">
+        <p class="pk-title">还没有节点</p>
+        <p>从素材输入开始搭建你的第一条流程。</p>
+        <button class="pk-btn pk-btn--primary">新建节点</button>
+      </div>
+      <div class="pk-card demo-stack">
+        <div class="pk-skeleton" style="height:14px;width:60%"></div>
+        <div class="pk-skeleton" style="height:14px;width:85%"></div>
+        <div class="pk-skeleton" style="height:14px;width:40%"></div>
+        <div class="demo-row" style="margin-top:6px">
+          <button class="pk-btn pk-btn--outline pk-btn--sm pk-tooltip" data-tip="提示出现在这里">悬停看提示</button>
+          <button class="pk-btn pk-btn--outline pk-btn--sm" onclick="pkModal.open('demo-modal')">打开弹窗</button>
+          <button class="pk-btn pk-btn--outline pk-btn--sm" onclick="pkToast('已保存')">弹一条 Toast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">场景原语 · 先做尺，再落墨</span>
+    <div class="demo-grid">
+
+      <div class="pk-card">
+        <div class="pk-head"><p class="pk-title">时间线</p><span class="pk-pill pk-pill--line">01</span></div>
+        <div class="pk-canvas">
+          <div class="pk-ruler" id="demo-ruler"></div>
+          <div style="position:relative">
+            <div class="pk-track"><div class="pk-clip" style="left:2%;width:26%">A-ROLL 01</div><div class="pk-clip" aria-selected="true" style="left:31%;width:31%">A-ROLL 02</div><div class="pk-clip pk-clip--ghost" style="left:65%;width:20%">占位</div></div>
+            <div class="pk-track"><div class="pk-clip pk-clip--hatch" style="left:14%;width:24%">渲染中</div><div class="pk-clip" style="left:44%;width:34%;background:var(--pk-ink-2)">MUSIC</div></div>
+            <div class="pk-playhead" style="left:46%"></div>
+          </div>
+        </div>
+        <div class="pk-row" style="margin-top:12px">
+          <div class="pk-group">
+            <button class="pk-btn pk-btn--outline pk-btn--sm pk-btn--icon" aria-label="回到开头">⏮</button>
+            <button class="pk-btn pk-btn--outline pk-btn--sm pk-btn--icon" aria-label="播放">▶</button>
+            <button class="pk-btn pk-btn--outline pk-btn--sm pk-btn--icon" aria-label="跳到结尾">⏭</button>
+          </div>
+          <hr class="pk-divider pk-divider--v">
+          <span class="pk-num" style="font-size:12px">00:02:49.00</span>
+          <span style="flex:1"></span>
+          <span class="pk-note" style="color:var(--pk-ink-3)">标尺 · 片段 · 播放头</span>
+        </div>
+      </div>
+
+      <div class="pk-card">
+        <div class="pk-head"><p class="pk-title">波形</p><span class="pk-pill pk-pill--line">02</span></div>
+        <div class="pk-canvas" style="padding:8px 0">
+          <div class="pk-wave" id="demo-wave"></div>
+          <div class="pk-selection" style="left:34%;width:26%"></div>
+          <div class="pk-playhead" style="left:47%"></div>
+        </div>
+        <div class="pk-ticks" id="demo-ticks" style="margin-top:8px"></div>
+        <div class="pk-row" style="margin-top:12px">
+          <div class="pk-scrub"><b>IN</b><input value="1.240"></div>
+          <div class="pk-scrub"><b>OUT</b><input value="3.980"></div>
+          <span style="flex:1"></span>
+          <span class="pk-note" style="color:var(--pk-ink-3)">选中 <span class="pk-num">2.74 s</span> · 48 kHz</span>
+        </div>
+      </div>
+
+      <div class="pk-card" style="grid-column:1/-1">
+        <div class="pk-head"><p class="pk-title">节点图</p><span class="pk-pill pk-pill--line">03</span></div>
+        <div class="pk-crumb" style="margin-bottom:10px"><span>工作流</span><i>/</i><span>转码链路</span><i>/</i><b>抽帧</b></div>
+        <div style="display:flex;gap:0;overflow-x:auto">
+          <div class="pk-tree" style="width:128px;flex:none">
+            <div><span class="tw">▾</span>输入</div>
+            <div aria-selected="true" style="margin-left:16px"><span class="tw"></span>素材</div>
+            <div style="margin-left:16px"><span class="tw"></span>轮询</div>
+            <div><span class="tw">▸</span>输出</div>
+          </div>
+          <div class="pk-resizer"></div>
+          <div class="pk-canvas pk-grid" style="flex:1;height:196px;min-width:420px">
+            <svg style="position:absolute;inset:0;width:100%;height:100%">
+              <path d="M163 60 C205 60 205 48 245 48" fill="none" stroke="var(--pk-ink-3)" stroke-width="1.2"/>
+              <path d="M163 60 C205 60 205 146 245 146" fill="none" stroke="var(--pk-ink-3)" stroke-width="1.2" stroke-dasharray="4 3"/>
+            </svg>
+            <div class="pk-node" style="left:12px;top:26px;width:146px">
+              <header>输入 · SOURCE<span>1</span></header>
+              <ul><li>文件<span class="pk-num" style="color:var(--pk-ink-3)">glob</span></li><li>轮询<span class="pk-num" style="color:var(--pk-ink-3)">30s</span></li></ul>
+              <span class="pk-port" style="right:-5px;top:30px"></span>
+            </div>
+            <div class="pk-node" data-state="agent" style="left:250px;top:14px;width:146px">
+              <header>抽帧 · AGENT<span>2</span></header>
+              <ul><li>规则生成中…</li><li>每 <span class="pk-num">2.0 s</span></li></ul>
+              <span class="pk-port" style="left:-5px;top:30px"></span>
+            </div>
+            <div class="pk-node" data-state="bad" style="left:250px;top:112px;width:146px">
+              <header>转码 · FFMPEG<span>3</span></header>
+              <ul><li>预设缺失<span class="pk-num" style="color:var(--pk-bad)">!</span></li></ul>
+              <span class="pk-port" style="left:-5px;top:30px"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pk-card">
+        <div class="pk-head"><p class="pk-title">标注板</p><span class="pk-pill pk-pill--line">04</span></div>
+        <div class="pk-plate" style="height:150px;border-radius:var(--pk-r-ctl)">
+          <span class="pk-note" style="position:absolute;left:8px;bottom:6px;color:var(--pk-ink-3)">PLATE 1600 × 900</span>
+          <div class="pk-bbox" style="left:10%;top:22%;width:36%;height:42%">
+            <b>车辆 · 0.94</b>
+            <span class="pk-handle" style="left:-3px;top:-3px"></span><span class="pk-handle" style="right:-3px;top:-3px"></span>
+            <span class="pk-handle" style="left:-3px;bottom:-3px"></span><span class="pk-handle" style="right:-3px;bottom:-3px"></span>
+          </div>
+          <div class="pk-bbox pk-bbox--bad" style="left:56%;top:36%;width:26%;height:32%"><b>需复核</b></div>
+          <div class="pk-bbox pk-bbox--dash" style="left:34%;top:68%;width:18%;height:22%"></div>
+        </div>
+        <div class="pk-list" style="margin-top:10px">
+          <div><i class="pk-dot pk-dot--done"></i>frame_0412<span class="pk-leader"></span><span class="pk-num" style="font-size:10.5px;color:var(--pk-ink-3)">通过</span></div>
+          <div><i class="pk-dot pk-dot--warn"></i>frame_0413<span class="pk-leader"></span><span class="pk-num" style="font-size:10.5px;color:var(--pk-warn)">待审</span></div>
+          <div><i class="pk-dot pk-dot--run"></i>frame_0414<span class="pk-leader"></span><span class="pk-num" style="font-size:10.5px;color:var(--pk-ink-3)">Agent 标注中</span></div>
+          <div><i class="pk-dot pk-dot--idle"></i>frame_0415<span class="pk-leader"></span></div>
+          <div><i class="pk-dot pk-dot--bad"></i>frame_0416<span class="pk-leader"></span><span class="pk-num" style="font-size:10.5px;color:var(--pk-bad)">驳回</span></div>
+        </div>
+      </div>
+
+      <div class="pk-card">
+        <div class="pk-head"><p class="pk-title">缩略图轨</p><span class="pk-pill pk-pill--line">05</span></div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <div class="pk-stack pk-dotgrid" id="demo-rail" style="width:104px;flex:none;padding:10px;border-radius:var(--pk-r-ctl);gap:8px"></div>
+          <div style="min-width:0">
+            <div class="pk-menu">
+              <button>插入镜头<span class="pk-kbd">⌘I</span></button>
+              <button>复制<span class="pk-kbd">⌘D</span></button>
+              <button disabled>粘贴样式</button>
+              <hr>
+              <button class="is-danger">删除镜头<span class="pk-kbd">⌫</span></button>
+            </div>
+            <p class="pk-note" style="margin-top:10px">菜单浮层：kbd 提示右对齐，危险项归 bad 色。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pk-card">
+        <div class="pk-head"><p class="pk-title">表单槽</p><span class="pk-pill pk-pill--line">06</span></div>
+        <div class="pk-well">
+          <div class="pk-formrow"><span>名称</span><input class="pk-field" value="wave-trim" style="padding:6px 10px"></div>
+          <div class="pk-formrow"><span>阈值</span><div class="pk-scrub"><b>THR</b><input value="0.20"></div></div>
+          <div class="pk-formrow"><span>采样率</span><input class="pk-field is-bad" value="96 000" style="padding:6px 10px"></div>
+          <div class="pk-formrow"><span>模式</span><div class="pk-seg" role="tablist"><button role="tab" aria-selected="true">快速</button><button role="tab" aria-selected="false">平衡</button><button role="tab" aria-selected="false">精细</button></div></div>
+          <div class="pk-formrow"><span>混合</span><input type="range" class="pk-range" value="64"></div>
+          <div class="pk-formrow"><span>选项</span><span class="pk-row" style="flex-wrap:wrap;gap:12px">
+            <label class="pk-check"><input type="checkbox" checked><i></i>淡入</label>
+            <label class="pk-check"><input type="checkbox"><i></i>淡出</label>
+            <label class="pk-check pk-check--radio"><input type="radio" name="demo-ch" checked><i></i>单声道</label>
+            <label class="pk-check pk-check--radio"><input type="radio" name="demo-ch" disabled><i></i><span>立体声</span></label>
+          </span></div>
+        </div>
+        <hr class="pk-divider pk-divider--dash">
+        <div class="pk-note-block"><b>i</b><span>采样率超出上限：<code class="pk-code">maxRate = 48 000</code>，写入前会被截断。</span></div>
+        <table class="pk-table" style="margin-top:10px">
+          <thead><tr><th>参数</th><th style="text-align:right">值</th></tr></thead>
+          <tbody>
+            <tr><td>threshold</td><td class="pk-num" style="text-align:right"><span class="pk-cell-edit">0.20</span></td></tr>
+            <tr><td>fadeMs</td><td class="pk-num" style="text-align:right">12</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">八种界面状态</span>
+    <div class="demo-grid-sm">
+
+      <div class="pk-card pk-empty" style="padding:16px 18px">
+        <span class="pk-label">空</span>
+        <div class="pk-slot" style="margin:12px 0">还没有片段</div>
+        <p>把素材拖进来，或从模板开始。</p>
+        <button class="pk-btn pk-btn--primary pk-btn--lg">导入素材</button>
+      </div>
+
+      <div class="pk-card">
+        <span class="pk-label">Loading</span>
+        <div class="pk-stack" style="margin-top:12px;gap:8px">
+          <div class="pk-skeleton" style="height:13px;width:70%"></div>
+          <div class="pk-skeleton" style="height:13px;width:100%"></div>
+          <div class="pk-skeleton" style="height:13px;width:86%"></div>
+        </div>
+        <p class="pk-note" style="margin-top:10px">正在读取工作区…</p>
+      </div>
+
+      <div class="pk-card pk-agent">
+        <div class="pk-row"><span class="pk-agent-tag">Agent</span><span class="pk-note" style="color:var(--pk-ink-3)">重建 LUT 缓存</span></div>
+        <p style="font-size:13px;margin:12px 0 10px">正在生成 <strong style="font-weight:550">4</strong> 个文件<span class="pk-agent-caret"></span></p>
+        <div class="pk-progress pk-progress--indet"><i></i></div>
+        <div class="pk-row" style="margin-top:12px"><button class="pk-btn pk-btn--outline pk-btn--sm">暂停</button><button class="pk-btn pk-btn--quiet pk-btn--sm">查看日志</button></div>
+      </div>
+
+      <div class="pk-card">
+        <span class="pk-label">成功</span>
+        <div class="pk-row" style="margin-top:12px"><i class="pk-dot pk-dot--done"></i><span style="font-size:13.5px;font-weight:550">已发布</span></div>
+        <p class="pk-figure" style="margin:10px 0 4px">42.8<span style="font-size:14px;color:var(--pk-ink-2)"> kB</span></p>
+        <div class="pk-prop"><span class="k">版本</span><span class="v">v1.4.0</span></div>
+        <div class="pk-prop"><span class="k">耗时</span><span class="v">18.2 s</span></div>
+      </div>
+
+      <div class="pk-card" style="border-color:var(--pk-bad)">
+        <span class="pk-label" style="color:var(--pk-bad)">错误</span>
+        <p style="font-size:13px;font-weight:550;margin:12px 0 8px">构建失败 · 3 处</p>
+        <div class="pk-note-block pk-note-block--bad"><b>!</b><span class="pk-mono">src/index.ts:24 · 类型不匹配</span></div>
+        <div class="pk-row" style="margin-top:10px"><button class="pk-btn pk-btn--outline pk-btn--sm">查看</button><button class="pk-btn pk-btn--primary pk-btn--sm">让 Agent 修</button></div>
+      </div>
+
+      <div class="pk-card">
+        <span class="pk-label">冲突</span>
+        <p style="font-size:13px;font-weight:550;margin:12px 0 8px">两处改动撞车</p>
+        <div class="pk-row" style="font-size:12px"><span class="pk-pill pk-pill--line">本地</span><span class="pk-leader"></span><span class="pk-num" style="font-size:10.5px">14:02</span></div>
+        <div class="pk-row" style="font-size:12px;margin-top:6px"><span class="pk-agent-tag">Agent</span><span class="pk-leader"></span><span class="pk-num" style="font-size:10.5px">14:03</span></div>
+        <div class="pk-row" style="margin-top:12px"><button class="pk-btn pk-btn--outline pk-btn--sm" style="flex:1">保留本地</button><button class="pk-btn pk-btn--outline pk-btn--sm" style="flex:1">采纳 Agent</button></div>
+      </div>
+
+      <div class="pk-card">
+        <span class="pk-label">离线</span>
+        <div class="pk-row" style="margin:12px 0 10px"><i class="pk-dot pk-dot--idle"></i><span style="font-size:13.5px;font-weight:550">连接已断开</span></div>
+        <div class="pk-meter" id="demo-meter"></div>
+        <p class="pk-note" style="margin-top:10px">改动排队中 · <span class="pk-num">3</span> · 恢复后自动同步。</p>
+      </div>
+
+      <div class="pk-card">
+        <span class="pk-label">权限被拒</span>
+        <div class="pk-plate" style="height:52px;border-radius:8px;margin:12px 0 10px;background-image:repeating-linear-gradient(45deg,var(--pk-line-strong) 0 3px,transparent 3px 8px)">
+          <span class="pk-pill pk-pill--line" style="background:var(--pk-card)">受限</span>
+        </div>
+        <p class="pk-note">你没有该工作区的写权限。</p>
+        <button class="pk-btn pk-btn--outline pk-btn--sm" style="margin-top:10px">申请权限</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="demo-sec">
+    <span class="pk-label">Agent 套件 · 极光的主场</span>
+    <div class="pk-panel pk-agent pk-agent-run" style="overflow:hidden">
+      <div style="padding:16px 18px">
+        <div class="pk-spread">
+          <span class="pk-agent-tag">Agent</span>
+          <span class="pk-num" style="font-size:11px;color:var(--pk-ink-2)">步骤 3 / 5</span>
+        </div>
+        <p style="font-size:13px;line-height:1.7;margin:12px 0 0">正在为 <strong style="font-weight:550">wave-trim</strong> 生成参数校验：已识别 <span class="pk-agent-diff">threshold</span> 与 <span class="pk-agent-diff">fadeMs</span> 两个字段<span class="pk-agent-caret"></span></p>
+        <div class="pk-well" style="margin-top:12px;font-family:var(--pk-mono);font-size:11.5px;line-height:1.85">
+          <div><span class="pk-strike">threshold = 0.2,</span></div>
+          <div><span class="pk-agent-diff">threshold = clamp(0, 1, 0.2),</span></div>
+          <div><span class="pk-agent-diff">fadeMs = 12,</span></div>
+        </div>
+        <div class="pk-note-block pk-note-block--agent" style="margin-top:10px"><b>Agent</b><span>删掉的行归 bad 色删除线管；极光只标注新增与进行中。人一接手编辑，极光立即退场。</span></div>
+        <div class="pk-row" style="margin-top:12px">
+          <button class="pk-btn pk-btn--primary pk-btn--sm">采纳</button>
+          <button class="pk-btn pk-btn--outline pk-btn--sm">逐条查看</button>
+          <button class="pk-btn pk-btn--quiet pk-btn--sm">丢弃</button>
+        </div>
+      </div>
+      <div class="pk-glowbar">
+        <span class="msg"><b>Agent</b> 正在补写测试</span>
+        <div class="track"><i></i></div>
+        <span class="pk-mono" style="color:var(--pk-ink-3)">01:12</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="pk-modal-backdrop" id="demo-modal" style="display:none">
+  <div class="pk-modal">
+    <p class="pk-title" style="margin-bottom:6px">删除节点？</p>
+    <p class="pk-muted" style="margin:0 0 18px;font-size:13px">node_grade_04 将被移除，下游连接会断开。此操作可撤销。</p>
+    <div class="demo-row" style="justify-content:flex-end">
+      <button class="pk-btn pk-btn--quiet" onclick="pkModal.close('demo-modal')">取消</button>
+      <button class="pk-btn pk-btn--danger" onclick="pkModal.close('demo-modal');pkToast('已删除，可按 ⌘Z 撤销')">删除</button>
+    </div>
+  </div>
+</div>
+
+<script src="./components.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var ruler = document.getElementById("demo-ruler");
+  if (ruler) {
+    for (var i = 0; i <= 48; i++) {
+      var t = document.createElement("i");
+      t.className = "t" + (i % 4 === 0 ? " maj" : "");
+      t.style.left = (i / 48 * 100) + "%";
+      ruler.appendChild(t);
+      if (i % 8 === 0 && i < 48) {
+        var lb = document.createElement("span");
+        lb.className = "lb";
+        lb.textContent = String(Math.floor(i / 8)).padStart(2, "0") + ":00";
+        lb.style.left = "calc(" + (i / 48 * 100) + "% + 3px)";
+        ruler.appendChild(lb);
+      }
+    }
+  }
+
+  var wave = document.getElementById("demo-wave");
+  if (wave) {
+    for (var w = 0; w < 96; w++) {
+      var env = Math.sin(w / 96 * Math.PI) * 0.75 + 0.25;
+      var h = Math.max(3, (pkRand(w, 3) * 0.55 + pkRand(w, 7) * 0.45) * env * 68);
+      var bar = document.createElement("i");
+      bar.style.height = h.toFixed(1) + "px";
+      if (w >= 33 && w <= 57) { bar.className = "sel"; }
+      wave.appendChild(bar);
+    }
+  }
+
+  var ticks = document.getElementById("demo-ticks");
+  if (ticks) {
+    for (var k = 0; k < 41; k++) { ticks.appendChild(document.createElement("i")); }
+  }
+
+  var meter = document.getElementById("demo-meter");
+  if (meter) {
+    for (var m = 0; m < 20; m++) {
+      var cell = document.createElement("i");
+      if (m < 3) { cell.className = "on"; }
+      meter.appendChild(cell);
+    }
+  }
+
+  var rail = document.getElementById("demo-rail");
+  if (rail) {
+    for (var n = 1; n <= 3; n++) {
+      var th = document.createElement("div");
+      th.className = "pk-thumb";
+      th.style.cssText = "aspect-ratio:16/9;padding:14px 6px 6px";
+      th.setAttribute("aria-selected", n === 2 ? "true" : "false");
+      var bars = "";
+      for (var b = 0; b < 3; b++) {
+        var wd = Math.round(40 + pkRand(n * 3 + b, 5) * 50);
+        var tone = b === 0 ? "var(--pk-ink-2)" : "var(--pk-ink-3)";
+        bars += '<div style="height:2.5px;width:' + wd + '%;background:' + tone + ';border-radius:2px;margin-bottom:3px"></div>';
+      }
+      th.innerHTML = "<span>" + String(n).padStart(2, "0") + "</span>" + bars;
+      rail.appendChild(th);
+      if (n === 2) {
+        var drop = document.createElement("div");
+        drop.className = "pk-drop";
+        drop.style.margin = "0 4px";
+        rail.appendChild(drop);
+      }
+    }
+    var slot = document.createElement("div");
+    slot.className = "pk-slot";
+    slot.style.minHeight = "34px";
+    slot.textContent = "拖到这里";
+    rail.appendChild(slot);
+  }
+})();
+</script>
+</body>
+</html>

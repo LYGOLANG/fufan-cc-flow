@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chatcut.local/contracts/evidence.schema.json",
+  "title": "ChatCut Render Assertion Evidence",
+  "description": "插件自身的渲染断言证据契约。ffmpeg 会在产出错误文件时返回退出码 0（S2 Spike 实证），因此每个渲染阶段必须留下可机读的后置断言证据（THR-007）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assertionId", "stage", "target", "verdict", "checks", "createdAt"],
+  "properties": {
+    "assertionId": { "type": "string", "minLength": 1 },
+    "jobId": { "type": "string" },
+    "stage": {
+      "enum": ["probe", "normalize", "concat", "overlay", "captions", "mix", "final-verify"]
+    },
+    "target": { "type": "string", "description": "被断言的产物路径。" },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv", "exitCode"],
+      "properties": {
+        "argv": { "type": "array", "items": { "type": "string" }, "description": "execFile 数组参数，禁用 shell（THR-005）。" },
+        "exitCode": { "type": "integer" },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "logPath": { "type": "string" }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "description": "退出码不构成证据。至少一项机器判据必须通过。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["checkId", "kind", "passed"],
+        "properties": {
+          "checkId": { "type": "string" },
+          "kind": {
+            "enum": [
+              "duration-match",
+              "frame-count",
+              "alpha-pixel",
+              "pixel-diff",
+              "audio-md5",
+              "sync-drift",
+              "text-diff",
+              "font-render",
+              "negative-control"
+            ]
+          },
+          "expected": {},
+          "actual": {},
+          "toleranceNote": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "artifactPath": { "type": "string", "description": "抽帧 PNG、日志或数据文件路径。" }
+        }
+      }
+    },
+    "negativeControlPresent": {
+      "type": "boolean",
+      "default": false,
+      "description": "是否配有阴性对照。任何『确认没有 X』的验证都必须同时具备阳性与阴性对照。"
+    },
+    "verdict": { "enum": ["PASS", "PASS_WITH_LIMIT", "FAIL"] },
+    "notes": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

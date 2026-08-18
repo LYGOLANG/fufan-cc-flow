@@ -1,0 +1,96 @@
+:root {
+  --pk-canvas: #F7F8FA;
+  --pk-panel: #FFFFFF;
+  --pk-card: #FFFFFF;
+  --pk-inset: #EFF1F4;
+  --pk-line: rgba(15, 18, 24, 0.09);
+  --pk-line-strong: rgba(15, 18, 24, 0.16);
+  --pk-line-soft: rgba(15, 18, 24, 0.05);
+  --pk-ink: #16181D;
+  --pk-ink-2: #5D636E;
+  --pk-ink-3: #9AA0AB;
+  --pk-on-ink: #F7F8FA;
+  --pk-ok: #1FA968;
+  --pk-warn: #B26A00;
+  --pk-bad: #D6453A;
+  --pk-info: #2E6FD0;
+  --pk-au-a: #4CC9F0;
+  --pk-au-b: #4895EF;
+  --pk-au-c: #E86FB4;
+  --pk-aurora: linear-gradient(90deg, var(--pk-au-a), var(--pk-au-b) 45%, var(--pk-au-c));
+  --pk-halo: rgba(72, 149, 239, 0.18);
+  --pk-glow: rgba(72, 149, 239, 0.45);
+  --pk-on-au: #0B0C0F;
+  --pk-shadow: 0 1px 2px rgba(15, 18, 24, 0.05), 0 14px 40px rgba(15, 18, 24, 0.09);
+  --pk-shadow-float: 0 2px 6px rgba(15, 18, 24, 0.07), 0 22px 60px rgba(15, 18, 24, 0.14);
+  --pk-r-ctl: 9px;
+  --pk-r-card: 14px;
+  --pk-r-panel: 18px;
+  --pk-font: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --pk-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --pk-dur-fast: 150ms;
+  --pk-dur-base: 200ms;
+  --pk-dur-panel: 300ms;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pk-canvas: #0B0C0F;
+    --pk-panel: #111318;
+    --pk-card: #14161C;
+    --pk-inset: #1A1D24;
+    --pk-line: rgba(255, 255, 255, 0.07);
+    --pk-line-strong: rgba(255, 255, 255, 0.13);
+    --pk-line-soft: rgba(255, 255, 255, 0.04);
+    --pk-ink: #EDEEF2;
+    --pk-ink-2: #9CA0AB;
+    --pk-ink-3: #565B66;
+    --pk-on-ink: #0B0C0F;
+    --pk-ok: #3DD68C;
+    --pk-warn: #F5C044;
+    --pk-bad: #FF6B5E;
+    --pk-info: #6CA8F5;
+    --pk-on-au: #0B0C0F;
+    --pk-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 48px rgba(0, 0, 0, 0.42);
+    --pk-shadow-float: 0 2px 8px rgba(0, 0, 0, 0.4), 0 26px 68px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  --pk-canvas: #0B0C0F;
+  --pk-panel: #111318;
+  --pk-card: #14161C;
+  --pk-inset: #1A1D24;
+  --pk-line: rgba(255, 255, 255, 0.07);
+  --pk-line-strong: rgba(255, 255, 255, 0.13);
+  --pk-line-soft: rgba(255, 255, 255, 0.04);
+  --pk-ink: #EDEEF2;
+  --pk-ink-2: #9CA0AB;
+  --pk-ink-3: #565B66;
+  --pk-on-ink: #0B0C0F;
+  --pk-ok: #3DD68C;
+  --pk-warn: #F5C044;
+  --pk-bad: #FF6B5E;
+  --pk-info: #6CA8F5;
+  --pk-on-au: #0B0C0F;
+  --pk-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 18px 48px rgba(0, 0, 0, 0.42);
+  --pk-shadow-float: 0 2px 8px rgba(0, 0, 0, 0.4), 0 26px 68px rgba(0, 0, 0, 0.5);
+}
+:root[data-theme="light"] {
+  --pk-canvas: #F7F8FA;
+  --pk-panel: #FFFFFF;
+  --pk-card: #FFFFFF;
+  --pk-inset: #EFF1F4;
+  --pk-line: rgba(15, 18, 24, 0.09);
+  --pk-line-strong: rgba(15, 18, 24, 0.16);
+  --pk-line-soft: rgba(15, 18, 24, 0.05);
+  --pk-ink: #16181D;
+  --pk-ink-2: #5D636E;
+  --pk-ink-3: #9AA0AB;
+  --pk-on-ink: #F7F8FA;
+  --pk-ok: #1FA968;
+  --pk-warn: #B26A00;
+  --pk-bad: #D6453A;
+  --pk-info: #2E6FD0;
+  --pk-on-au: #0B0C0F;
+  --pk-shadow: 0 1px 2px rgba(15, 18, 24, 0.05), 0 14px 40px rgba(15, 18, 24, 0.09);
+  --pk-shadow-float: 0 2px 6px rgba(15, 18, 24, 0.07), 0 22px 60px rgba(15, 18, 24, 0.14);
+}

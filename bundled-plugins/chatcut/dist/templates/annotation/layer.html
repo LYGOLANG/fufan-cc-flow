@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=__W__, height=__H__" />
+    <title>chatcut annotation __ANN_ID__</title>
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+__CSS__
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="__W__"
+      data-height="__H__"
+      data-fps="__FPS__"
+      data-duration="__DURATION__"
+    >
+      <section id="ann" class="clip" data-start="0" data-duration="__DURATION__" data-track-index="1">
+__BODY__
+      </section>
+    </div>
+    <script>
+      // 只动 opacity，绝不动几何：任何位移/缩放入场都会让窗口内的帧位置漂移，
+      // 直接违反 AC-005「位置偏差 < 画面宽度 1%」。
+      // 起始不透明度非 0，保证层的第 0 帧就有像素（DEC-007 的首帧补偿）。
+      //
+      // 刻意没有退场动画：标注何时消失由合成侧的 enable 半开区间说了算。
+      // 层自己再淡出一次，等于同一件事有两个真相源，且会让「末帧」的判定失去确定性。
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+      tl.to("#ann", { opacity: 1, duration: __ENTRANCE_SEC__, ease: "power2.out" }, 0);
+      tl.to({}, { duration: __HOLD_SEC__ }, __ENTRANCE_SEC__);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

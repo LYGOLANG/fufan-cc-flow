@@ -1,0 +1,72 @@
+:root{
+  /* ── 纸 PAPER ── */
+  --ip-desk:#E3E1DA;        /* 桌面：卡片之外的底 */
+  --ip-paper:#F0EFEB;       /* 纸面：卡片、主容器 */
+  --ip-paper-hi:#F7F6F3;    /* 提亮纸：浮层、菜单、当前行 */
+  --ip-well:#E8E6E0;        /* 凹槽：输入槽、轨道底、代码块 */
+
+  /* ── 墨梯 INK LADDER（明度即层级，8 级）── */
+  --ip-ink:#1C1C1A;         /* 主墨 · 正文/强调/实心填充 */
+  --ip-ink-1:#32312D;       /* 10.9:1 */
+  --ip-ink-2:#47463F;       /* 次级正文 · 8.3:1 */
+  --ip-ink-3:#565349;       /* 5.9:1 on desk */
+  --ip-ink-4:#656359;       /* 三级：微标签、注记 · 4.6:1 on desk · 5.2:1 on paper */
+  --ip-ink-5:#8E8B83;       /* 仅禁用与占位（AA 豁免） */
+  --ip-ink-6:#B0ADA4;       /* 仅非文字：线、点、轨道底 */
+  --ip-ink-7:#D2CFC6;       /* 仅非文字 */
+
+  /* ── 线 RULES（唯一的结构手段）── */
+  --ip-rule:#C6C3B9;        /* 结构发丝线 1px */
+  --ip-rule-soft:#DCD9D0;   /* 网格/账本线 .5px */
+  --ip-rule-ink:#1C1C1A;    /* 强调墨线 */
+
+  /* ── 三支墨 THE THREE INKS ──
+     黑墨=常规 · 蓝黑墨=Agent 专属 · 校对红=破坏与错误。除此之外没有颜色。 */
+  --ip-blue:#284057;        /* 蓝黑墨 · AGENT ONLY · 9.3:1 */
+  --ip-blue-soft:#DCE2EA;
+  --ip-red:#973A2F;         /* 校对红 · 破坏 / 错误 ONLY · 6.2:1 */
+  --ip-red-soft:#EEE1DE;
+
+  /* ── 排印 ── */
+  --ip-font:"Inter",ui-sans-serif,system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --ip-mono:ui-monospace,"SF Mono",Menlo,"Roboto Mono",Consolas,monospace;
+
+  /* ── 几何 ── */
+  --ip-r-card:20px;         /* 卡片 */
+  --ip-r-box:10px;          /* 面板内块 */
+  --ip-r-ctl:7px;           /* 控件 */
+  --ip-r-pill:999px;        /* 胶囊端：进度、条形、标记 */
+  --ip-hair:1px;
+
+  /* ── 动效 quarticOut · 快进快停不弹跳 ── */
+  --ip-ease:cubic-bezier(.165,.84,.44,1);
+  --ip-fast:.12s;
+  --ip-base:.22s;
+  --ip-slow:.42s;
+
+  --ip-scrim:rgba(28,28,26,.42);
+  color-scheme:light;
+}
+[data-theme="carbon"]{
+  --ip-desk:#111110;
+  --ip-paper:#1A1A18;
+  --ip-paper-hi:#232320;
+  --ip-well:#131312;
+  --ip-ink:#EDEBE4;
+  --ip-ink-1:#D6D3CB;
+  --ip-ink-2:#B8B5AC;
+  --ip-ink-3:#9A968D;
+  --ip-ink-4:#8B877E;
+  --ip-ink-5:#6E6B64;
+  --ip-ink-6:#4E4C47;
+  --ip-ink-7:#35342F;
+  --ip-rule:#3B3A35;
+  --ip-rule-soft:#2A2A26;
+  --ip-rule-ink:#EDEBE4;
+  --ip-blue:#9FB4C9;
+  --ip-blue-soft:#22303C;
+  --ip-red:#C98A80;
+  --ip-red-soft:#37241F;
+  --ip-scrim:rgba(0,0,0,.62);
+  color-scheme:dark;
+}

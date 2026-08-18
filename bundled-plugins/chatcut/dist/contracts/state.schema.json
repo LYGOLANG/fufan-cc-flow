@@ -1,0 +1,206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chatcut.local/contracts/state.schema.json",
+  "title": "ChatCut Authoritative Project State (.chatcut/project.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "projectId", "projectVersion", "settings", "clips", "narration", "annotations", "captions"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "projectId": { "type": "string", "minLength": 1 },
+    "projectVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "单调递增。仅工程内容变更时递增；请求队列变化不得污染此值。"
+    },
+    "name": { "type": "string" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canvas", "tts"],
+      "properties": {
+        "canvas": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height", "fps", "pixelFormat", "sampleRate", "channels"],
+          "properties": {
+            "width": { "type": "integer", "const": 1920 },
+            "height": { "type": "integer", "const": 1080 },
+            "fps": { "type": "number", "const": 30 },
+            "pixelFormat": { "type": "string", "const": "yuv420p" },
+            "sampleRate": { "type": "integer", "const": 48000 },
+            "channels": { "type": "integer", "const": 2 }
+          },
+          "description": "目标画布。所有素材归一化到此规格（S2 Spike 结论）。"
+        },
+        "encoder": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "video": { "type": "string", "default": "libx264" },
+            "preset": { "type": "string", "default": "medium" },
+            "crf": { "type": "integer", "default": 20 },
+            "previewPreset": { "type": "string", "default": "veryfast" },
+            "probedAt": { "type": "string", "format": "date-time" },
+            "availableHardware": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "运行时实测可用的硬件编码器。编译选项不等于运行能力（DEC-008）。"
+            }
+          }
+        },
+        "tts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model", "voiceId"],
+          "properties": {
+            "model": { "type": "string", "default": "speech-02-hd" },
+            "voiceId": { "type": "string", "default": "presenter_male" },
+            "tailSilenceSec": { "type": "number", "default": 0.35, "minimum": 0 }
+          }
+        },
+        "bgm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": { "type": "string" },
+            "volume": { "type": "number", "default": 0.14, "minimum": 0, "maximum": 1 }
+          }
+        },
+        "captionStyle": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "burnIn": { "type": "boolean", "default": true },
+            "fontFile": { "type": "string", "description": "本机字体绝对路径，不依赖网络加载（DEC-013）。" },
+            "fontSize": { "type": "integer", "default": 48 },
+            "marginVBottom": { "type": "integer", "default": 80 }
+          }
+        }
+      }
+    },
+    "clips": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["clipId", "sourcePath", "order"],
+        "properties": {
+          "clipId": { "type": "string", "minLength": 1 },
+          "sourcePath": { "type": "string", "minLength": 1, "description": "绝对路径引用。源文件只读，永不修改。" },
+          "sourceKind": { "enum": ["screen-recording", "hyperframes-render", "other"] },
+          "order": { "type": "integer", "minimum": 0 },
+          "inSec": { "type": "number", "minimum": 0, "default": 0 },
+          "outSec": { "type": "number", "minimum": 0 },
+          "missing": { "type": "boolean", "default": false, "description": "源文件失效标记。缺失不丢弃工程（UX-005）。" },
+          "probe": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "width": { "type": "integer" },
+              "height": { "type": "integer" },
+              "fps": { "type": "number" },
+              "codec": { "type": "string" },
+              "durationSec": { "type": "number" },
+              "hasAudio": { "type": "boolean" },
+              "sar": { "type": "string" },
+              "compliant": { "type": "boolean", "description": "true 表示已符合目标画布，归一化阶段可直接 stream copy。" }
+            }
+          },
+          "proxyPath": { "type": "string" },
+          "normHash": { "type": "string", "description": "归一化中间件的内容哈希，用于增量重导（REQ-013）。" }
+        }
+      }
+    },
+    "narration": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["segId", "order", "sourceText"],
+        "properties": {
+          "segId": { "type": "string", "minLength": 1 },
+          "order": { "type": "integer", "minimum": 0 },
+          "sourceText": { "type": "string", "description": "用户原文。屏幕上的文字以此为准。" },
+          "ttsText": { "type": "string", "description": "TTS 友好改写后的文本，对用户可见且可手工覆盖（REQ-003）。" },
+          "rewriteHits": { "type": "array", "items": { "type": "string" } },
+          "audioPath": { "type": "string" },
+          "textHash": { "type": "string", "description": "内容哈希。仅此值变化才重新调用 TTS。" },
+          "measuredDurationSec": { "type": "number", "minimum": 0, "description": "ffprobe 实测时长，驱动时间轴重排（REQ-005）。" },
+          "startSec": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["annId", "bbox", "style", "startSec", "endSec"],
+        "properties": {
+          "annId": { "type": "string", "minLength": 1 },
+          "clipId": { "type": "string", "description": "可选。挂在片段上则随片段移动，否则挂全局时间轴。" },
+          "bbox": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "w", "h"],
+            "properties": {
+              "x": { "type": "number", "minimum": 0, "maximum": 1 },
+              "y": { "type": "number", "minimum": 0, "maximum": 1 },
+              "w": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+              "h": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+            },
+            "description": "归一化坐标（0-1），与渲染分辨率解耦。"
+          },
+          "style": { "enum": ["highlight-rect", "arrow", "zoom-focus", "callout-card"] },
+          "text": { "type": "string" },
+          "startSec": { "type": "number", "minimum": 0 },
+          "endSec": { "type": "number", "minimum": 0 },
+          "layerPath": { "type": "string", "description": "渲染出的 VP9 WebM 透明层路径。解码必须显式 -c:v libvpx-vp9（DEC-005）。" },
+          "layerHash": { "type": "string", "description": "定义+样式+尺寸的哈希。命中则跳过渲染（DEC-006）。" },
+          "layerBoundsPx": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "w", "h"],
+            "properties": {
+              "x": { "type": "integer" },
+              "y": { "type": "integer" },
+              "w": { "type": "integer" },
+              "h": { "type": "integer" }
+            },
+            "description": "包围盒像素尺寸。层只渲染此区域，合成时 overlay=x:y 定位（DEC-006 性能压制）。"
+          }
+        }
+      }
+    },
+    "captions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cueId", "startSec", "endSec", "text", "source"],
+        "properties": {
+          "cueId": { "type": "string", "minLength": 1 },
+          "startSec": { "type": "number", "minimum": 0 },
+          "endSec": { "type": "number", "minimum": 0 },
+          "text": { "type": "string" },
+          "source": {
+            "enum": ["tts-known-text", "asr"],
+            "description": "tts-known-text 来自已知旁白原文，必须与原文逐字一致（AC-006）；asr 来自语音识别，可信度较低。"
+          },
+          "edited": { "type": "boolean", "default": false }
+        }
+      }
+    },
+    "lastExport": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "verifiedDurationSec": { "type": "number", "description": "ffprobe 实测，不采信渲染工具自报。" },
+        "exportedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

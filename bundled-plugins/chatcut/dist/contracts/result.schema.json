@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chatcut.local/contracts/result.schema.json",
+  "title": "ChatCut Agent to UI Result Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requestId", "basedOnProjectVersion", "status", "createdAt"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "pattern": "^req-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "与 request.schema.json 的 requestId 同形。它是幂等台账的键，形状必须封死：__proto__ / constructor 这类名字进到台账字典里会命中对象原型，污染后 lookupApplied 对任意 requestId 都返回真，之后所有写回都被判成幂等重放而静默丢弃。"
+    },
+    "basedOnProjectVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "与当前权威版本不一致时不得静默覆盖，返回 VERSION_CONFLICT。"
+    },
+    "status": { "enum": ["succeeded", "partial", "failed", "cancelled"] },
+    "newProjectVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "写回成功后的新版本号，供 UI 同步。"
+    },
+    "idempotentReplay": {
+      "type": "boolean",
+      "default": false,
+      "description": "true 表示该 requestId 此前已生效，本次为幂等重放，未产生新副作用。"
+    },
+    "operations": {
+      "type": "array",
+      "description": "领域操作，不接受任意 JavaScript 或 JSONPath 写入。",
+      "items": {
+        "type": "object",
+        "required": ["op"],
+        "properties": {
+          "op": {
+            "enum": [
+              "clip.add",
+              "clip.update",
+              "clip.remove",
+              "clip.reorder",
+              "narration.segment.update",
+              "timeline.replace",
+              "annotation.upsert",
+              "annotation.remove",
+              "annotation.layer.attach",
+              "caption.replace",
+              "export.complete"
+            ]
+          }
+        }
+      }
+    },
+    "assetRefs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assetId", "path", "kind"],
+        "properties": {
+          "assetId": { "type": "string" },
+          "path": { "type": "string" },
+          "kind": { "enum": ["video", "audio", "image", "overlay", "captions", "project"] },
+          "contentHash": { "type": "string" },
+          "verifiedDurationSec": {
+            "type": "number",
+            "description": "必须来自 ffprobe 实测，不采信渲染工具自报时长。"
+          }
+        }
+      }
+    },
+    "partialFailures": {
+      "type": "array",
+      "description": "部分失败明细。已成功的部分不得因此被清除。",
+      "items": {
+        "type": "object",
+        "required": ["targetId", "code", "message"],
+        "properties": {
+          "targetId": { "type": "string" },
+          "code": { "$ref": "#/$defs/errorCode" },
+          "message": { "type": "string" },
+          "retryable": { "type": "boolean" }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "$ref": "#/$defs/errorCode" },
+        "message": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "details": { "type": "object", "description": "安全过滤后的细节，禁止包含 Secret 与绝对敏感路径。" },
+        "recoveryHint": { "type": "string" }
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "errorCode": {
+      "enum": [
+        "INVALID_INPUT",
+        "NOT_FOUND",
+        "PERMISSION_DENIED",
+        "VERSION_CONFLICT",
+        "DUPLICATE_REQUEST",
+        "UNSUPPORTED_FORMAT",
+        "PAYLOAD_TOO_LARGE",
+        "EXTERNAL_SERVICE_FAILED",
+        "DEPENDENCY_MISSING",
+        "RENDER_ASSERTION_FAILED",
+        "CANCELLED",
+        "INTERNAL_ERROR"
+      ]
+    }
+  }
+}
