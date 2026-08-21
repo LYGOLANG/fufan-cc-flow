@@ -1,5 +1,8 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useUIStore } from "../../stores/uiStore";
+import MediaPreview from "../shared/MediaPreview";
+import { extractMediaPaths, mediaKindOf } from "../../utils/mediaPaths";
 import {
   FileText,
   Pencil,
@@ -298,7 +301,7 @@ function PlanView({ tc }: { tc: ToolCall }) {
   );
 }
 
-function ResultView({ tc }: { tc: ToolCall }) {
+function ResultView({ tc, projectPath }: { tc: ToolCall; projectPath: string | null }) {
   if (tc.toolName === "ExitPlanMode") return <PlanView tc={tc} />;
   if (!tc.result) return null;
 
@@ -316,6 +319,38 @@ function ResultView({ tc }: { tc: ToolCall }) {
           <pre className="text-[10px] font-mono text-slate-500 whitespace-pre-wrap max-h-24 overflow-y-auto">
             {tc.result.slice(0, 300)}{tc.result.length > 300 ? "…" : ""}
           </pre>
+        </div>
+      );
+    }
+  }
+
+  // 工具产出的本地媒体文件：内联预览。
+  //
+  // 覆盖两条路径：Write 直接写出 out.mp4，或 Bash 跑 ffmpeg 后在 stdout 里
+  // 报出成品路径。此前这些只留下一行文字，用户得自己去文件管理器里翻 ——
+  // "做完了"和"看得见"之间隔着一道没必要的墙。
+  {
+    const fromInput = String(tc.toolInput?.file_path ?? "");
+    const candidates: string[] = [];
+    // Write/Edit 的 file_path 直接就是产物路径，优先于从输出里捞的
+    if (fromInput && mediaKindOf(fromInput)) candidates.push(fromInput);
+    // 只取前 3 个：一次工具调用报出十几个路径时，全渲染会把卡片撑爆
+    for (const s of extractMediaPaths(tc.result, undefined, 3)) {
+      if (!candidates.includes(s)) candidates.push(s);
+    }
+    const media = candidates.slice(0, 3);
+    if (media.length > 0) {
+      return (
+        <div className="space-y-2">
+          {media.map((p) => (
+            <MediaPreview key={p} path={p} projectPath={projectPath} />
+          ))}
+          {tc.result.trim() && (
+            <pre className="text-[10px] font-mono text-slate-500 whitespace-pre-wrap max-h-24 overflow-y-auto">
+              {tc.result.slice(0, 400)}
+              {tc.result.length > 400 ? "…" : ""}
+            </pre>
+          )}
         </div>
       );
     }
@@ -514,6 +549,7 @@ interface Props {
 }
 
 export default function ToolCallCard({ toolCall: tc }: Props) {
+  const projectPath = useUIStore((s) => s.projectPath);
   // 截图工具有结果时自动展开;计划审核卡片在等待审批时自动展开(用户必须看到计划全文)
   const isScreenshot = tc.toolName === "mcp__pencil__get_screenshot";
   const isPlanReview = tc.toolName === "ExitPlanMode";
@@ -663,7 +699,7 @@ export default function ToolCallCard({ toolCall: tc }: Props) {
               {isPlanReview && <PlanView tc={tc} />}
             </div>
           ) : hasResult ? (
-            <ResultView tc={tc} />
+            <ResultView tc={tc} projectPath={projectPath} />
           ) : (
             <InputView tc={tc} />
           )}

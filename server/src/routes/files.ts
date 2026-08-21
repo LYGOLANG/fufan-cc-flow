@@ -1,5 +1,6 @@
 import { Router, type Router as RouterType } from "express";
 import fs from "fs/promises";
+import { createReadStream } from "fs";
 import path from "path";
 import os from "os";
 import { FileService } from "../services/fileService.js";
@@ -111,8 +112,8 @@ router.get("/content", async (req, res) => {
 });
 
 // GET /api/files/raw?path=<abs-or-rel>&base=<projectRoot>
-// 以原始字节流返回本地图片文件,供聊天界面内联展示会话中生成的图片。
-// 仅允许图片扩展名;相对路径按 base(项目根)解析。
+// 以原始字节流返回本地媒体文件,供聊天界面内联展示会话中生成的图片/视频/音频。
+// 仅允许媒体扩展名;相对路径按 base(项目根)解析。
 const IMAGE_TYPES: Record<string, string> = {
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -124,7 +125,27 @@ const IMAGE_TYPES: Record<string, string> = {
   ".avif": "image/avif",
   ".ico": "image/x-icon",
 };
+/**
+ * 视频/音频。与图片分开是因为**播放方式根本不同**:图片可以一次性读进内存
+ * 发出去,而视频动辄几十上百 MB,整读会把 sidecar 的内存顶爆;更要命的是
+ * 不支持 Range 请求时浏览器无法 seek —— 进度条拖不动、大文件迟迟不起播。
+ * 所以下面对这类走 createReadStream + 206 分段响应。
+ */
+const MEDIA_TYPES: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".m4v": "video/x-m4v",
+  ".ogv": "video/ogg",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".m4a": "audio/mp4",
+  ".ogg": "audio/ogg",
+  ".flac": "audio/flac",
+};
 const RAW_IMAGE_MAX_BYTES = 50 * 1024 * 1024;
+/** 视频不整读进内存,所以上限可以放宽;仍设一个防呆值挡住误传的超大文件 */
+const RAW_MEDIA_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
 router.get("/raw", async (req, res) => {
   const reqPath = req.query.path as string;
@@ -136,19 +157,73 @@ router.get("/raw", async (req, res) => {
     const resolved = path.isAbsolute(reqPath)
       ? path.normalize(reqPath)
       : path.resolve(base || process.cwd(), reqPath);
-    const type = IMAGE_TYPES[path.extname(resolved).toLowerCase()];
-    if (!type) {
-      return res.status(415).json({ error: { code: "UNSUPPORTED_TYPE", message: "仅支持图片文件" } });
+    const ext = path.extname(resolved).toLowerCase();
+    const imageType = IMAGE_TYPES[ext];
+    const mediaType = MEDIA_TYPES[ext];
+    if (!imageType && !mediaType) {
+      return res
+        .status(415)
+        .json({ error: { code: "UNSUPPORTED_TYPE", message: "仅支持图片/视频/音频文件" } });
     }
     const stat = await fs.stat(resolved);
-    if (!stat.isFile() || stat.size > RAW_IMAGE_MAX_BYTES) {
-      return res.status(413).json({ error: { code: "TOO_LARGE", message: "文件过大或不是常规文件" } });
+    if (!stat.isFile()) {
+      return res.status(413).json({ error: { code: "TOO_LARGE", message: "不是常规文件" } });
     }
-    res.setHeader("Content-Type", type);
+
+    // ── 图片:一次性读出,简单够用 ──
+    if (imageType) {
+      if (stat.size > RAW_IMAGE_MAX_BYTES) {
+        return res.status(413).json({ error: { code: "TOO_LARGE", message: "文件过大" } });
+      }
+      res.setHeader("Content-Type", imageType);
+      res.setHeader("Cache-Control", "no-cache");
+      return res.send(await fs.readFile(resolved));
+    }
+
+    // ── 视频/音频:流式 + Range ──
+    if (stat.size > RAW_MEDIA_MAX_BYTES) {
+      return res.status(413).json({ error: { code: "TOO_LARGE", message: "文件过大" } });
+    }
+    res.setHeader("Content-Type", mediaType);
     res.setHeader("Cache-Control", "no-cache");
-    res.send(await fs.readFile(resolved));
+    // 必须声明支持 Range,否则浏览器不给 seek(进度条拖不动)
+    res.setHeader("Accept-Ranges", "bytes");
+
+    const range = req.headers.range;
+    if (!range) {
+      res.setHeader("Content-Length", String(stat.size));
+      createReadStream(resolved).pipe(res);
+      return;
+    }
+
+    // bytes=START-END,END 可省略。解析失败按整文件处理,不要 500。
+    const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if (!m) {
+      res.setHeader("Content-Length", String(stat.size));
+      createReadStream(resolved).pipe(res);
+      return;
+    }
+    const startRaw = m[1];
+    const endRaw = m[2];
+    let start = startRaw ? Number(startRaw) : 0;
+    let end = endRaw ? Number(endRaw) : stat.size - 1;
+    // 末尾 N 字节的写法:bytes=-500
+    if (!startRaw && endRaw) {
+      start = Math.max(0, stat.size - Number(endRaw));
+      end = stat.size - 1;
+    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= stat.size) {
+      res.setHeader("Content-Range", `bytes */${stat.size}`);
+      return res.status(416).end();
+    }
+    end = Math.min(end, stat.size - 1);
+
+    res.status(206);
+    res.setHeader("Content-Range", `bytes ${start}-${end}/${stat.size}`);
+    res.setHeader("Content-Length", String(end - start + 1));
+    createReadStream(resolved, { start, end }).pipe(res);
   } catch {
-    res.status(404).json({ error: { code: "FILE_NOT_FOUND", message: "图片不存在" } });
+    res.status(404).json({ error: { code: "FILE_NOT_FOUND", message: "文件不存在" } });
   }
 });
 
