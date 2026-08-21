@@ -14,6 +14,7 @@
     "operation": {
       "enum": [
         "clip.import",
+        "clip.relink",
         "clip.arrange",
         "narration.rewrite",
         "narration.synthesize",

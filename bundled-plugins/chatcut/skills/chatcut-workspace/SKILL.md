@@ -1,6 +1,6 @@
 ---
 name: chatcut-workspace
-description: 当用户要打开 ChatCut 课程视频工作台、把几个视频组合起来、导入录屏或 HyperFrames 产物开始剪一集课程视频时使用。检测依赖、启动本地工作台并返回浏览器地址，然后把素材导入当前项目。
+description: 当用户要打开 ChatCut 课程视频工作台、把几个视频组合起来、导入录屏或 HyperFrames 产物开始剪一集课程视频时使用。检测依赖、启动本地工作台并返回浏览器地址，然后把素材导入当前项目。工程开起来之后这些活也归它：把第 3 段挪到第 1 段前面、删掉某段、开头几秒废镜头收一下出入点，这类排片段（clip_arrange）；用户说「素材找不到了」「我把 rec 目录挪到别的盘了」时把片段重新指到新路径（clip_relink），裁剪点与标注都保留；导入报 PERMISSION_DENIED、素材在桌面或另一块盘上导不进来时讲清可导入范围与 CHATCUT_MEDIA_ROOTS 该怎么配；用户说「我在面板上点了按钮没回音」「界面一直转圈显示进行中」时去认领界面提交的待办（request_claim）并把它跑完结掉；用户说「先停下」「别跑了」时取消正在跑的任务（job_cancel），问「渲染进度怎么样」时报进度（job_status）；问「现在什么状态」「有几段、总共多长、旁白写到哪了」时复述工程现状（project_read）；以及依赖缺失时的体检与补齐——hyperframes 或 whisper 没装、要下多大、从哪来、装到哪（dependency_check / dependency_fetch）。
 ---
 
 [任务]
@@ -50,6 +50,66 @@ description: 当用户要打开 ChatCut 课程视频工作台、把几个视频�
     3. 用户提供素材路径后调用 `clip_import`，它会用 ffprobe 探测规格并生成预览代理。
         原始文件只被读取，不复制、不修改。
     4. 导入完成后告诉用户：导入了几段、总时长多少、有没有片段被标为缺失或格式不支持。
+    5. `workspace_open` 的返回里带 `missingClips`。非空就说明**上次用过的素材现在找不到了**，
+        当场告诉用户是哪几个片段、原路径是什么，然后按下一节重新定位。别等用户自己发现。
+
+[导入范围：哪些路径导得进来]
+    可导入的一共四处（SEC-003）：
+    1. **项目目录**；
+    2. **宿主会话的工作目录树**（这个 MCP Server 被拉起时所在的目录）；
+    3. **用户显式追加的素材目录**——两个取值源，并集生效，见下一节；
+    4. **已经导入过的那几个具体文件**（是文件，不是它们所在的目录）。
+        这一条只能由带守卫的 `clip_import` / `clip_relink` 往里加；
+        `clip_arrange` / `project_write` 改不了片段的 `sourcePath`，别去试（F-069）。
+
+    清单之外一律 `PERMISSION_DENIED`，而且**越权与文件不存在给的是同一句话**——
+    别拿它去试探某个路径存不存在，那问不出结果。
+    探测（`media_probe`）的范围比导入更窄，只到第 4 条，不含目录。
+
+[素材在别处怎么办：CHATCUT_MEDIA_ROOTS 到底写在哪]
+    用户的录屏在桌面、OBS 的默认输出目录、另一块盘上的素材库——只要不在工作目录树内，
+    导入就会被拒。这时**不要只说"请在宿主配置里加环境变量"**：那句话没有可操作性，
+    用户不知道是哪一份文件、写在哪个键下。把下面三条原样念给用户，让他挑一条（F-073）。
+
+    方式一 · 当次会话立即生效（**启动宿主之前**在同一个终端里执行）
+        Windows（cmd）：    set CHATCUT_MEDIA_ROOTS=D:\course\raw
+        Windows（PowerShell）：$env:CHATCUT_MEDIA_ROOTS = "D:\course\raw"
+        macOS / Linux：     export CHATCUT_MEDIA_ROOTS=/Users/me/course/raw
+        多个目录用系统路径分隔符隔开（Windows 是 `;`，POSIX 是 `:`）。
+
+    方式二 · 长期有效，用户手写一次（推荐；与 MiniMax 凭据同一个位置）
+        文件：`%APPDATA%\chatcut\config.json`
+              （macOS / Linux 是 `~/.config/chatcut/config.json`）
+        内容照抄，把路径换成自己的：
+            {
+              "mediaRoots": ["D:/course/raw", "E:/obs-output"]
+            }
+        **这份文件只有用户能写**：插件没有任何 Tool 能改它，你也改不了。
+        它与环境变量是并集关系，两个都设就两个都生效。
+
+    方式三 · 写进宿主配置的 env 块（要改的是**宿主自己的** settings.json，
+        不是插件安装目录里的那份拷贝——插件是被复制进宿主缓存的，改那份重装即被覆盖）
+            {
+              "env": { "CHATCUT_MEDIA_ROOTS": "D:/course/raw" }
+            }
+
+    三条都要**重开会话或重启工作台**才生效：环境变量与配置在进程启动时读取一次。
+
+    这是**用户**的授权动作，你改不了自己进程的环境变量、也改不了那份配置文件，
+    更不要建议用户关掉这道检查。设完之后重跑 `clip_import` 复核，别替用户宣布已经好了。
+
+[素材失效与重新定位：clip_relink]
+    素材被移走、改名或删掉时，工程**不作废**：裁剪点、标注、旁白都还在，缺的只是文件本身（UX-005 / AC-010）。
+
+    1. `project_read` 看 `missingClipIds`（`workspace_open` 也会直接报）。
+    2. 逐条问用户新文件在哪。**不要自己猜路径、不要拿同名文件顶替**——
+        猜错的后果是成片里出现一段完全无关的画面，而导出会照常成功。
+    3. 对每条调 `clip_relink({"clipId":"...","newPath":"..."})`。裁剪点与标注会保留；
+        返回的 `warnings` 里若说规格变了或出点被收敛，原样念给用户听，那会影响成片。
+    4. 全部重绑完再导出。**重绑之前导出会被阻止**——那不是故障，是防止产出缺画面的成片。
+    5. 界面上那个「重新定位素材」按钮提交的是 `clip.relink` 请求，走的也是这条路：
+        `request_claim` 认领到它之后，`selection.clipIds` 就是要重绑的片段，
+        问清新路径后逐条调 `clip_relink`，并把认领来的 requestId 原样带上。
 
 [界面提交的待办：先认领再执行]
     用户在工作台点「生成配音 / 生成标注层 / 生成字幕 / 导出成片」时，请求会进 `.chatcut/requests/queue.json`，
@@ -64,6 +124,7 @@ description: 当用户要打开 ChatCut 课程视频工作台、把几个视频�
         - `annotation.render`    → `annotation_render`（annIds 取 selection.annIds）
         - `captions.generate`    → `captions_generate`
         - `export.render`        → `export_render`
+        - `clip.relink`          → 先问用户新路径，再对 selection.clipIds 逐条 `clip_relink`
         - `clip.arrange` / `annotation.define` 等 → 对应领域 Tool
     3. **把认领来的 requestId 原样传给那个 Tool**。这一步决定了闭环成不成立：
         带了它，写回时队列条目自动结单、界面上那次点击才有回音；
@@ -80,7 +141,14 @@ description: 当用户要打开 ChatCut 课程视频工作台、把几个视频�
     - 「把第 3 段挪到第 1 段前面」→ `clip_arrange`
     - 「现在什么状态」→ `project_read` 后用自然语言复述
     - 「渲染进度怎么样」→ `job_status`
-    - 「停下 / 别跑了」→ `job_cancel`，取消后如实说明中间产物保留、可从中断处续跑
+    - 「素材找不到了 / 我把文件挪到了 X」→ `project_read` 看 missingClipIds，再逐条 `clip_relink`
+    - 「停下 / 别跑了」→ `job_cancel`，取消后如实说明中间产物保留、可从中断处续跑。
+        任务替某条界面请求跑时，取消会**连带把队列里那条请求结成 cancelled**，它不会再被重新派回来；
+        别把「用户取消了」说成「上次没做完」。
+        **以回包里的 `requestSettled` 为准，不要凭这句话替系统打包票**：
+        `true` = 队列条目已结成 cancelled；`null` = 这个任务本来就不属于任何界面请求（你在对话里直接起的）；
+        `false` = 有 requestId 但没结成（已结过或条目已被裁掉）——这时用 `request_resolve` 复核，
+        别对用户说它已经停了。
 
 [界面与状态的关系]
     工作台显示的一切都来自 `.chatcut/project.json`，没有第二份真相源。
@@ -102,3 +170,5 @@ description: 当用户要打开 ChatCut 课程视频工作台、把几个视频�
     - 复制或改写用户的原始素材文件。
     - 不认领就直接执行界面提交的操作，或执行时丢掉 requestId。
     - 队列里还有 pending 待办却告诉用户"没有进行中的任务"。
+    - 素材缺失时自己猜一个新路径去 `clip_relink`，或用同名文件顶替。
+    - 拿 `clip_import` 的拒绝回答去试探路径存不存在——越权与不存在给的是同一句话，问不出来。

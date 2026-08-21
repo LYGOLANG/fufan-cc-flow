@@ -3225,8 +3225,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path32) {
-      let input = path32;
+    function removeDotSegments(path34) {
+      let input = path34;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3478,8 +3478,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path32, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path32 && path32 !== "/" ? path32 : void 0;
+        const [path34, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path34 && path34 !== "/" ? path34 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -7736,7 +7736,7 @@ var require__ = __commonJS({
 });
 
 // packages/server/src/index.ts
-import path31 from "node:path";
+import path33 from "node:path";
 import { pathToFileURL } from "node:url";
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
@@ -8508,10 +8508,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path32) {
-  if (!path32)
+function getElementAtPath(obj, path34) {
+  if (!path34)
     return obj;
-  return path32.reduce((acc, key) => acc?.[key], obj);
+  return path34.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -8920,11 +8920,11 @@ function explicitlyAborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path32, issues) {
+function prefixIssues(path34, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path32);
+    iss.path.unshift(path34);
     return iss;
   });
 }
@@ -9071,16 +9071,16 @@ function flattenError(error51, mapper = (issue2) => issue2.message) {
 }
 function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = (error52, path32 = []) => {
+  const processError = (error52, path34 = []) => {
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path32, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path34, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path32, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path34, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path32, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path34, ...issue2.path]);
       } else {
-        const fullpath = [...path32, ...issue2.path];
+        const fullpath = [...path34, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -9107,17 +9107,17 @@ function formatError(error51, mapper = (issue2) => issue2.message) {
 }
 function treeifyError(error51, mapper = (issue2) => issue2.message) {
   const result = { errors: [] };
-  const processError = (error52, path32 = []) => {
+  const processError = (error52, path34 = []) => {
     var _a3, _b;
     for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path32, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path34, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path32, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path34, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path32, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path34, ...issue2.path]);
       } else {
-        const fullpath = [...path32, ...issue2.path];
+        const fullpath = [...path34, ...issue2.path];
         if (fullpath.length === 0) {
           result.errors.push(mapper(issue2));
           continue;
@@ -9149,8 +9149,8 @@ function treeifyError(error51, mapper = (issue2) => issue2.message) {
 }
 function toDotPath(_path) {
   const segs = [];
-  const path32 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
-  for (const seg of path32) {
+  const path34 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path34) {
     if (typeof seg === "number")
       segs.push(`[${seg}]`);
     else if (typeof seg === "symbol")
@@ -21842,13 +21842,13 @@ function resolveRef(ref, ctx) {
   if (!ref.startsWith("#")) {
     throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
   }
-  const path32 = ref.slice(1).split("/").filter(Boolean);
-  if (path32.length === 0) {
+  const path34 = ref.slice(1).split("/").filter(Boolean);
+  if (path34.length === 0) {
     return ctx.rootSchema;
   }
   const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
-  if (path32[0] === defsKey) {
-    const key = path32[1];
+  if (path34[0] === defsKey) {
+    const key = path34[1];
     if (!key || !ctx.defs[key]) {
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -24356,8 +24356,8 @@ function getErrorMap2() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path32, errorMaps, issueData } = params;
-  const fullPath = [...path32, ...issueData.path || []];
+  const { data, path: path34, errorMaps, issueData } = params;
+  const fullPath = [...path34, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -24472,11 +24472,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path32, key) {
+  constructor(parent, value, path34, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path32;
+    this._path = path34;
     this._key = key;
   }
   get path() {
@@ -28004,11 +28004,11 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
-function getDotPath(path32) {
-  if (path32.length === 0) {
+function getDotPath(path34) {
+  if (path34.length === 0) {
     return "object root";
   }
-  return path32.reduce((acc, seg, index) => {
+  return path34.reduce((acc, seg, index) => {
     if (index === 0) {
       return String(seg);
     }
@@ -32297,6 +32297,7 @@ function updateProject(projectRoot, mutator, opts = {}) {
 }
 
 // packages/server/src/queue.ts
+import { createHash } from "node:crypto";
 import { existsSync as existsSync5, mkdirSync as mkdirSync4, readFileSync as readFileSync4 } from "node:fs";
 import path5 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
@@ -32539,6 +32540,16 @@ function validateRequestEnvelope(value) {
   }
   return { valid: issues.length === 0, issues };
 }
+function operationFingerprint(tool, target) {
+  return createHash("sha256").update(`${tool}\0${canonicalJson(target)}`).digest("hex").slice(0, 32);
+}
+function canonicalJson(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map((v) => canonicalJson(v)).join(",")}]`;
+  const obj = value;
+  const keys = Object.keys(obj).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`).join(",")}}`;
+}
 function emptyLedger() {
   return /* @__PURE__ */ Object.create(null);
 }
@@ -32580,6 +32591,17 @@ function assertSafeRequestId(requestId, where) {
     );
   }
   return requestId;
+}
+var FINGERPRINT_PATTERN = /^[0-9a-f]{32}$/;
+function assertFingerprint(fingerprint, where) {
+  if (typeof fingerprint !== "string" || !FINGERPRINT_PATTERN.test(fingerprint)) {
+    throw new QueueError(
+      "INVALID_INPUT",
+      `${where}\uFF1A\u64CD\u4F5C\u6307\u7EB9\u5FC5\u987B\u662F operationFingerprint() \u4EA7\u51FA\u7684 32 \u4F4D\u5341\u516D\u8FDB\u5236\u4E32\uFF0C\u5B9E\u5F97 ${JSON.stringify(String(fingerprint).slice(0, 80))}`,
+      { fingerprint: String(fingerprint).slice(0, 80) }
+    );
+  }
+  return fingerprint;
 }
 var DEFAULTS = {
   claimLeaseMs: 6e4,
@@ -32624,10 +32646,28 @@ var RequestQueue = class {
   getEntry(requestId) {
     return this.read().entries.find((e) => e.requestId === requestId) ?? null;
   }
-  /** DEC-003 ①：requestId 是否**已生效**。台账里有 `applied` 才算数。 */
-  lookupApplied(requestId) {
+  /**
+   * DEC-003 ①：这一次操作是否**已生效**。
+   *
+   * **判据是 requestId + 操作指纹两者一起命中**（F-077）——全产品唯一的一处判定。
+   * 同一个 requestId 命中**不同**指纹时返回 null，也就是"不走幂等分支、照常执行"。
+   * 之前只按 requestId 索引，于是 SKILL 教出来的多片段重定位从第 2 条起
+   * 静默变成空操作并回报成功。
+   *
+   * 兼容旧队列文件：`appliedByFingerprint` 不存在（上一版写的）时，回退看
+   * `applied.fingerprint`；连那个都没有的老记录**不认**——宁可重做一次
+   * （重做会先撞版本双检，失败是响的），也不要拿一条来路不明的记录去
+   * 判定一次不知道是什么的操作已经做过了。
+   */
+  lookupApplied(requestId, fingerprint) {
     assertSafeRequestId(requestId, "lookupApplied");
-    return this.read().ledger[requestId]?.applied ?? null;
+    assertFingerprint(fingerprint, "lookupApplied");
+    const entry = this.read().ledger[requestId];
+    if (!entry) return null;
+    const byFp = entry.appliedByFingerprint?.[fingerprint];
+    if (byFp) return byFp;
+    if (entry.applied?.fingerprint === fingerprint) return entry.applied;
+    return null;
   }
   lookupLedger(requestId) {
     assertSafeRequestId(requestId, "lookupLedger");
@@ -32812,7 +32852,8 @@ var RequestQueue = class {
       entry.done = {
         at: new Date(this.now()).toISOString(),
         outcome,
-        ...resultingProjectVersion === void 0 ? {} : { resultingProjectVersion }
+        ...resultingProjectVersion === void 0 ? {} : { resultingProjectVersion },
+        ...opts.note === void 0 || opts.note === "" ? {} : { note: opts.note.slice(0, 500) }
       };
       return { changed: true, value: entry };
     });
@@ -32821,8 +32862,9 @@ var RequestQueue = class {
   // 幂等台账（DEC-003）。写回层（host-bridge）通过这三个方法维护。
   // -----------------------------------------------------------------------
   /** 记录「即将应用」的意图。崩溃恢复时靠它 + 当前 projectVersion 判定是否已落地。 */
-  beginApply(requestId, basedOnProjectVersion, operation) {
+  beginApply(requestId, basedOnProjectVersion, fingerprint, operation) {
     assertSafeRequestId(requestId, "beginApply");
+    assertFingerprint(fingerprint, "beginApply");
     return this.mutate((file2) => {
       const at = new Date(this.now()).toISOString();
       const entry = file2.ledger[requestId] ?? {
@@ -32830,34 +32872,52 @@ var RequestQueue = class {
         firstSeenAt: at,
         ...operation === void 0 ? {} : { operation }
       };
-      entry.applying = { basedOnProjectVersion, at };
+      entry.applying = { basedOnProjectVersion, at, fingerprint };
       file2.ledger[requestId] = entry;
       return { changed: true, value: entry };
     });
   }
-  /** 确认已生效。此后同 requestId 的写回一律走幂等重放。 */
+  /**
+   * 确认已生效。此后**同 requestId 且同指纹**的写回才走幂等重放（F-077）。
+   * 同 requestId 换了操作的，会在这张表里各占一格，互不遮蔽。
+   */
   markApplied(requestId, applied) {
     assertSafeRequestId(requestId, "markApplied");
+    assertFingerprint(applied.fingerprint, "markApplied");
     return this.mutate((file2) => {
       const at = new Date(this.now()).toISOString();
       const entry = file2.ledger[requestId] ?? { requestId, firstSeenAt: at };
-      entry.applied = {
+      const record2 = {
         basedOnProjectVersion: applied.basedOnProjectVersion,
         resultingProjectVersion: applied.resultingProjectVersion,
         at,
-        status: applied.status ?? "succeeded"
+        status: applied.status ?? "succeeded",
+        fingerprint: applied.fingerprint
       };
-      delete entry.applying;
+      entry.applied = record2;
+      const byFp = entry.appliedByFingerprint ?? /* @__PURE__ */ Object.create(null);
+      byFp[applied.fingerprint] = record2;
+      entry.appliedByFingerprint = byFp;
+      if (entry.applying?.fingerprint === applied.fingerprint) delete entry.applying;
       file2.ledger[requestId] = entry;
       return { changed: true, value: entry };
     });
   }
-  /** 应用失败，撤销意图。失败不留「疑似已生效」的痕迹。 */
-  abortApply(requestId) {
+  /**
+   * 应用失败，撤销意图。失败不留「疑似已生效」的痕迹。
+   *
+   * 带指纹时**只撤自己那一次**（F-077）：同 requestId 下另一次操作的意图不该被顺手清掉，
+   * 那会让它的崩溃恢复判定退化成猜。
+   */
+  abortApply(requestId, fingerprint) {
     assertSafeRequestId(requestId, "abortApply");
+    if (fingerprint !== void 0) assertFingerprint(fingerprint, "abortApply");
     return this.mutate((file2) => {
       const entry = file2.ledger[requestId];
       if (!entry?.applying) return { changed: false, value: entry ?? null };
+      if (fingerprint !== void 0 && entry.applying.fingerprint !== fingerprint) {
+        return { changed: false, value: entry };
+      }
       delete entry.applying;
       return { changed: true, value: entry };
     });
@@ -32952,6 +33012,18 @@ function normalizeLedger(raw) {
   for (const [key, value] of Object.entries(raw)) {
     if (isForbiddenKey2(key)) continue;
     if (value === null || typeof value !== "object" || Array.isArray(value)) continue;
+    const entry = value;
+    entry.appliedByFingerprint = normalizeFingerprintMap(entry.appliedByFingerprint);
+    out[key] = entry;
+  }
+  return out;
+}
+function normalizeFingerprintMap(raw) {
+  const out = /* @__PURE__ */ Object.create(null);
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [key, value] of Object.entries(raw)) {
+    if (isForbiddenKey2(key) || !FINGERPRINT_PATTERN.test(key)) continue;
+    if (value === null || typeof value !== "object" || Array.isArray(value)) continue;
     out[key] = value;
   }
   return out;
@@ -33016,10 +33088,18 @@ function objArray(op, key, index) {
   }
   return v;
 }
+var AGENT_UNWRITABLE_FIELDS = /* @__PURE__ */ new Set(["sourcePath"]);
 function pick2(source, fields, label, index) {
   const out = {};
   for (const key of Object.keys(source)) {
     if (isForbiddenKey(key)) fail("INVALID_INPUT", `${label} \u542B\u7981\u6B62\u7684\u5C5E\u6027\u540D ${key}`, { index, key });
+    if (AGENT_UNWRITABLE_FIELDS.has(key)) {
+      fail(
+        "INVALID_INPUT",
+        `${label} \u4E0D\u63A5\u53D7 ${key}\uFF1A\u7247\u6BB5\u7684\u7D20\u6750\u6765\u6E90\u53EA\u80FD\u7531\u5E26\u8DEF\u5F84\u5B88\u536B\u7684 clip_import / clip_relink \u8BBE\u7F6E\uFF0C\u7F16\u6392\u7C7B Tool\uFF08clip_arrange / project_write\uFF09\u4E0D\u6539\u7D20\u6750\u6765\u6E90\uFF08F-069 / SEC-003\uFF09\u3002\u8981\u6362\u7D20\u6750\u8BF7\u8C03 clip_relink\uFF1B\u8981\u65B0\u589E\u7247\u6BB5\u8BF7\u8C03 clip_import\u3002`,
+        { index, key, unwritable: [...AGENT_UNWRITABLE_FIELDS] }
+      );
+    }
     if (!fields.includes(key)) {
       fail("INVALID_INPUT", `${label} \u542B\u5951\u7EA6\u672A\u5B9A\u4E49\u7684\u5B57\u6BB5 ${key}\uFF1B\u9886\u57DF Tool \u4E0D\u63A5\u53D7\u4EFB\u610F\u8DEF\u5F84\u5199\u5165`, {
         index,
@@ -33043,7 +33123,6 @@ function findBy(list, key, value) {
 }
 var CLIP_FIELDS = [
   "clipId",
-  "sourcePath",
   "sourceKind",
   "order",
   "inSec",
@@ -33078,21 +33157,30 @@ var ANNOTATION_FIELDS = [
 ];
 var CAPTION_FIELDS = ["cueId", "startSec", "endSec", "text", "source", "edited"];
 var HANDLERS = nullDict({
+  /**
+   * `clip.add` 已退役（F-069）。
+   *
+   * 它是唯一一条**必须**带 `sourcePath` 才能成立的 op（`state.schema.json` 的 clips 项
+   * required = clipId / sourcePath / order），而 `sourcePath` 现在是 Agent 一律写不到的字段。
+   * 两件事合起来的结论只有一个：新增片段这件事只能走 `clip_import`——那条路上有
+   * `assertPathAllowed(importRoots)`，而这条路上一道都没有。
+   *
+   * 枚举项**保留在契约里不动**（`contracts/result.schema.json` 是冻结契约，
+   * 且 `assertHandlersCoverContract` 要求枚举与实现一一对应），handler 也保留，
+   * 但它现在的职责是**给出一句说得清去哪儿的拒绝**，而不是无声地 NOT_IMPLEMENTED。
+   * 界面侧本来就从不产出它（见 `packages/ui/src/authoritative.ts`：
+   * 「界面手上没有这些东西，硬造一条 clip.add 只会写进一份没有 probe 的残缺记录」，
+   * 判据在 `tests/unit/authoritative.test.ts`），所以这条退役不砍任何真实产品路径。
+   */
   "clip.add": {
     fields: ["op", ...CLIP_FIELDS],
-    required: ["clipId", "sourcePath"],
-    apply(state, op, index) {
-      const clipId = str(op, "clipId", index);
-      if (findBy(state.clips, "clipId", clipId)) {
-        fail("INVALID_INPUT", `clip ${clipId} \u5DF2\u5B58\u5728\uFF0Cclip.add \u4E0D\u8986\u76D6\u65E2\u6709\u7247\u6BB5`, { index, clipId });
-      }
-      const clip = {
-        clipId,
-        sourcePath: str(op, "sourcePath", index),
-        order: typeof op["order"] === "number" ? op["order"] : state.clips.length
-      };
-      assign(clip, op, ["op", "clipId", "sourcePath", "order"]);
-      state.clips.push(clip);
+    required: [],
+    apply(_state, _op, index) {
+      fail(
+        "INVALID_INPUT",
+        `clip.add \u5DF2\u4E0D\u518D\u53D7\u7406\uFF1A\u65B0\u589E\u7247\u6BB5\u5FC5\u987B\u8D70 clip_import\u2014\u2014\u7D20\u6750\u6765\u6E90\u8981\u8FC7\u8DEF\u5F84\u5B88\u536B\uFF08SEC-003 / F-069\uFF09\uFF0C\u800C\u7F16\u6392\u7C7B Tool\uFF08clip_arrange / project_write\uFF09\u4E0A\u6CA1\u6709\u3001\u4E5F\u4E0D\u8BE5\u6709\u90A3\u9053\u5B88\u536B\u3002\u5DF2\u6709\u7247\u6BB5\u6362\u7D20\u6750\u8BF7\u8C03 clip_relink\u3002`,
+        { index, op: "clip.add", use: ["clip_import", "clip_relink"] }
+      );
     }
   },
   "clip.update": {
@@ -33268,7 +33356,25 @@ function assertHandlersCoverContract() {
   }
   return { ops: contract, handlers };
 }
+function assertProtectedFieldsUnwritable() {
+  const offenders = [];
+  for (const [name, handler] of Object.entries(HANDLERS)) {
+    for (const field of handler.fields) {
+      if (AGENT_UNWRITABLE_FIELDS.has(field)) offenders.push(`${name}.${field}`);
+    }
+    for (const field of handler.required) {
+      if (AGENT_UNWRITABLE_FIELDS.has(field)) offenders.push(`${name}.required.${field}`);
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(
+      `GUARD_REGRESSION: \u6388\u6743\u767D\u540D\u5355\u7684\u6765\u6E90\u5B57\u6BB5\u53C8\u53D8\u6210 Agent \u53EF\u5199\u4E86\uFF1A${JSON.stringify(offenders)}\u3002clips[].sourcePath \u51B3\u5B9A media_probe / clip_import / clip_relink \u7684\u5141\u8BB8\u6839\uFF08toolkit.importedSourceFiles\uFF09\uFF0C\u5B83\u4E00\u65E6\u53EF\u5199\uFF0C\u7F16\u6392 Tool \u5C31\u6210\u4E86\u81EA\u52A9\u53D1\u901A\u884C\u8BC1\u7684\u5165\u53E3\uFF08F-069\uFF09\u3002\u7D20\u6750\u6765\u6E90\u53EA\u80FD\u7531\u5E26 assertPathAllowed \u7684 clip_import / clip_relink \u8BBE\u7F6E\u3002`
+    );
+  }
+  return { unwritable: [...AGENT_UNWRITABLE_FIELDS], checked: Object.keys(HANDLERS) };
+}
 assertHandlersCoverContract();
+assertProtectedFieldsUnwritable();
 function applyOperations(state, operations) {
   if (!Array.isArray(operations)) {
     fail("INVALID_INPUT", "operations \u5FC5\u987B\u662F\u6570\u7EC4");
@@ -33315,6 +33421,9 @@ function nowIso() {
 function currentProjectVersion(projectRoot) {
   return loadProject(projectRoot)?.projectVersion ?? 0;
 }
+function writeBackFingerprint(operations) {
+  return operationFingerprint("project_write", operations ?? []);
+}
 function fin(res) {
   const check2 = validate("result", res);
   if (!check2.valid) {
@@ -33353,7 +33462,8 @@ function applyAgentResult(projectRoot, result, opts = {}) {
   const { requestId, basedOnProjectVersion } = envelope2;
   const queue = opts.queue ?? new RequestQueue(projectRoot);
   const warnings = [...envelope2.warnings ?? []];
-  const applied = queue.lookupApplied(requestId);
+  const fingerprint = writeBackFingerprint(envelope2.operations);
+  const applied = queue.lookupApplied(requestId, fingerprint);
   if (applied) {
     return fin({
       requestId,
@@ -33369,14 +33479,15 @@ function applyAgentResult(projectRoot, result, opts = {}) {
     });
   }
   const ledger = queue.lookupLedger(requestId);
-  if (ledger?.applying) {
+  if (ledger?.applying && ledger.applying.fingerprint === fingerprint) {
     const B = ledger.applying.basedOnProjectVersion;
     const C = currentProjectVersion(projectRoot);
     if (C === B + 1) {
       queue.markApplied(requestId, {
         basedOnProjectVersion: B,
         resultingProjectVersion: C,
-        status: "succeeded"
+        status: "succeeded",
+        fingerprint
       });
       return fin({
         requestId,
@@ -33431,7 +33542,7 @@ function applyAgentResult(projectRoot, result, opts = {}) {
     if (e instanceof OperationError) return fin(operationRejected(requestId, basedOnProjectVersion, e));
     throw e;
   }
-  queue.beginApply(requestId, basedOnProjectVersion, void 0);
+  queue.beginApply(requestId, basedOnProjectVersion, fingerprint);
   let next;
   let appliedOps = [];
   try {
@@ -33467,7 +33578,8 @@ function applyAgentResult(projectRoot, result, opts = {}) {
   queue.markApplied(requestId, {
     basedOnProjectVersion,
     resultingProjectVersion: next.projectVersion,
-    status: status === "partial" ? "partial" : "succeeded"
+    status: status === "partial" ? "partial" : "succeeded",
+    fingerprint
   });
   if (opts.completeQueueEntry !== false && queue.getEntry(requestId)) {
     queue.complete(requestId, status, next.projectVersion);
@@ -33652,6 +33764,23 @@ function previewDestructive(req) {
         executed: false
       };
     }
+    /*
+     * ── 这个 action 覆盖的**形态**（F-081）────────────────────────────────
+     *
+     * 它只回答一件事：「把 outputPath 写掉会损失什么」。它**不**回答
+     * 「这个路径该不该被写」——后者是 `packages/media/src/export.ts` 的
+     * `assertOverwriteAllowed()`，那是唯一实现点。
+     *
+     * 之所以要在这里写清楚：本产品的默认形态是**素材就放在项目目录内**
+     * （clip_import 的推荐用法、导入向导、示例工程都是这样），
+     * 所以「在项目根之内」这件事**不构成放行理由**。真正致命的一类目标是
+     * 已被 `clips[].sourcePath` 引用的源素材：覆盖它不可逆，撤销栈里没有文件内容，
+     * 而工程随后还要读它来重新导出。这一类由 `assertOverwriteAllowed()` 直接
+     * `PERMISSION_DENIED`，**不给"确认一下就能过"的口子**——
+     * 一个确认对话框换不回被覆盖的原始素材。
+     *
+     * 这里的 preview 只负责把损失如实说出来，供确认对话框显示。
+     */
     case "overwrite-render-output": {
       const out = req.outputPath ?? "";
       const exists = out && existsSync7(out);
@@ -33661,7 +33790,7 @@ function previewDestructive(req) {
         affected: exists ? [out] : [],
         bytes: exists ? statSync4(out).size : 0,
         recoverable: false,
-        recoveryNote: exists ? "\u5DF2\u6709\u6210\u7247\u4F1A\u88AB\u76F4\u63A5\u8986\u76D6\uFF0C**\u65E0\u6CD5\u6062\u590D**\u3002\u9700\u8981\u4FDD\u7559\u8BF7\u5148\u6539\u8F93\u51FA\u6587\u4EF6\u540D\u3002" : "\u76EE\u6807\u6587\u4EF6\u4E0D\u5B58\u5728\uFF0C\u4E0D\u6784\u6210\u8986\u76D6\u3002",
+        recoveryNote: exists ? "\u5DF2\u6709\u6210\u7247\u4F1A\u88AB\u76F4\u63A5\u8986\u76D6\uFF0C**\u65E0\u6CD5\u6062\u590D**\u3002\u9700\u8981\u4FDD\u7559\u8BF7\u5148\u6539\u8F93\u51FA\u6587\u4EF6\u540D\u3002\uFF08\u82E5\u76EE\u6807\u662F\u5DE5\u7A0B\u6B63\u5728\u5F15\u7528\u7684\u6E90\u7D20\u6750\uFF0C\u5BFC\u51FA\u4FA7\u7684 assertOverwriteAllowed \u4F1A\u5728\u6B64\u4E4B\u524D\u76F4\u63A5\u62D2\u7EDD\uFF0C\u786E\u8BA4\u5BF9\u672C\u6761\u65E0\u6548\u2014\u2014\u7D20\u6750\u653E\u5728\u9879\u76EE\u76EE\u5F55\u5185\u662F\u672C\u4EA7\u54C1\u7684\u9ED8\u8BA4\u5F62\u6001\uFF0C\u300C\u786E\u8BA4\u8986\u76D6\u300D\u4E0D\u8BE5\u6210\u4E3A\u6BC1\u7D20\u6750\u7684\u901A\u9053\u3002\uFF09" : "\u76EE\u6807\u6587\u4EF6\u4E0D\u5B58\u5728\uFF0C\u4E0D\u6784\u6210\u8986\u76D6\u3002",
         executed: false
       };
     }
@@ -33704,9 +33833,9 @@ function executeDestructive(req, scopes) {
 }
 
 // packages/host-bridge/src/tools/clip.ts
-import { existsSync as existsSync10, statSync as statSync6 } from "node:fs";
-import { createHash as createHash3 } from "node:crypto";
-import path12 from "node:path";
+import { existsSync as existsSync11, statSync as statSync6 } from "node:fs";
+import { createHash as createHash4 } from "node:crypto";
+import path13 from "node:path";
 
 // packages/media/src/normalize.ts
 import path10 from "node:path";
@@ -33884,7 +34013,7 @@ async function probeDurationSec(file2) {
 }
 
 // packages/media/src/assert.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 async function extractRgbaFrame(file2, timeSec, decoderArgs = []) {
   const probe = await ffprobeJson(file2, ["-select_streams", "v:0"]);
   const stream = probe?.streams?.[0];
@@ -33968,7 +34097,7 @@ async function audioPcmMd5(file2) {
     "-"
   ]);
   if (r.exitCode !== 0) throw new Error(`AUDIO_DECODE_FAILED(${r.exitCode}): ${r.stderr.slice(0, 300)}`);
-  return createHash("md5").update(r.stdout).digest("hex");
+  return createHash2("md5").update(r.stdout).digest("hex");
 }
 async function checkAudioUnchanged(checkId, fileA, fileB) {
   const [a, b] = await Promise.all([audioPcmMd5(fileA), audioPcmMd5(fileB)]);
@@ -34253,7 +34382,7 @@ function intermediatePath(cacheDir, clipId, contentHash) {
 
 // packages/media/src/proxy.ts
 import { existsSync as existsSync9, mkdirSync as mkdirSync7, statSync as statSync5 } from "node:fs";
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import path11 from "node:path";
 var PROXY = {
   width: 640,
@@ -34264,7 +34393,7 @@ var PROXY = {
 };
 function proxyKey(sourcePath) {
   const st = statSync5(sourcePath);
-  return createHash2("sha256").update(`${path11.resolve(sourcePath)}|${st.size}|${Math.round(st.mtimeMs)}`).digest("hex").slice(0, 16);
+  return createHash3("sha256").update(`${path11.resolve(sourcePath)}|${st.size}|${Math.round(st.mtimeMs)}`).digest("hex").slice(0, 16);
 }
 function proxyPathFor(cacheDir, clipId, sourcePath) {
   return path11.join(cacheDir, "proxy", `${clipId}-${proxyKey(sourcePath)}.mp4`);
@@ -34349,10 +34478,40 @@ async function generateProxy(sourcePath, clipId, cacheDir, opts = {}) {
   };
 }
 
+// packages/domain/src/userConfig.ts
+import { existsSync as existsSync10, readFileSync as readFileSync6 } from "node:fs";
+import { homedir } from "node:os";
+import path12 from "node:path";
+function userConfigPath() {
+  const base = process.env["APPDATA"] ?? path12.join(homedir(), ".config");
+  return path12.join(base, "chatcut", "config.json");
+}
+function userMediaRoots() {
+  const file2 = userConfigPath();
+  if (!existsSync10(file2)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync6(file2, "utf-8"));
+    const raw = parsed.mediaRoots;
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((r) => typeof r === "string" && r.trim().length > 0).map((r) => path12.resolve(r.trim()));
+  } catch {
+    return [];
+  }
+}
+function mediaRootsHowTo(dir = "<\u7D20\u6750\u6240\u5728\u76EE\u5F55>") {
+  const win = process.platform === "win32";
+  return [
+    `\u65B9\u5F0F\u4E00\uFF08\u5F53\u6B21\u4F1A\u8BDD\u7ACB\u5373\u751F\u6548\uFF0C\u542F\u52A8\u5BBF\u4E3B\u4E4B\u524D\u6267\u884C\uFF09\uFF1A${win ? `set CHATCUT_MEDIA_ROOTS=${dir}` : `export CHATCUT_MEDIA_ROOTS=${dir}`}`,
+    `\u65B9\u5F0F\u4E8C\uFF08\u957F\u671F\u6709\u6548\uFF0C\u7528\u6237\u624B\u5199\u4E00\u6B21\uFF1BAgent \u6539\u4E0D\u4E86\u5B83\uFF09\uFF1A\u5728 ${userConfigPath()} \u91CC\u5199 {"mediaRoots":["${dir.replace(/\\/g, "/")}"]}`,
+    `\u65B9\u5F0F\u4E09\uFF08\u5BBF\u4E3B\u914D\u7F6E\uFF09\uFF1A\u5728\u5BBF\u4E3B\u7684 settings.json \u7684 "env" \u5757\u91CC\u52A0 "CHATCUT_MEDIA_ROOTS": "${dir.replace(/\\/g, "/")}"\uFF0C\u7136\u540E\u91CD\u5F00\u4F1A\u8BDD\u3002`,
+    `\u6539\u5B8C\u5FC5\u987B\u91CD\u5F00\u4F1A\u8BDD\u6216\u91CD\u542F\u5DE5\u4F5C\u53F0\u2014\u2014\u73AF\u5883\u53D8\u91CF\u4E0E\u914D\u7F6E\u5728\u8FDB\u7A0B\u542F\u52A8\u65F6\u8BFB\u53D6\u3002`
+  ];
+}
+
 // packages/host-bridge/src/tools/clip.ts
 var SUPPORTED_EXT = /* @__PURE__ */ new Set([".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi"]);
 function guessKind(p, filePath) {
-  const name = path12.basename(filePath).toLowerCase();
+  const name = path13.basename(filePath).toLowerCase();
   if (name.includes("hyperframes") || name.includes("hf-") || /renders?[\\/]/.test(filePath.toLowerCase())) {
     return "hyperframes-render";
   }
@@ -34361,7 +34520,7 @@ function guessKind(p, filePath) {
 }
 function fileFingerprint(p) {
   const st = statSync6(p);
-  return createHash3("sha256").update(`${st.size}|${Math.round(st.mtimeMs)}`).digest("hex").slice(0, 12);
+  return createHash4("sha256").update(`${st.size}|${Math.round(st.mtimeMs)}`).digest("hex").slice(0, 12);
 }
 async function importClips(req) {
   const existing = loadProject(req.projectRoot);
@@ -34371,21 +34530,32 @@ async function importClips(req) {
   for (const raw of req.paths) {
     let abs;
     try {
-      abs = path12.resolve(raw);
+      abs = path13.resolve(raw);
       assertPathAllowed(abs, req.scopes, "read");
-    } catch (e) {
-      rejected.push({ path: raw, code: "PERMISSION_DENIED", message: e.message });
+    } catch {
+      rejected.push({
+        path: raw,
+        code: "PERMISSION_DENIED",
+        message: `${raw} \u4E0D\u5728\u5141\u8BB8\u5BFC\u5165\u7684\u8303\u56F4\u5185\u3002\u672C\u63D2\u4EF6\u53EA\u5BFC\u5165\u9879\u76EE\u76EE\u5F55\u3001\u5BBF\u4E3B\u4F1A\u8BDD\u7684\u5DE5\u4F5C\u76EE\u5F55\u6811\uFF0C\u4EE5\u53CA\u7528\u6237\u663E\u5F0F\u8FFD\u52A0\u7684\u7D20\u6750\u76EE\u5F55\uFF08SEC-003\uFF09\u3002
+` + // F-073：拒绝必须带**可照抄**的恢复指令。只写"请在宿主配置里加环境变量"
+        // 而不说是哪一份文件、怎么写，用户拿不到一条能照做的动作。
+        //
+        // 这里用占位符而**不回显被拒路径的目录**：拒绝语必须对任意取值逐字节相同，
+        // 多回显一段就多一条可比较的信息，那正是 F-063 关掉的那台预言机（判据见
+        // tests/security/guard.test.ts「系统路径三连」——三条路径的目录各不相同）。
+        mediaRootsHowTo().map((l) => `  \xB7 ${l}`).join("\n")
+      });
       continue;
     }
-    if (!existsSync10(abs)) {
+    if (!existsSync11(abs)) {
       rejected.push({ path: raw, code: "NOT_FOUND", message: `\u6587\u4EF6\u4E0D\u5B58\u5728\uFF1A${abs}` });
       continue;
     }
-    if (!SUPPORTED_EXT.has(path12.extname(abs).toLowerCase())) {
+    if (!SUPPORTED_EXT.has(path13.extname(abs).toLowerCase())) {
       rejected.push({
         path: raw,
         code: "UNSUPPORTED_FORMAT",
-        message: `\u4E0D\u652F\u6301\u7684\u6269\u5C55\u540D ${path12.extname(abs)}\uFF0C\u9996\u7248\u652F\u6301 ${[...SUPPORTED_EXT].join(" / ")}`
+        message: `\u4E0D\u652F\u6301\u7684\u6269\u5C55\u540D ${path13.extname(abs)}\uFF0C\u9996\u7248\u652F\u6301 ${[...SUPPORTED_EXT].join(" / ")}`
       });
       continue;
     }
@@ -34439,27 +34609,27 @@ async function importClips(req) {
 }
 
 // packages/host-bridge/src/tools/export.ts
-import { existsSync as existsSync18 } from "node:fs";
+import { existsSync as existsSync19 } from "node:fs";
 import { randomUUID as randomUUID4 } from "node:crypto";
-import path20 from "node:path";
+import path22 from "node:path";
 
 // packages/media/src/export.ts
-import { existsSync as existsSync17, mkdirSync as mkdirSync14, readFileSync as readFileSync10, statSync as statSync11, writeFileSync as writeFileSync6 } from "node:fs";
-import path19 from "node:path";
+import { existsSync as existsSync18, mkdirSync as mkdirSync14, readFileSync as readFileSync11, statSync as statSync11, writeFileSync as writeFileSync6 } from "node:fs";
+import path21 from "node:path";
 
 // packages/media/src/concat.ts
 import { writeFileSync as writeFileSync2, mkdirSync as mkdirSync8 } from "node:fs";
-import path13 from "node:path";
+import path14 from "node:path";
 function writeConcatList(listFile, segments) {
-  mkdirSync8(path13.dirname(listFile), { recursive: true });
-  const body = segments.map((s) => `file '${path13.resolve(s.path).replace(/\\/g, "/").replace(/'/g, "'\\''")}'`).join("\n");
+  mkdirSync8(path14.dirname(listFile), { recursive: true });
+  const body = segments.map((s) => `file '${path14.resolve(s.path).replace(/\\/g, "/").replace(/'/g, "'\\''")}'`).join("\n");
   writeFileSync2(listFile, `${body}
 `, "utf-8");
   return listFile;
 }
 async function concatSegments(segments, output, opts = {}) {
   if (segments.length === 0) throw new Error("INVALID_INPUT: \u6CA1\u6709\u53EF\u62FC\u63A5\u7684\u7247\u6BB5");
-  const listFile = path13.join(path13.dirname(output), `${path13.basename(output, path13.extname(output))}.concat.txt`);
+  const listFile = path14.join(path14.dirname(output), `${path14.basename(output, path14.extname(output))}.concat.txt`);
   writeConcatList(listFile, segments);
   const expectedDurationSec = Number(segments.reduce((a, s) => a + s.durationSec, 0).toFixed(6));
   const exec = await run("ffmpeg", [
@@ -34527,12 +34697,12 @@ async function concatSegments(segments, output, opts = {}) {
 }
 
 // packages/media/src/overlay.ts
-import { existsSync as existsSync14, mkdirSync as mkdirSync12, statSync as statSync9 } from "node:fs";
-import path17 from "node:path";
+import { existsSync as existsSync15, mkdirSync as mkdirSync12, statSync as statSync9 } from "node:fs";
+import path18 from "node:path";
 
 // packages/media/src/hyperframesStore.ts
-import { existsSync as existsSync12, mkdirSync as mkdirSync10, readFileSync as readFileSync7, statSync as statSync8 } from "node:fs";
-import path15 from "node:path";
+import { existsSync as existsSync13, mkdirSync as mkdirSync10, readFileSync as readFileSync8, statSync as statSync8 } from "node:fs";
+import path16 from "node:path";
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // packages/media/src/netPolicy.ts
@@ -34603,13 +34773,13 @@ function assertOriginAllowed(url2, context) {
 }
 
 // packages/media/src/modelStore.ts
-import { createHash as createHash4 } from "node:crypto";
+import { createHash as createHash5 } from "node:crypto";
 import {
   createReadStream,
   createWriteStream,
-  existsSync as existsSync11,
+  existsSync as existsSync12,
   mkdirSync as mkdirSync9,
-  readFileSync as readFileSync6,
+  readFileSync as readFileSync7,
   renameSync as renameSync3,
   rmSync as rmSync2,
   statSync as statSync7,
@@ -34617,8 +34787,8 @@ import {
 } from "node:fs";
 import http from "node:http";
 import https from "node:https";
-import { homedir } from "node:os";
-import path14 from "node:path";
+import { homedir as homedir2 } from "node:os";
+import path15 from "node:path";
 import { pipeline } from "node:stream/promises";
 var MODEL_REGISTRY = nullDict({
   "whisper-tiny": {
@@ -34676,22 +34846,22 @@ function getModelSpec(id) {
 }
 function resolvePluginDataDir(env = process.env) {
   const injected = env["CLAUDE_PLUGIN_DATA"] ?? env["CHATCUT_PLUGIN_DATA"];
-  if (injected && injected.trim().length > 0) return path14.resolve(injected);
+  if (injected && injected.trim().length > 0) return path15.resolve(injected);
   if (process.platform === "win32") {
-    const base = env["LOCALAPPDATA"] ?? path14.join(homedir(), "AppData", "Local");
-    return path14.join(base, "chatcut", "plugin-data");
+    const base = env["LOCALAPPDATA"] ?? path15.join(homedir2(), "AppData", "Local");
+    return path15.join(base, "chatcut", "plugin-data");
   }
   const xdg = env["XDG_DATA_HOME"];
-  return xdg ? path14.join(xdg, "chatcut") : path14.join(homedir(), ".local", "share", "chatcut");
+  return xdg ? path15.join(xdg, "chatcut") : path15.join(homedir2(), ".local", "share", "chatcut");
 }
 function modelsDir(env) {
-  return path14.join(resolvePluginDataDir(env), "models");
+  return path15.join(resolvePluginDataDir(env), "models");
 }
 function modelPath(spec, env) {
-  return path14.join(modelsDir(env), spec.fileName);
+  return path15.join(modelsDir(env), spec.fileName);
 }
 async function sha256File(file2) {
-  const hash2 = createHash4("sha256");
+  const hash2 = createHash5("sha256");
   await pipeline(createReadStream(file2), hash2);
   return hash2.digest("hex");
 }
@@ -34700,9 +34870,9 @@ function cachePathFor(file2) {
 }
 function readCache(file2) {
   const p = cachePathFor(file2);
-  if (!existsSync11(p)) return null;
+  if (!existsSync12(p)) return null;
   try {
-    const c = JSON.parse(readFileSync6(p, "utf-8"));
+    const c = JSON.parse(readFileSync7(p, "utf-8"));
     const st = statSync7(file2);
     if (c.sizeBytes !== st.size || Math.abs(c.mtimeMs - st.mtimeMs) > 1) return null;
     return c;
@@ -34728,7 +34898,7 @@ async function verifyModel(spec, file2, env) {
     expectedSha256: spec.sha256,
     expectedBytes: spec.sizeBytes
   };
-  if (!existsSync11(target)) {
+  if (!existsSync12(target)) {
     return { ...base, ok: false, reason: "missing", fromCache: false, detail: `\u6587\u4EF6\u4E0D\u5B58\u5728\uFF1A${target}` };
   }
   const size = statSync7(target).size;
@@ -34901,9 +35071,9 @@ async function httpGetStream(url2, opts = {}) {
   throw new Error(`TOO_MANY_REDIRECTS: ${url2}`);
 }
 async function downloadModel(spec, target, opts = {}) {
-  mkdirSync9(path14.dirname(target), { recursive: true });
+  mkdirSync9(path15.dirname(target), { recursive: true });
   const part = `${target}.part`;
-  if (existsSync11(part)) rmSync2(part, { force: true });
+  if (existsSync12(part)) rmSync2(part, { force: true });
   const started = Date.now();
   try {
     const res = await httpGetStream(spec.url, {
@@ -34930,7 +35100,7 @@ async function downloadModel(spec, target, opts = {}) {
     if (e instanceof NetworkOriginNotAllowedError) throw e;
     throw new ModelDownloadError(spec, e.message);
   }
-  if (existsSync11(target)) rmSync2(target, { force: true });
+  if (existsSync12(target)) rmSync2(target, { force: true });
   renameSync3(part, target);
   rmSync2(cachePathFor(target), { force: true });
 }
@@ -34939,7 +35109,7 @@ async function ensureModelReady(idOrSpec, opts = {}) {
   const target = opts.targetPath ?? modelPath(spec, opts.env);
   let downloaded = false;
   let downloadMs;
-  if (!existsSync11(target)) {
+  if (!existsSync12(target)) {
     if (!opts.allowDownload) throw new ModelMissingError(spec, target);
     const t0 = Date.now();
     await downloadModel(spec, target, opts);
@@ -34976,17 +35146,17 @@ var HYPERFRAMES_PACKAGE = "hyperframes";
 var DEFAULT_REGISTRY = "https://registry.npmjs.org";
 var INSTALL_BYTES_APPROX = 369 * 1024 * 1024;
 var CHROME_BYTES_APPROX = 272 * 1024 * 1024;
-var HERE2 = path15.dirname(fileURLToPath3(import.meta.url));
+var HERE2 = path16.dirname(fileURLToPath3(import.meta.url));
 var ENTRY_CANDIDATES = ["bin/hyperframes.mjs", "bin/hyperframes.js", "dist/cli.mjs", "dist/cli.js"];
 function hyperframesRoot(env) {
-  return path15.join(resolvePluginDataDir(env ?? process.env), "hyperframes", HYPERFRAMES_VERSION);
+  return path16.join(resolvePluginDataDir(env ?? process.env), "hyperframes", HYPERFRAMES_VERSION);
 }
 function hyperframesPackageDir(env) {
-  return path15.join(hyperframesRoot(env), "node_modules", HYPERFRAMES_PACKAGE);
+  return path16.join(hyperframesRoot(env), "node_modules", HYPERFRAMES_PACKAGE);
 }
 function readVersion(packageDir) {
   try {
-    const meta3 = JSON.parse(readFileSync7(path15.join(packageDir, "package.json"), "utf-8"));
+    const meta3 = JSON.parse(readFileSync8(path16.join(packageDir, "package.json"), "utf-8"));
     if (meta3.name !== HYPERFRAMES_PACKAGE) return null;
     return typeof meta3.version === "string" ? meta3.version : null;
   } catch {
@@ -34995,22 +35165,22 @@ function readVersion(packageDir) {
 }
 function findEntry(packageDir) {
   for (const rel of ENTRY_CANDIDATES) {
-    const p = path15.join(packageDir, rel);
-    if (existsSync12(p)) return p;
+    const p = path16.join(packageDir, rel);
+    if (existsSync13(p)) return p;
   }
   try {
-    const meta3 = JSON.parse(readFileSync7(path15.join(packageDir, "package.json"), "utf-8"));
+    const meta3 = JSON.parse(readFileSync8(path16.join(packageDir, "package.json"), "utf-8"));
     const binField = typeof meta3.bin === "string" ? meta3.bin : Object.values(meta3.bin ?? {})[0];
     if (binField) {
-      const p = path15.join(packageDir, binField);
-      if (existsSync12(p)) return p;
+      const p = path16.join(packageDir, binField);
+      if (existsSync13(p)) return p;
     }
   } catch {
   }
   return null;
 }
 function inspect(packageDir, source, root) {
-  if (!existsSync12(packageDir)) return null;
+  if (!existsSync13(packageDir)) return null;
   const version2 = readVersion(packageDir);
   const entry = findEntry(packageDir);
   if (!version2 || !entry) return null;
@@ -35020,9 +35190,9 @@ function localCandidates() {
   const out = [];
   let dir = HERE2;
   for (let i = 0; i < 8; i += 1) {
-    out.push(path15.join(dir, "node_modules", HYPERFRAMES_PACKAGE));
-    const isPluginRoot = existsSync12(path15.join(dir, ".claude-plugin")) || existsSync12(path15.join(dir, ".mcp.json"));
-    const up = path15.dirname(dir);
+    out.push(path16.join(dir, "node_modules", HYPERFRAMES_PACKAGE));
+    const isPluginRoot = existsSync13(path16.join(dir, ".claude-plugin")) || existsSync13(path16.join(dir, ".mcp.json"));
+    const up = path16.dirname(dir);
     if (isPluginRoot || up === dir) break;
     dir = up;
   }
@@ -35040,9 +35210,9 @@ function locateHyperframes(env, localRoots) {
     if (found.version === HYPERFRAMES_VERSION) location = found;
     else mismatched.push(found);
   };
-  const locals = localRoots ? localRoots.map((r) => path15.join(r, "node_modules", HYPERFRAMES_PACKAGE)) : localCandidates();
+  const locals = localRoots ? localRoots.map((r) => path16.join(r, "node_modules", HYPERFRAMES_PACKAGE)) : localCandidates();
   for (const c of locals) {
-    push(c, "local-node-modules", path15.resolve(c, "..", ".."));
+    push(c, "local-node-modules", path16.resolve(c, "..", ".."));
   }
   push(hyperframesPackageDir(env), "plugin-data", hyperframesRoot(env));
   return { location, mismatched, searched };
@@ -35088,12 +35258,12 @@ function locateNpmCli(env = process.env) {
   const candidates = [];
   const fromEnv = env["npm_execpath"];
   if (fromEnv && /\.(c?js|mjs)$/i.test(fromEnv)) candidates.push(fromEnv);
-  const nodeDir = path15.dirname(process.execPath);
-  candidates.push(path15.join(nodeDir, "node_modules", "npm", "bin", "npm-cli.js"));
-  candidates.push(path15.join(nodeDir, "lib", "node_modules", "npm", "bin", "npm-cli.js"));
+  const nodeDir = path16.dirname(process.execPath);
+  candidates.push(path16.join(nodeDir, "node_modules", "npm", "bin", "npm-cli.js"));
+  candidates.push(path16.join(nodeDir, "lib", "node_modules", "npm", "bin", "npm-cli.js"));
   const prefix = env["npm_config_prefix"];
-  if (prefix) candidates.push(path15.join(prefix, "lib", "node_modules", "npm", "bin", "npm-cli.js"));
-  return candidates.find((p) => existsSync12(p)) ?? null;
+  if (prefix) candidates.push(path16.join(prefix, "lib", "node_modules", "npm", "bin", "npm-cli.js"));
+  return candidates.find((p) => existsSync13(p)) ?? null;
 }
 async function installHyperframes(opts = {}) {
   const env = opts.env ?? process.env;
@@ -35105,7 +35275,7 @@ async function installHyperframes(opts = {}) {
   if (!npmCli) {
     throw new HyperframesInstallError(
       root,
-      `\u627E\u4E0D\u5230\u968F node \u5206\u53D1\u7684 npm CLI\uFF08\u627E\u8FC7 ${path15.dirname(process.execPath)} \u4E0B\u7684 node_modules/npm\uFF09\u3002\u8BF7\u786E\u8BA4 Node.js \u5B89\u88C5\u5B8C\u6574\uFF1B\u672C\u63D2\u4EF6\u4E0D\u4F1A\u53BB PATH \u91CC\u627E npm.cmd\u3002`
+      `\u627E\u4E0D\u5230\u968F node \u5206\u53D1\u7684 npm CLI\uFF08\u627E\u8FC7 ${path16.dirname(process.execPath)} \u4E0B\u7684 node_modules/npm\uFF09\u3002\u8BF7\u786E\u8BA4 Node.js \u5B89\u88C5\u5B8C\u6574\uFF1B\u672C\u63D2\u4EF6\u4E0D\u4F1A\u53BB PATH \u91CC\u627E npm.cmd\u3002`
     );
   }
   mkdirSync10(root, { recursive: true });
@@ -35129,7 +35299,7 @@ async function installHyperframes(opts = {}) {
     env
   });
   opts.onProgress?.({ phase: "verify", note: "\u6821\u9A8C\u843D\u76D8\u7248\u672C", elapsedMs: Date.now() - started });
-  const packageDir = path15.join(root, "node_modules", HYPERFRAMES_PACKAGE);
+  const packageDir = path16.join(root, "node_modules", HYPERFRAMES_PACKAGE);
   const location = inspect(packageDir, "plugin-data", root);
   if (!location) {
     throw new HyperframesInstallError(
@@ -35209,10 +35379,10 @@ function hyperframesInventory(env, localRoots) {
 }
 
 // packages/media/src/annotationCompiler.ts
-import { createHash as createHash5 } from "node:crypto";
-import { copyFileSync, existsSync as existsSync13, mkdirSync as mkdirSync11, readFileSync as readFileSync8, writeFileSync as writeFileSync4 } from "node:fs";
+import { createHash as createHash6 } from "node:crypto";
+import { copyFileSync, existsSync as existsSync14, mkdirSync as mkdirSync11, readFileSync as readFileSync9, writeFileSync as writeFileSync4 } from "node:fs";
 import { createRequire } from "node:module";
-import path16 from "node:path";
+import path17 from "node:path";
 import { fileURLToPath as fileURLToPath4 } from "node:url";
 var TEMPLATE_VERSION = "1.0.0";
 var DEFAULT_CANVAS2 = { width: 1920, height: 1080, fps: 30 };
@@ -35363,7 +35533,7 @@ function annotationHash(ann, canvas = DEFAULT_CANVAS2) {
     chip: layout.chip ?? null,
     arrow: layout.arrow ?? null
   });
-  return createHash5("sha256").update(canonical).digest("hex").slice(0, 16);
+  return createHash6("sha256").update(canonical).digest("hex").slice(0, 16);
 }
 function chipHtml(chip, ox, oy, accent) {
   return [
@@ -35413,24 +35583,24 @@ function bodyHtml(ann, layout) {
   if (layout.chip) parts.push(chipHtml(layout.chip, ox, oy, accent));
   return parts.join("\n");
 }
-var HERE3 = path16.dirname(fileURLToPath4(import.meta.url));
+var HERE3 = path17.dirname(fileURLToPath4(import.meta.url));
 function packageAssetRoots(env = process.env) {
   const roots = [];
   const push = (p) => {
     if (p && !roots.includes(p)) roots.push(p);
   };
-  push(path16.resolve(HERE3, ".."));
+  push(path17.resolve(HERE3, ".."));
   const injected = env["CLAUDE_PLUGIN_ROOT"];
-  if (injected && injected.trim().length > 0) push(path16.join(path16.resolve(injected.trim()), "dist"));
-  push(path16.resolve(HERE3, "..", ".."));
+  if (injected && injected.trim().length > 0) push(path17.join(path17.resolve(injected.trim()), "dist"));
+  push(path17.resolve(HERE3, "..", ".."));
   return roots;
 }
 function templateDir(env = process.env) {
   const candidates = [
-    ...packageAssetRoots(env).map((r) => path16.join(r, "templates", "annotation")),
-    path16.resolve(HERE3, "..", "..", "..", "packages", "media", "templates", "annotation")
+    ...packageAssetRoots(env).map((r) => path17.join(r, "templates", "annotation")),
+    path17.resolve(HERE3, "..", "..", "..", "packages", "media", "templates", "annotation")
   ];
-  const hit = candidates.find((p) => existsSync13(path16.join(p, "layer.html")));
+  const hit = candidates.find((p) => existsSync14(path17.join(p, "layer.html")));
   if (!hit) {
     throw new AnnotationCompileError(
       `\u6807\u6CE8\u6A21\u677F\u672A\u968F\u5305\u5206\u53D1\u3002\u5B83\u5E94\u5F53\u5728 <\u63D2\u4EF6\u6839>/dist/templates/annotation/\uFF08\u6784\u5EFA\u671F\u7531 scripts/build.mjs \u62F7\u5165\uFF09\u3002
@@ -35450,13 +35620,13 @@ function fill(tpl, vars) {
 function renderCompositionHtml(ann, canvas, layout, durationSec) {
   const holdSec = Math.max(0.02, Number((durationSec - ENTRANCE_SEC).toFixed(6)));
   const dir = templateDir();
-  const css = fill(readFileSync8(path16.join(dir, "layer.css"), "utf-8"), {
+  const css = fill(readFileSync9(path17.join(dir, "layer.css"), "utf-8"), {
     W: layout.bounds.w,
     H: layout.bounds.h,
     ENTRANCE_START_OPACITY,
     CHIP_PAD_X
   });
-  return fill(readFileSync8(path16.join(dir, "layer.html"), "utf-8"), {
+  return fill(readFileSync9(path17.join(dir, "layer.html"), "utf-8"), {
     W: layout.bounds.w,
     H: layout.bounds.h,
     FPS: canvas.fps,
@@ -35471,9 +35641,9 @@ function renderCompositionHtml(ann, canvas, layout, durationSec) {
 function resolveGsap(env = process.env) {
   const tried = [];
   for (const root of packageAssetRoots(env)) {
-    const p = path16.join(root, "vendor", "gsap.min.js");
+    const p = path17.join(root, "vendor", "gsap.min.js");
     tried.push(p);
-    if (existsSync13(p)) return p;
+    if (existsSync14(p)) return p;
   }
   const require2 = createRequire(import.meta.url);
   for (const id of ["gsap/dist/gsap.min.js", "gsap/dist/gsap.js"]) {
@@ -35515,12 +35685,12 @@ function compileAnnotation(ann, cacheRoot, canvas = DEFAULT_CANVAS2) {
   const durationSec = annotationDurationSec(ann);
   const layout = computeLayerLayout(ann, canvas);
   const hash2 = annotationHash(ann, canvas);
-  const projectDir = path16.join(cacheRoot, "annot", hash2);
-  const htmlPath = path16.join(projectDir, "index.html");
-  const vendorDir = path16.join(projectDir, "vendor");
+  const projectDir = path17.join(cacheRoot, "annot", hash2);
+  const htmlPath = path17.join(projectDir, "index.html");
+  const vendorDir = path17.join(projectDir, "vendor");
   mkdirSync11(vendorDir, { recursive: true });
-  const gsapDest = path16.join(vendorDir, "gsap.min.js");
-  if (!existsSync13(gsapDest)) copyFileSync(resolveGsap(), gsapDest);
+  const gsapDest = path17.join(vendorDir, "gsap.min.js");
+  if (!existsSync14(gsapDest)) copyFileSync(resolveGsap(), gsapDest);
   writeFileSync4(htmlPath, renderCompositionHtml(ann, canvas, layout, durationSec), "utf-8");
   return {
     annId: ann.annId,
@@ -35528,7 +35698,7 @@ function compileAnnotation(ann, cacheRoot, canvas = DEFAULT_CANVAS2) {
     style: ann.style,
     projectDir,
     htmlPath,
-    layerPath: path16.join(cacheRoot, "annot", `${hash2}.webm`),
+    layerPath: path17.join(cacheRoot, "annot", `${hash2}.webm`),
     bounds: layout.bounds,
     layout,
     fullCanvas: layout.fullCanvas,
@@ -35565,7 +35735,7 @@ function transparentRatio(frame) {
   return zero / total;
 }
 async function renderAnnotationLayer(compiled, opts = {}) {
-  mkdirSync12(path17.dirname(compiled.layerPath), { recursive: true });
+  mkdirSync12(path18.dirname(compiled.layerPath), { recursive: true });
   const args = [
     "render",
     compiled.projectDir,
@@ -35602,13 +35772,13 @@ async function renderAnnotationLayer(compiled, opts = {}) {
     exec,
     assertion,
     renderMs: exec.durationMs,
-    bytes: existsSync14(compiled.layerPath) ? statSync9(compiled.layerPath).size : 0,
+    bytes: existsSync15(compiled.layerPath) ? statSync9(compiled.layerPath).size : 0,
     cached: false
   };
 }
 async function layerChecks(compiled, exec) {
   const checks = [];
-  if (!existsSync14(compiled.layerPath)) {
+  if (!existsSync15(compiled.layerPath)) {
     checks.push({
       checkId: "layer-exists",
       kind: "frame-count",
@@ -35756,7 +35926,7 @@ async function hasAudioStream(file2) {
 }
 async function overlayAnnotations(baseVideo, layers, output, opts = {}) {
   if (layers.length === 0) throw new Error("INVALID_INPUT: \u6CA1\u6709\u4EFB\u4F55\u6807\u6CE8\u5C42\u53EF\u5408\u6210");
-  mkdirSync12(path17.dirname(output), { recursive: true });
+  mkdirSync12(path18.dirname(output), { recursive: true });
   const hasAudio = await hasAudioStream(baseVideo);
   const { argv, filterComplex } = buildOverlayArgs(
     baseVideo,
@@ -35788,7 +35958,7 @@ function probeTimeInside(l) {
 }
 async function overlayChecks(baseVideo, layers, output, exec, hasAudio) {
   const checks = [];
-  if (!existsSync14(output)) {
+  if (!existsSync15(output)) {
     checks.push({
       checkId: "overlay-exists",
       kind: "frame-count",
@@ -35857,8 +36027,8 @@ async function overlayChecks(baseVideo, layers, output, exec, hasAudio) {
 }
 
 // packages/media/src/burnIn.ts
-import { copyFileSync as copyFileSync2, existsSync as existsSync15, mkdirSync as mkdirSync13, readFileSync as readFileSync9, statSync as statSync10, writeFileSync as writeFileSync5 } from "node:fs";
-import path18 from "node:path";
+import { copyFileSync as copyFileSync2, existsSync as existsSync16, mkdirSync as mkdirSync13, readFileSync as readFileSync10, statSync as statSync10, writeFileSync as writeFileSync5 } from "node:fs";
+import path19 from "node:path";
 
 // packages/domain/src/captionsFromText.ts
 var SENTENCE_END = /* @__PURE__ */ new Set(["\u3002", "\uFF01", "\uFF1F", "!", "?", "\u2026"]);
@@ -35974,23 +36144,23 @@ function resolveCjkFont(opts = {}) {
   const tried = [];
   let picked = null;
   if (opts.fontFile) {
-    if (!existsSync15(opts.fontFile)) throw new CjkFontMissingError([`${opts.fontFile}\uFF08\u663E\u5F0F\u6307\u5B9A\u4F46\u4E0D\u5B58\u5728\uFF09`]);
-    picked = { file: opts.fontFile, family: opts.fontFamily ?? path18.parse(opts.fontFile).name };
+    if (!existsSync16(opts.fontFile)) throw new CjkFontMissingError([`${opts.fontFile}\uFF08\u663E\u5F0F\u6307\u5B9A\u4F46\u4E0D\u5B58\u5728\uFF09`]);
+    picked = { file: opts.fontFile, family: opts.fontFamily ?? path19.parse(opts.fontFile).name };
   } else {
     for (const c of CJK_FONT_CANDIDATES) {
       tried.push(c.file);
-      if (existsSync15(c.file)) {
+      if (existsSync16(c.file)) {
         picked = c;
         break;
       }
     }
   }
   if (!picked) throw new CjkFontMissingError(tried);
-  const cacheDir = opts.cacheDir ?? path18.join(resolvePluginDataDir(), "fonts", path18.parse(picked.file).name);
+  const cacheDir = opts.cacheDir ?? path19.join(resolvePluginDataDir(), "fonts", path19.parse(picked.file).name);
   mkdirSync13(cacheDir, { recursive: true });
-  const dest = path18.join(cacheDir, path18.basename(picked.file));
+  const dest = path19.join(cacheDir, path19.basename(picked.file));
   const srcSize = statSync10(picked.file).size;
-  if (!existsSync15(dest) || statSync10(dest).size !== srcSize) {
+  if (!existsSync16(dest) || statSync10(dest).size !== srcSize) {
     copyFileSync2(picked.file, dest);
   }
   return { file: dest, family: picked.family, fontsDir: cacheDir };
@@ -36010,7 +36180,7 @@ function mergeCaptionTracks(ttsCues, asrCues, opts = {}) {
   return merged.map((c, i) => ({ ...c, cueId: `cue-${String(i + 1).padStart(4, "0")}` }));
 }
 function writeSrtFile(cues, file2) {
-  mkdirSync13(path18.dirname(file2), { recursive: true });
+  mkdirSync13(path19.dirname(file2), { recursive: true });
   const text = toSrt(cues);
   writeFileSync5(file2, text, "utf-8");
   return text;
@@ -36118,7 +36288,7 @@ async function probeSize(file2) {
   return { width, height };
 }
 async function burnInSubtitles(videoIn, cues, videoOut, opts = {}) {
-  if (!existsSync15(videoIn)) throw new Error(`BURNIN_INPUT_MISSING: ${videoIn}`);
+  if (!existsSync16(videoIn)) throw new Error(`BURNIN_INPUT_MISSING: ${videoIn}`);
   if (cues.length === 0) throw new Error("BURNIN_NO_CUES: \u6CA1\u6709\u4EFB\u4F55\u5B57\u5E55\u6761\u76EE\uFF0C\u4E0D\u8BE5\u8D70\u70E7\u5F55");
   const size = await probeSize(videoIn);
   const font = resolveCjkFont({
@@ -36127,9 +36297,9 @@ async function burnInSubtitles(videoIn, cues, videoOut, opts = {}) {
     ...opts.fontCacheDir ? { cacheDir: opts.fontCacheDir } : {}
   });
   const style = defaultStyle(size.height, { fontFamily: font.family, ...opts.style ?? {} });
-  mkdirSync13(path18.dirname(videoOut), { recursive: true });
+  mkdirSync13(path19.dirname(videoOut), { recursive: true });
   const assPath = opts.assPath ?? `${videoOut}.ass`;
-  mkdirSync13(path18.dirname(assPath), { recursive: true });
+  mkdirSync13(path19.dirname(assPath), { recursive: true });
   writeFileSync5(assPath, cuesToAss(cues, size, style), "utf-8");
   let srtText;
   if (opts.srtPath) srtText = writeSrtFile(cues, opts.srtPath);
@@ -36164,8 +36334,8 @@ async function burnInSubtitles(videoIn, cues, videoOut, opts = {}) {
       checkId: "burn-output-exists",
       kind: "font-render",
       expected: "\u4EA7\u51FA\u6587\u4EF6\u5B58\u5728\u4E14\u975E\u7A7A",
-      actual: existsSync15(videoOut) ? statSync10(videoOut).size : 0,
-      passed: existsSync15(videoOut) && statSync10(videoOut).size > 0
+      actual: existsSync16(videoOut) ? statSync10(videoOut).size : 0,
+      passed: existsSync16(videoOut) && statSync10(videoOut).size > 0
     },
     {
       checkId: "burn-font-is-local-file",
@@ -36173,7 +36343,7 @@ async function burnInSubtitles(videoIn, cues, videoOut, opts = {}) {
       expected: "\u5B57\u4F53\u6765\u81EA\u672C\u673A\u7EDD\u5BF9\u8DEF\u5F84\uFF0C\u4E14 fontsdir \u5185\u786E\u6709\u8BE5\u6587\u4EF6",
       actual: { fontFile: font.file, fontsDir: font.fontsDir, family: font.family },
       toleranceNote: "DEC-013\uFF1A\u4E0D\u4F9D\u8D56\u7F51\u7EDC\u5B57\u4F53\uFF0C\u4E5F\u4E0D\u4F9D\u8D56\u7CFB\u7EDF\u6070\u597D\u88C5\u4E86\u4E2D\u6587\u5B57\u4F53",
-      passed: path18.isAbsolute(font.file) && existsSync15(font.file)
+      passed: path19.isAbsolute(font.file) && existsSync16(font.file)
     }
   ];
   if (srtText !== void 0 && opts.srtPath) {
@@ -36190,7 +36360,7 @@ async function burnInSubtitles(videoIn, cues, videoOut, opts = {}) {
   const assertion = assertOrThrow(
     {
       stage: "captions",
-      target: `burn-in:${path18.basename(videoOut)}`,
+      target: `burn-in:${path19.basename(videoOut)}`,
       checks,
       exec,
       ...opts.jobId ? { jobId: opts.jobId } : {},
@@ -36289,14 +36459,95 @@ async function mixBgm(videoFile, bgmFile, output, opts = {}) {
 }
 
 // packages/domain/src/relink.ts
-import { existsSync as existsSync16 } from "node:fs";
+import { existsSync as existsSync17 } from "node:fs";
+import path20 from "node:path";
 function findMissingClips(state) {
-  return state.clips.filter((c) => c?.sourcePath && !existsSync16(c.sourcePath)).map((c) => ({
+  return state.clips.filter((c) => c?.sourcePath && !existsSync17(c.sourcePath)).map((c) => ({
     clipId: c.clipId,
     originalPath: c.sourcePath,
     order: c.order,
     annotationCount: state.annotations.filter((a) => a.clipId === c.clipId).length
   }));
+}
+var RelinkError = class extends Error {
+  constructor(message) {
+    super(`INVALID_INPUT: ${message}`);
+    this.name = "RelinkError";
+  }
+};
+function relinkClip(projectRoot, clipId, newPath, opts = {}) {
+  if (!existsSync17(newPath)) {
+    throw new RelinkError(`\u65B0\u7D20\u6750\u4E0D\u5B58\u5728\uFF1A${newPath}`);
+  }
+  const before = loadProject(projectRoot);
+  if (!before) throw new RelinkError("\u5DE5\u7A0B\u4E0D\u5B58\u5728");
+  const target = before.clips.find((c) => c.clipId === clipId);
+  if (!target) throw new RelinkError(`\u7247\u6BB5\u4E0D\u5B58\u5728\uFF1A${clipId}`);
+  const oldPath = String(target.sourcePath);
+  const warnings = [];
+  const oldProbe = target.probe;
+  const newProbe = opts.newProbe;
+  if (oldProbe && newProbe) {
+    for (const key of ["width", "height", "fps"]) {
+      if (oldProbe[key] !== void 0 && newProbe[key] !== void 0 && oldProbe[key] !== newProbe[key]) {
+        warnings.push(`${key} \u7531 ${String(oldProbe[key])} \u53D8\u4E3A ${String(newProbe[key])}\uFF0C\u8BE5\u7247\u6BB5\u5C06\u91CD\u65B0\u5F52\u4E00\u5316`);
+      }
+    }
+    const oldDur = Number(oldProbe.durationSec);
+    const newDur = Number(newProbe.durationSec);
+    const outSec = Number(target.outSec);
+    const inSec = Number(target.inSec ?? 0);
+    if (Number.isFinite(newDur) && Number.isFinite(outSec) && outSec > newDur + 0.05) {
+      warnings.push(
+        `\u539F\u51FA\u70B9 ${outSec}s \u8D85\u51FA\u65B0\u7D20\u6750\u65F6\u957F ${newDur.toFixed(3)}s\uFF0C\u5DF2\u6536\u655B\u5230\u7D20\u6750\u672B\u5C3E\u2014\u2014\u8BF7\u786E\u8BA4\u88C1\u526A\u8303\u56F4`
+      );
+    }
+    if (Number.isFinite(newDur) && newDur > 0 && Number.isFinite(inSec) && inSec >= newDur) {
+      warnings.push(
+        `\u539F\u5165\u70B9 ${inSec}s \u5DF2\u8D85\u51FA\u65B0\u7D20\u6750\u65F6\u957F ${newDur.toFixed(3)}s\uFF0C\u88C1\u526A\u8303\u56F4\u6574\u6BB5\u843D\u7A7A\uFF1B\u5DF2\u56DE\u843D\u4E3A\u4F7F\u7528\u6574\u6BB5\u65B0\u7D20\u6750\uFF080\u2013${newDur.toFixed(3)}s\uFF09\u2014\u2014\u8BF7\u91CD\u65B0\u8BBE\u5B9A\u88C1\u526A\u70B9`
+      );
+    }
+    if (Number.isFinite(oldDur) && Number.isFinite(newDur) && Math.abs(oldDur - newDur) > 0.5) {
+      warnings.push(`\u65F6\u957F\u7531 ${oldDur.toFixed(3)}s \u53D8\u4E3A ${newDur.toFixed(3)}s\uFF0C\u88C1\u526A\u70B9\u53EF\u80FD\u9700\u8981\u590D\u6838`);
+    }
+  }
+  const preservedAnnotations = before.annotations.filter((a) => a.clipId === clipId).length;
+  updateProject(projectRoot, (s) => {
+    const clip = s.clips.find((c) => c.clipId === clipId);
+    if (!clip) return;
+    clip.sourcePath = path20.resolve(newPath);
+    clip.missing = false;
+    if (newProbe) clip.probe = newProbe;
+    delete clip.normHash;
+    if (opts.newProxyPath) clip.proxyPath = opts.newProxyPath;
+    else delete clip.proxyPath;
+    const newDur = Number(newProbe?.durationSec);
+    if (Number.isFinite(newDur) && newDur > 0) {
+      if (Number(clip.inSec ?? 0) >= newDur) {
+        clip.inSec = 0;
+        clip.outSec = newDur;
+      } else if (Number(clip.outSec) > newDur) {
+        clip.outSec = newDur;
+      }
+    }
+  });
+  return { clipId, oldPath, newPath: path20.resolve(newPath), preservedAnnotations, warnings };
+}
+function markMissingClips(projectRoot) {
+  const state = loadProject(projectRoot);
+  if (!state) return [];
+  const missing = findMissingClips(state);
+  const missingIds = new Set(missing.map((m) => m.clipId));
+  const changed = state.clips.some(
+    (c) => c["missing"] === true !== missingIds.has(String(c["clipId"]))
+  );
+  if (!changed) return missing;
+  updateProject(projectRoot, (s) => {
+    for (const c of s.clips) {
+      c.missing = missingIds.has(c.clipId);
+    }
+  });
+  return missing;
 }
 var ExportBlockedError = class extends Error {
   constructor(missing) {
@@ -36315,9 +36566,9 @@ function assertExportable(state) {
 }
 
 // packages/domain/src/dependencyGraph.ts
-import { createHash as createHash6 } from "node:crypto";
+import { createHash as createHash7 } from "node:crypto";
 function sha(input) {
-  return createHash6("sha256").update(input).digest("hex").slice(0, 16);
+  return createHash7("sha256").update(input).digest("hex").slice(0, 16);
 }
 function stable(value) {
   if (value === null || value === void 0) return "";
@@ -36423,9 +36674,9 @@ function sidecarOf(artifact) {
 }
 function readStageArtifact(artifact, hash2) {
   const side = sidecarOf(artifact);
-  if (!existsSync17(artifact) || !existsSync17(side)) return null;
+  if (!existsSync18(artifact) || !existsSync18(side)) return null;
   try {
-    const meta3 = JSON.parse(readFileSync10(side, "utf-8"));
+    const meta3 = JSON.parse(readFileSync11(side, "utf-8"));
     if (meta3.hash !== hash2) return null;
     if (meta3.verdict !== "PASS") return null;
     if (meta3.bytes !== statSync11(artifact).size) return null;
@@ -36461,13 +36712,13 @@ async function videoPacketCount(file2) {
   return Number.isFinite(n) ? n : 0;
 }
 function graphFile(cacheDir) {
-  return path19.join(cacheDir, "export", "graph.json");
+  return path21.join(cacheDir, "export", "graph.json");
 }
 function loadPreviousGraph(cacheDir) {
   const f = graphFile(cacheDir);
-  if (!existsSync17(f)) return null;
+  if (!existsSync18(f)) return null;
   try {
-    const parsed = JSON.parse(readFileSync10(f, "utf-8"));
+    const parsed = JSON.parse(readFileSync11(f, "utf-8"));
     return Array.isArray(parsed) ? parsed : null;
   } catch {
     return null;
@@ -36475,7 +36726,7 @@ function loadPreviousGraph(cacheDir) {
 }
 function saveGraph(cacheDir, nodes) {
   const f = graphFile(cacheDir);
-  mkdirSync14(path19.dirname(f), { recursive: true });
+  mkdirSync14(path21.dirname(f), { recursive: true });
   writeFileSync6(f, `${JSON.stringify(nodes, null, 2)}
 `, "utf-8");
 }
@@ -36484,10 +36735,38 @@ function nodeHash(nodes, id) {
   if (!n) throw new Error(`INTERNAL_ERROR: \u4F9D\u8D56\u56FE\u7F3A\u5C11\u8282\u70B9 ${id}`);
   return n.hash;
 }
+function referencedSourceHit(outputPath, clips) {
+  if (!Array.isArray(clips)) return null;
+  const target = normalizeForCompare(outputPath);
+  for (const c of clips) {
+    const src = c?.sourcePath;
+    if (typeof src !== "string" || src.length === 0) continue;
+    let normalized;
+    try {
+      normalized = normalizeForCompare(src);
+    } catch {
+      continue;
+    }
+    if (normalized === target) {
+      return { clipId: String(c?.clipId ?? "(\u672A\u547D\u540D\u7247\u6BB5)"), sourcePath: src };
+    }
+  }
+  return null;
+}
 function assertOverwriteAllowed(opts) {
   const scopes = opts.scopes ?? [{ id: "project", root: opts.projectRoot, access: "write" }];
-  const existed = existsSync17(opts.outputPath);
+  const existed = existsSync18(opts.outputPath);
   const bytes = existed ? statSync11(opts.outputPath).size : 0;
+  const hit = referencedSourceHit(
+    opts.outputPath,
+    opts.state.clips
+  );
+  if (hit) {
+    throw new PathDeniedError(
+      opts.outputPath,
+      `referenced-source-file\uFF1A\u8FD9\u4E2A\u8DEF\u5F84\u662F\u7247\u6BB5 ${hit.clipId} \u6B63\u5728\u5F15\u7528\u7684\u6E90\u7D20\u6750\uFF08clips[].sourcePath=${hit.sourcePath}\uFF09\u3002\u5BFC\u51FA\u4F1A\u7528\u6210\u7247\u8986\u76D6\u5B83\uFF0C\u6E90\u7D20\u6750**\u65E0\u6CD5\u6062\u590D**\uFF0C\u5DE5\u7A0B\u968F\u540E\u4E5F\u518D\u5BFC\u4E0D\u51FA\u6B63\u786E\u7ED3\u679C\u3002\u7D20\u6750\u653E\u5728\u9879\u76EE\u76EE\u5F55\u5185\u662F\u672C\u4EA7\u54C1\u7684\u9ED8\u8BA4\u5F62\u6001\uFF0C\u6240\u4EE5"\u5728\u9879\u76EE\u6839\u5185"\u4E0D\u6784\u6210\u653E\u884C\u7406\u7531\u2014\u2014\u8BF7\u6362\u4E00\u4E2A\u8F93\u51FA\u8DEF\u5F84\uFF08\u9ED8\u8BA4\u662F renders/ \u4E0B\u7684\u6210\u7247\uFF09\uFF0CconfirmOverwrite \u5BF9\u8FD9\u4E00\u6761\u65E0\u6548`
+    );
+  }
   const preview = executeDestructive(
     {
       action: "overwrite-render-output",
@@ -36527,22 +36806,25 @@ async function exportRender(opts) {
   const t0 = Date.now();
   const paths = projectPaths(opts.projectRoot);
   const cacheDir = paths.cacheDir;
-  const exportDir = path19.join(cacheDir, "export");
-  mkdirSync14(path19.join(cacheDir, "norm"), { recursive: true });
+  const exportDir = path21.join(cacheDir, "export");
+  mkdirSync14(path21.join(cacheDir, "norm"), { recursive: true });
   mkdirSync14(exportDir, { recursive: true });
   assertExportable(opts.state);
   const clips = (opts.clips ?? opts.state.clips).slice().sort((a, b) => a.order - b.order);
   if (clips.length === 0) throw new Error("INVALID_INPUT: \u5DE5\u7A0B\u91CC\u6CA1\u6709\u4EFB\u4F55\u7247\u6BB5\uFF0C\u65E0\u4ECE\u5BFC\u51FA");
-  const outputPath = path19.resolve(
-    opts.outputPath ?? path19.join(paths.rendersDir, `${opts.state.projectId}.mp4`)
+  const outputPath = path21.resolve(
+    opts.outputPath ?? path21.join(paths.rendersDir, `${opts.state.projectId}.mp4`)
   );
   assertOverwriteAllowed({
     projectRoot: opts.projectRoot,
     outputPath,
+    // 素材闸门（F-081）读的是**权威状态**里的 clips，不是本次导出挑出来的那批：
+    // 只参与本次导出的片段是子集，拿子集判会漏掉"这次没导、但工程仍在引用"的素材。
+    state: opts.state,
     ...opts.confirmOverwrite === void 0 ? {} : { confirmOverwrite: opts.confirmOverwrite },
     ...opts.scopes ? { scopes: opts.scopes } : {}
   });
-  mkdirSync14(path19.dirname(outputPath), { recursive: true });
+  mkdirSync14(path21.dirname(outputPath), { recursive: true });
   if (opts.bgmPath) {
     assertBgmReadable({
       projectRoot: opts.projectRoot,
@@ -36555,7 +36837,7 @@ async function exportRender(opts) {
   const graphDiff = previous ? diffGraph(previous, graph) : null;
   const layers = opts.layers ?? [];
   for (const l of layers) {
-    if (!existsSync17(l.layerPath)) {
+    if (!existsSync18(l.layerPath)) {
       throw new Error(
         `NOT_FOUND: \u6807\u6CE8 ${l.annId} \u7684\u5C42\u6587\u4EF6\u4E0D\u5B58\u5728\uFF1A${l.layerPath}\u3002\u5BFC\u51FA\u4E0D\u4F1A\u8DF3\u8FC7\u7F3A\u5C42\u7684\u6807\u6CE8\u2014\u2014\u90A3\u4F1A\u4EA7\u51FA\u4E00\u4E2A"\u770B\u8D77\u6765\u6210\u529F"\u4F46\u5C11\u4E86\u6807\u6CE8\u7684\u6210\u7247\u3002`
       );
@@ -36634,7 +36916,7 @@ async function exportRender(opts) {
     stage: "normalize",
     stageIndex: 1,
     label: stageLabel("normalize"),
-    output: segments.map((s) => s.path).join(path19.delimiter),
+    output: segments.map((s) => s.path).join(path21.delimiter),
     hash: segments.length > 0 ? nodeHash(graph, `clip-norm:${clips[0].clipId}`) : "",
     reused: normReusedAll,
     skipped: false,
@@ -36647,7 +36929,7 @@ async function exportRender(opts) {
   );
   checkCancelled("concat", opts.signal);
   const concatHash = nodeHash(graph, "concat");
-  const concatOut = path19.join(exportDir, `concat-${concatHash}.mp4`);
+  const concatOut = path21.join(exportDir, `concat-${concatHash}.mp4`);
   const concatStart = Date.now();
   emit2("concat", 0, 1, `${segments.length} \u6BB5`);
   let concatReused = false;
@@ -36692,7 +36974,7 @@ async function exportRender(opts) {
   });
   checkCancelled("overlay", opts.signal);
   const overlayHash = nodeHash(graph, "overlay");
-  const overlayOut = path19.join(exportDir, `overlay-${overlayHash}.mp4`);
+  const overlayOut = path21.join(exportDir, `overlay-${overlayHash}.mp4`);
   const overlayStart = Date.now();
   let currentVideo = concatOut;
   let overlayReused = false;
@@ -36745,7 +37027,7 @@ async function exportRender(opts) {
   });
   checkCancelled("captions", opts.signal);
   const burninHash = nodeHash(graph, "burnin");
-  const burninOut = path19.join(exportDir, `burnin-${burninHash}.mp4`);
+  const burninOut = path21.join(exportDir, `burnin-${burninHash}.mp4`);
   const burninStart = Date.now();
   const captionsSkipped = captions.length === 0;
   let burninReused = false;
@@ -36756,7 +37038,7 @@ async function exportRender(opts) {
   if (!captionsSkipped) {
     try {
       const cached2 = opts.force ? null : readStageArtifact(burninOut, burninHash);
-      srtPath = path19.join(exportDir, `captions-${burninHash}.srt`);
+      srtPath = path21.join(exportDir, `captions-${burninHash}.srt`);
       if (cached2) {
         burninReused = true;
         burninVerdict = "PASS";
@@ -36845,7 +37127,7 @@ async function exportRender(opts) {
   let verifiedDurationSec = 0;
   let finalProbe = null;
   try {
-    if (!existsSync17(outputPath)) {
+    if (!existsSync18(outputPath)) {
       finalChecks.push({
         checkId: "final-exists",
         kind: "frame-count",
@@ -36992,7 +37274,7 @@ async function exportRender(opts) {
 
 // packages/host-bridge/src/tools/export.ts
 function annotationCacheRoot(projectRoot) {
-  return path20.join(projectPaths(projectRoot).cacheDir, "overlay");
+  return path22.join(projectPaths(projectRoot).cacheDir, "overlay");
 }
 function canvasOf(state) {
   const c = state.settings.canvas;
@@ -37035,8 +37317,8 @@ function resolveLayers(state, projectRoot) {
     };
     const compiled = compileAnnotation(def, cacheRoot, canvas);
     const declared = typeof raw["layerPath"] === "string" ? String(raw["layerPath"]) : void 0;
-    const layerPath = declared && existsSync18(declared) ? declared : compiled.layerPath;
-    if (!existsSync18(layerPath)) {
+    const layerPath = declared && existsSync19(declared) ? declared : compiled.layerPath;
+    if (!existsSync19(layerPath)) {
       missing.push(`${def.annId}\uFF08\u671F\u671B ${compiled.layerPath}\uFF09`);
       continue;
     }
@@ -37114,12 +37396,12 @@ async function runExport(opts) {
 }
 
 // packages/host-bridge/src/mcp/toolkit.ts
-import { existsSync as existsSync26, statSync as statSync14 } from "node:fs";
+import { existsSync as existsSync27, statSync as statSync15 } from "node:fs";
 import { randomUUID as randomUUID6 } from "node:crypto";
-import path27 from "node:path";
+import path29 from "node:path";
 
 // packages/media/src/deps.ts
-import { existsSync as existsSync19 } from "node:fs";
+import { existsSync as existsSync20 } from "node:fs";
 import { performance as performance2 } from "node:perf_hooks";
 var FETCH_TOOL_NAME = "dependency_fetch";
 function fetchInvocation(id) {
@@ -37218,7 +37500,7 @@ async function probeEncoder(name, env) {
 }
 function probeCjkFont(dirs) {
   const candidates = dirs ?? CJK_FONT_CANDIDATES2;
-  const found = candidates.find((p) => existsSync19(p));
+  const found = candidates.find((p) => existsSync20(p));
   return {
     id: "font:cjk",
     label: "\u4E2D\u6587\u5B57\u4F53\uFF08\u672C\u5730\u6587\u4EF6\uFF09",
@@ -37271,7 +37553,7 @@ async function probeHyperframes(env, localRoots) {
 }
 function probeWhisperModel(p, env) {
   const target = p ?? modelPath(getModelSpec(DEFAULT_WHISPER_MODEL), env);
-  const available = existsSync19(target);
+  const available = existsSync20(target);
   return {
     id: "whisper:model",
     label: "whisper.cpp ggml \u6A21\u578B",
@@ -37376,9 +37658,9 @@ async function checkDependencies(opts = {}) {
 }
 
 // packages/media/src/renderPool.ts
-import { existsSync as existsSync20, mkdirSync as mkdirSync15, readFileSync as readFileSync11, statSync as statSync12, writeFileSync as writeFileSync7 } from "node:fs";
+import { existsSync as existsSync21, mkdirSync as mkdirSync15, readFileSync as readFileSync12, statSync as statSync12, writeFileSync as writeFileSync7 } from "node:fs";
 import os from "node:os";
-import path21 from "node:path";
+import path23 from "node:path";
 import { performance as performance3 } from "node:perf_hooks";
 function defaultConcurrency(cpuCount = os.cpus().length) {
   return Math.max(1, Math.min(6, Math.floor(cpuCount / 4)));
@@ -37388,9 +37670,9 @@ function manifestPath(layerPath) {
 }
 function readCache2(compiled) {
   const mp = manifestPath(compiled.layerPath);
-  if (!existsSync20(compiled.layerPath) || !existsSync20(mp)) return null;
+  if (!existsSync21(compiled.layerPath) || !existsSync21(mp)) return null;
   try {
-    const m = JSON.parse(readFileSync11(mp, "utf-8"));
+    const m = JSON.parse(readFileSync12(mp, "utf-8"));
     const actualBytes = statSync12(compiled.layerPath).size;
     if (m.hash !== compiled.hash) return null;
     if (m.bytes !== actualBytes) return null;
@@ -37466,7 +37748,7 @@ async function runPool(items, concurrency, worker) {
 async function renderAnnotationLayers(anns, cacheRoot, opts = {}) {
   const canvas = opts.canvas ?? DEFAULT_CANVAS2;
   const maxConcurrency = opts.concurrency ?? defaultConcurrency();
-  mkdirSync15(path21.join(cacheRoot, "annot"), { recursive: true });
+  mkdirSync15(path23.join(cacheRoot, "annot"), { recursive: true });
   const compiled = anns.map((a) => compileAnnotation(a, cacheRoot, canvas));
   const groups = /* @__PURE__ */ new Map();
   for (const c of compiled) {
@@ -37551,9 +37833,9 @@ async function renderAnnotationLayers(anns, cacheRoot, opts = {}) {
 }
 
 // packages/media/src/asr.ts
-import { existsSync as existsSync21, mkdirSync as mkdirSync16, mkdtempSync, readFileSync as readFileSync12, rmSync as rmSync3, writeFileSync as writeFileSync8 } from "node:fs";
+import { existsSync as existsSync22, mkdirSync as mkdirSync16, mkdtempSync, readFileSync as readFileSync13, rmSync as rmSync3, writeFileSync as writeFileSync8 } from "node:fs";
 import { tmpdir } from "node:os";
-import path22 from "node:path";
+import path24 from "node:path";
 function escapeFilterValue(p) {
   return `'${p.replace(/\\/g, "/").replace(/:/g, "\\:")}'`;
 }
@@ -37618,7 +37900,7 @@ function buildWhisperFilter(a) {
   return `aformat=sample_rates=16000:channel_layouts=mono,whisper=${parts.join(":")}`;
 }
 async function transcribeToSrt(input, opts = {}) {
-  if (!existsSync21(input)) throw new Error(`ASR_INPUT_MISSING: ${input}`);
+  if (!existsSync22(input)) throw new Error(`ASR_INPUT_MISSING: ${input}`);
   const model = await ensureModelReady(opts.modelId ?? DEFAULT_WHISPER_MODEL, {
     ...opts.env ? { env: opts.env } : {},
     allowDownload: opts.allowDownload ?? false,
@@ -37635,8 +37917,8 @@ async function transcribeToSrt(input, opts = {}) {
   const gateDb = opts.silenceGateDb ?? -45;
   const loudness = await measureLoudness(input, opts.env);
   const silent = loudness.maxDb < gateDb;
-  const work = mkdtempSync(path22.join(tmpdir(), "chatcut-asr-"));
-  const srtFile = path22.join(work, "out.srt");
+  const work = mkdtempSync(path24.join(tmpdir(), "chatcut-asr-"));
+  const srtFile = path24.join(work, "out.srt");
   const filter = buildWhisperFilter({
     modelPath: model.path,
     destination: srtFile,
@@ -37658,11 +37940,11 @@ async function transcribeToSrt(input, opts = {}) {
         ["-v", "warning", "-y", "-nostdin", "-i", input, "-vn", "-af", filter, "-f", "null", "-"],
         { timeoutMs: opts.timeoutMs ?? 30 * 6e4, ...opts.env ? { env: opts.env } : {} }
       );
-      if (existsSync21(srtFile)) srtText = readFileSync12(srtFile, "utf-8");
+      if (existsSync22(srtFile)) srtText = readFileSync13(srtFile, "utf-8");
     }
   } finally {
     if (opts.keepSrtAt && srtText.length > 0) {
-      mkdirSync16(path22.dirname(opts.keepSrtAt), { recursive: true });
+      mkdirSync16(path24.dirname(opts.keepSrtAt), { recursive: true });
       writeFileSync8(opts.keepSrtAt, srtText, "utf-8");
     }
     rmSync3(work, { recursive: true, force: true });
@@ -37730,7 +38012,7 @@ async function transcribeToSrt(input, opts = {}) {
   const assertion = assertOrThrow(
     {
       stage: "captions",
-      target: `asr:${path22.basename(input)}`,
+      target: `asr:${path24.basename(input)}`,
       checks,
       ...exec ? { exec } : {},
       ...opts.jobId ? { jobId: opts.jobId } : {},
@@ -37747,7 +38029,7 @@ async function transcribeToSrt(input, opts = {}) {
 }
 
 // packages/domain/src/restore.ts
-import { existsSync as existsSync22 } from "node:fs";
+import { existsSync as existsSync23 } from "node:fs";
 function createDefaultView() {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -37759,7 +38041,7 @@ function createDefaultView() {
 }
 function loadView(projectRoot) {
   const p = projectPaths(projectRoot);
-  if (!existsSync22(p.viewFile)) return createDefaultView();
+  if (!existsSync23(p.viewFile)) return createDefaultView();
   try {
     const parsed = JSON.parse(readFileWithRetry(p.viewFile));
     return { ...createDefaultView(), ...parsed };
@@ -37920,14 +38202,14 @@ function validateTimeline(result) {
 }
 
 // packages/tts/src/rewrite.ts
-import { readFileSync as readFileSync13 } from "node:fs";
+import { readFileSync as readFileSync14 } from "node:fs";
 import { fileURLToPath as fileURLToPath5 } from "node:url";
-import path23 from "node:path";
-var here2 = path23.dirname(fileURLToPath5(import.meta.url));
-var DEFAULT_RULES_PATH = path23.resolve(here2, "..", "rules", "default.json");
+import path25 from "node:path";
+var here2 = path25.dirname(fileURLToPath5(import.meta.url));
+var DEFAULT_RULES_PATH = path25.resolve(here2, "..", "rules", "default.json");
 var CN_DIGITS = ["\u96F6", "\u4E00", "\u4E8C", "\u4E09", "\u56DB", "\u4E94", "\u516D", "\u4E03", "\u516B", "\u4E5D"];
 function loadRules(rulesPath = DEFAULT_RULES_PATH) {
-  return JSON.parse(readFileSync13(rulesPath, "utf-8"));
+  return JSON.parse(readFileSync14(rulesPath, "utf-8"));
 }
 function digitsToCn(s) {
   return [...s].map((c) => CN_DIGITS[Number(c)] ?? c).join("");
@@ -38023,17 +38305,17 @@ function rewriteForTts(sourceText, rules = loadRules()) {
 }
 
 // packages/tts/src/synthesize.ts
-import { createHash as createHash7 } from "node:crypto";
-import { existsSync as existsSync24, mkdirSync as mkdirSync18, writeFileSync as writeFileSync10, statSync as statSync13 } from "node:fs";
-import path25 from "node:path";
+import { createHash as createHash8 } from "node:crypto";
+import { existsSync as existsSync25, mkdirSync as mkdirSync18, writeFileSync as writeFileSync10, statSync as statSync13 } from "node:fs";
+import path27 from "node:path";
 
 // packages/tts/src/credentials.ts
-import { existsSync as existsSync23, readFileSync as readFileSync14, mkdirSync as mkdirSync17, writeFileSync as writeFileSync9, chmodSync } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import path24 from "node:path";
+import { existsSync as existsSync24, readFileSync as readFileSync15, mkdirSync as mkdirSync17, writeFileSync as writeFileSync9, chmodSync } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import path26 from "node:path";
 function credentialsPath() {
-  const base = process.env.APPDATA ?? path24.join(homedir2(), ".config");
-  return path24.join(base, "chatcut", "credentials.json");
+  const base = process.env.APPDATA ?? path26.join(homedir3(), ".config");
+  return path26.join(base, "chatcut", "credentials.json");
 }
 var CredentialsMissingError = class extends Error {
   constructor() {
@@ -38049,9 +38331,9 @@ function loadCredentials(env = process.env) {
     return { apiKey: fromEnv.apiKey, groupId: fromEnv.groupId };
   }
   const file2 = credentialsPath();
-  if (existsSync23(file2)) {
+  if (existsSync24(file2)) {
     try {
-      const parsed = JSON.parse(readFileSync14(file2, "utf-8"));
+      const parsed = JSON.parse(readFileSync15(file2, "utf-8"));
       if (parsed.apiKey && parsed.groupId) {
         return { apiKey: parsed.apiKey, groupId: parsed.groupId };
       }
@@ -38215,14 +38497,14 @@ async function synthesize(text, opts = {}) {
 
 // packages/tts/src/synthesize.ts
 function computeTextHash(ttsText, voiceId, model) {
-  return createHash7("sha256").update(`${model}\0${voiceId}\0${ttsText}`).digest("hex").slice(0, 16);
+  return createHash8("sha256").update(`${model}\0${voiceId}\0${ttsText}`).digest("hex").slice(0, 16);
 }
 async function synthesizeSegments(inputs, opts) {
   const rules = opts.rules ?? loadRules();
   const tailSilenceSec = opts.tailSilenceSec ?? 0.35;
   const model = opts.tts?.model ?? "speech-02-hd";
   const voiceId = opts.tts?.voiceId ?? "presenter_male";
-  const audioDir = path25.join(opts.cacheDir, "tts");
+  const audioDir = path27.join(opts.cacheDir, "tts");
   mkdirSync18(audioDir, { recursive: true });
   const segments = [];
   const failures = [];
@@ -38232,8 +38514,8 @@ async function synthesizeSegments(inputs, opts) {
     if (opts.onlySegIds && !opts.onlySegIds.includes(input.segId)) {
       const rewritten = input.ttsTextOverride ?? rewriteForTts(input.sourceText, rules).ttsText;
       const hash2 = computeTextHash(rewritten, voiceId, model);
-      const file2 = path25.join(audioDir, `${input.segId}-${hash2}.mp3`);
-      if (existsSync24(file2)) {
+      const file2 = path27.join(audioDir, `${input.segId}-${hash2}.mp3`);
+      if (existsSync25(file2)) {
         segments.push({
           segId: input.segId,
           sourceText: input.sourceText,
@@ -38248,8 +38530,8 @@ async function synthesizeSegments(inputs, opts) {
     }
     const ttsText = input.ttsTextOverride ?? rewriteForTts(input.sourceText, rules).ttsText;
     const textHash = computeTextHash(ttsText, voiceId, model);
-    const audioPath = path25.join(audioDir, `${input.segId}-${textHash}.mp3`);
-    if (existsSync24(audioPath)) {
+    const audioPath = path27.join(audioDir, `${input.segId}-${textHash}.mp3`);
+    if (existsSync25(audioPath)) {
       segments.push({
         segId: input.segId,
         sourceText: input.sourceText,
@@ -38292,8 +38574,8 @@ async function synthesizeSegments(inputs, opts) {
   let trackPath = null;
   let narrationTotalSec = 0;
   if (failures.length === 0 && segments.length > 0) {
-    trackPath = path25.join(audioDir, `narration-${trackHash(segments, tailSilenceSec)}.mp3`);
-    if (!existsSync24(trackPath)) {
+    trackPath = path27.join(audioDir, `narration-${trackHash(segments, tailSilenceSec)}.mp3`);
+    if (!existsSync25(trackPath)) {
       await concatWithSilence(segments.map((s) => s.audioPath), tailSilenceSec, trackPath);
     }
     narrationTotalSec = await probeDurationSec(trackPath);
@@ -38301,11 +38583,11 @@ async function synthesizeSegments(inputs, opts) {
   return { segments, failures, trackPath, narrationTotalSec, ttsCallCount };
 }
 function trackHash(segments, tailSilenceSec) {
-  return createHash7("sha256").update(segments.map((s) => s.textHash).join("|") + `|${tailSilenceSec}`).digest("hex").slice(0, 16);
+  return createHash8("sha256").update(segments.map((s) => s.textHash).join("|") + `|${tailSilenceSec}`).digest("hex").slice(0, 16);
 }
 async function concatWithSilence(audioFiles, tailSilenceSec, output) {
   if (audioFiles.length === 0) throw new Error("INVALID_INPUT: \u6CA1\u6709\u53EF\u62FC\u63A5\u7684\u97F3\u9891\u6BB5");
-  mkdirSync18(path25.dirname(output), { recursive: true });
+  mkdirSync18(path27.dirname(output), { recursive: true });
   const args = ["-v", "error", "-y"];
   for (const f of audioFiles) args.push("-i", f);
   const gapCount = Math.max(0, audioFiles.length - 1);
@@ -38334,8 +38616,8 @@ async function concatWithSilence(audioFiles, tailSilenceSec, output) {
 // packages/server/src/jobs.ts
 import { spawn, execFile as execFile2 } from "node:child_process";
 import { randomUUID as randomUUID5 } from "node:crypto";
-import { mkdirSync as mkdirSync19, writeFileSync as writeFileSync11, readFileSync as readFileSync15, existsSync as existsSync25, readdirSync as readdirSync4, renameSync as renameSync4, unlinkSync as unlinkSync4 } from "node:fs";
-import path26 from "node:path";
+import { mkdirSync as mkdirSync19, writeFileSync as writeFileSync11, readFileSync as readFileSync16, existsSync as existsSync26, readdirSync as readdirSync4, renameSync as renameSync4, statSync as statSync14, unlinkSync as unlinkSync4 } from "node:fs";
+import path28 from "node:path";
 var JOB_ID_RE = /^job-[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/;
 function assertSafeJobId(jobId, where = "jobId") {
   if (typeof jobId !== "string" || !JOB_ID_RE.test(jobId)) {
@@ -38346,7 +38628,9 @@ function assertSafeJobId(jobId, where = "jobId") {
   }
   return jobId;
 }
+var STRAY_SCAN_LOG_PREFIX = "\u6B8B\u7559\u6E32\u67D3\u8FDB\u7A0B\u626B\u63CF\u5B8C\u6210";
 var LOG_TAIL_MAX = 40;
+var JOB_RECORD_KEEP = 200;
 function killTree(pid) {
   return new Promise((resolve) => {
     if (process.platform === "win32") {
@@ -38408,7 +38692,7 @@ async function processTable() {
   return out.split(/\r?\n/).map((l) => l.trim().split(/\s+/)).filter((p) => p.length >= 3).map((p) => ({
     pid: Number(p[0]),
     ppid: Number(p[1]),
-    name: path26.basename(String(p[2] ?? "")).toLowerCase(),
+    name: path28.basename(String(p[2] ?? "")).toLowerCase(),
     createdMs: 0
   })).filter((r) => Number.isFinite(r.pid) && Number.isFinite(r.ppid) && MEDIA_IMAGES.has(r.name));
 }
@@ -38425,11 +38709,23 @@ async function findMediaDescendants(rootPid, notBeforeMs) {
     return r.createdMs === 0 || r.createdMs + 1e3 >= notBeforeMs;
   });
 }
+var processTableWarmed = false;
+function warmProcessTable() {
+  if (processTableWarmed) return;
+  processTableWarmed = true;
+  void processTable().catch(() => void 0);
+}
 var JobManager = class {
   jobsDir;
   live = /* @__PURE__ */ new Map();
+  /**
+   * 每个任务那次异步残留扫描的句柄。
+   * 对外暴露 `awaitStrayScan()`，让"补报到底有没有落地"这件事可以被直接断言，
+   * 而不是靠 sleep 一个凭感觉的秒数。
+   */
+  strayScans = /* @__PURE__ */ new Map();
   constructor(projectRoot) {
-    this.jobsDir = path26.join(projectRoot, ".chatcut", "jobs");
+    this.jobsDir = path28.join(projectRoot, ".chatcut", "jobs");
     mkdirSync19(this.jobsDir, { recursive: true });
   }
   /**
@@ -38438,7 +38734,7 @@ var JobManager = class {
    * 把校验放在调用方，下一个调用方就会漏。
    */
   file(jobId) {
-    return path26.join(this.jobsDir, `${assertSafeJobId(jobId)}.json`);
+    return path28.join(this.jobsDir, `${assertSafeJobId(jobId)}.json`);
   }
   persist(rec) {
     const tmp = `${this.file(rec.jobId)}.${process.pid}.tmp`;
@@ -38455,18 +38751,32 @@ var JobManager = class {
   }
   status(jobId) {
     const f = this.file(jobId);
-    if (!existsSync25(f)) return null;
+    if (!existsSync26(f)) return null;
     try {
-      return JSON.parse(readFileSync15(f, "utf-8"));
+      return JSON.parse(readFileSync16(f, "utf-8"));
     } catch {
       return null;
     }
   }
+  /**
+   * 拿一份**可写**的任务记录。
+   *
+   * 任务还活着时必须拿 runner 手上那一份对象：`status()` 是从磁盘现解析的新对象，
+   * 改它再落盘会被 runner 的 `finally`（还拿着老对象）整份覆盖回去——
+   * 异步补报正好是在这个窗口里写的，靠 `status()` 写就会静默丢失。
+   */
+  writableRecord(jobId) {
+    return this.live.get(jobId)?.rec ?? this.status(jobId);
+  }
+  appendLog(rec, line) {
+    rec.logTail.push(line);
+    if (rec.logTail.length > LOG_TAIL_MAX) rec.logTail.splice(0, rec.logTail.length - LOG_TAIL_MAX);
+  }
   list() {
-    if (!existsSync25(this.jobsDir)) return [];
+    if (!existsSync26(this.jobsDir)) return [];
     return readdirSync4(this.jobsDir).filter((f) => f.endsWith(".json")).map((f) => {
       try {
-        return JSON.parse(readFileSync15(path26.join(this.jobsDir, f), "utf-8"));
+        return JSON.parse(readFileSync16(path28.join(this.jobsDir, f), "utf-8"));
       } catch {
         return null;
       }
@@ -38475,24 +38785,28 @@ var JobManager = class {
   /**
    * 启动一个任务。立即返回 jobId，不长时间占住调用方。
    */
-  start(kind, runner) {
+  start(kind, runner, opts = {}) {
     const jobId = `job-${randomUUID5()}`;
     const controller = new AbortController();
     const children = /* @__PURE__ */ new Set();
-    this.live.set(jobId, { controller, children });
     const rec = {
       jobId,
       kind,
       state: "queued",
       stage: null,
+      requestId: opts.requestId ?? null,
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       startedAt: null,
       endedAt: null,
       error: null,
       result: null,
       logTail: [],
-      artifacts: []
+      artifacts: [],
+      strayScan: null
     };
+    this.live.set(jobId, { controller, children, rec });
+    this.prune();
+    warmProcessTable();
     this.persist(rec);
     const ctx = {
       jobId,
@@ -38513,9 +38827,9 @@ var JobManager = class {
         children.add(child);
         child.once("close", () => children.delete(child));
       },
-      run: (bin, args, opts) => new Promise((resolve, reject) => {
+      run: (bin, args, opts2) => new Promise((resolve, reject) => {
         if (controller.signal.aborted) return reject(new Error("CANCELLED"));
-        const child = spawn(bin, args, { cwd: opts?.cwd, windowsHide: true });
+        const child = spawn(bin, args, { cwd: opts2?.cwd, windowsHide: true });
         children.add(child);
         let stderr = "";
         child.stderr?.on("data", (d) => {
@@ -38568,6 +38882,24 @@ var JobManager = class {
    * 取消任务。
    * 先发中止信号让 runner 有机会收尾，再强制终止仍在跑的整棵进程树。
    * 中间产物一律保留——取消不是回滚，用户往往还要从这里续跑。
+   *
+   * ── 响应路径上放什么、不放什么（F-080）──────────────────────────────────
+   * AC-012 给的是 **5 秒**：从用户点下取消，到界面显示已取消。
+   * 三次实测里有一次 5885ms 越线，单跑 4173ms——余量 827ms 与越线量 885ms 同量级，
+   * 也就是说它常态就贴着线，不是偶发长尾。根因只有一处：
+   * `findMediaDescendants()` 要跑一次 `Get-CimInstance`，而 CIM provider 在本进程里
+   * 是冷的，第一次调用 3–4 秒起步。这一条一个人就能把预算吃掉大半。
+   *
+   * 所以现在**取消先落定、立刻回**，进程扫描挪到响应之后异步跑：
+   *  ① 中止信号 + 登记过的子进程树（ctx.run / ctx.track 起的）：留在响应路径上。
+   *     这一步是取消本身，而且只是一次 taskkill 系统调用，不枚举进程表。
+   *  ② 登记之外的渲染子进程（导出管线的 ffmpeg 由 media/exec.ts 用 execFile 直起，
+   *     不经 ctx.run，abort 只能在阶段之间被看到）：**移出响应路径**，
+   *     结论异步补进任务记录（`strayScan` + logTail 一条 `STRAY_SCAN_LOG_PREFIX` 开头的行）。
+   *
+   * 这里有一条必须守住的纪律：**扫描不许因为"挪到后台"就变得不可观测**。
+   * 把慢的那一步删掉、让 AC 变绿，那是给洞盖章。所以扫描结论无论杀没杀到都要落盘，
+   * "无残留"这个结论本身也要有出处（`ok:false` 代表扫描炸了，不等于没残留）。
    */
   async cancel(jobId) {
     const entry = this.live.get(jobId);
@@ -38577,35 +38909,118 @@ var JobManager = class {
     }
     entry.controller.abort();
     const startedMs = Date.parse(this.status(jobId)?.startedAt ?? "") || 0;
-    const killTracked = Promise.all(
+    await Promise.all(
       [...entry.children].map(async (c) => {
         if (c.pid === void 0 || c.exitCode !== null) return;
         await killTree(c.pid);
       })
     );
-    const killStrays = findMediaDescendants(process.pid, startedMs).then(async (found) => {
-      for (const s of found) await killTree(s.pid);
-      return found;
-    });
-    const [, strays] = await Promise.all([killTracked, killStrays]);
+    this.scanStraysInBackground(jobId, startedMs);
     for (let i = 0; i < 30; i += 1) {
       if (!this.live.has(jobId)) break;
       await new Promise((r) => setTimeout(r, 50));
     }
-    const rec = this.status(jobId);
+    const rec = this.writableRecord(jobId);
     if (rec && (rec.state === "running" || rec.state === "queued")) {
       rec.state = "cancelled";
       rec.endedAt = (/* @__PURE__ */ new Date()).toISOString();
       this.persist(rec);
     }
-    if (strays.length > 0) {
-      const after = this.status(jobId);
-      if (after) {
-        after.logTail.push(`\u53D6\u6D88\u65F6\u989D\u5916\u7EC8\u6B62 ${strays.length} \u4E2A\u6E32\u67D3\u5B50\u8FDB\u7A0B\uFF1A${strays.map((s) => `${s.name}(${s.pid})`).join(", ")}`);
-        this.persist(after);
+    return true;
+  }
+  /**
+   * 响应之后才跑的残留渲染进程扫描（F-080）。
+   *
+   * 返回 Promise 只是为了让调用方（测试、以及将来想做 SSE 二次推送的地方）
+   * 能等到结论；`cancel()` 自己**不等**。
+   */
+  scanStraysInBackground(jobId, notBeforeMs) {
+    const startedAt = (/* @__PURE__ */ new Date()).toISOString();
+    const t0 = Date.now();
+    const scan = (async () => {
+      const killed = [];
+      let ok = true;
+      try {
+        const found = await findMediaDescendants(process.pid, notBeforeMs);
+        for (const s of found) {
+          await killTree(s.pid);
+          killed.push({ pid: s.pid, name: s.name });
+        }
+      } catch {
+        ok = false;
+      }
+      const report = {
+        startedAt,
+        completedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        scanMs: Date.now() - t0,
+        killed,
+        ok
+      };
+      this.reportStrayScan(jobId, report);
+      return report;
+    })();
+    this.strayScans.set(jobId, scan);
+    void scan.catch(() => void 0);
+    return scan;
+  }
+  /** 把扫描结论补进任务记录。落盘的是**同一份**记录，界面与 Agent 读的是同一处。 */
+  reportStrayScan(jobId, report) {
+    const rec = this.writableRecord(jobId);
+    if (!rec) return;
+    rec.strayScan = report;
+    const line = !report.ok ? `${STRAY_SCAN_LOG_PREFIX}\uFF1A\u626B\u63CF\u5931\u8D25\uFF0C\u672A\u80FD\u786E\u8BA4\u6709\u65E0\u6B8B\u7559\u6E32\u67D3\u5B50\u8FDB\u7A0B\uFF08\u8017\u65F6 ${report.scanMs}ms\uFF09` : report.killed.length > 0 ? `${STRAY_SCAN_LOG_PREFIX}\uFF1A\u53D6\u6D88\u65F6\u989D\u5916\u7EC8\u6B62 ${report.killed.length} \u4E2A\u6E32\u67D3\u5B50\u8FDB\u7A0B\uFF1A${report.killed.map((k) => `${k.name}(${k.pid})`).join(", ")}\uFF08\u626B\u63CF\u8017\u65F6 ${report.scanMs}ms\uFF09` : `${STRAY_SCAN_LOG_PREFIX}\uFF1A\u672A\u53D1\u73B0\u672A\u767B\u8BB0\u7684\u6E32\u67D3\u5B50\u8FDB\u7A0B\uFF08\u626B\u63CF\u8017\u65F6 ${report.scanMs}ms\uFF09`;
+    this.appendLog(rec, line);
+    this.persist(rec);
+  }
+  /**
+   * 等这个任务的残留扫描补报落地。
+   * 没有取消过（或本进程没起过那次扫描）时返回 null——不硬造一个"没残留"的结论。
+   */
+  async awaitStrayScan(jobId) {
+    const scan = this.strayScans.get(jobId);
+    if (!scan) return null;
+    try {
+      return await scan;
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * 任务记录的保留策略（F-062）。
+   *
+   * `.chatcut/jobs/` 原本只增不减。读取侧 `readJobBriefs` 有个 limit，
+   * 而它在**解析与排序之前**就切了一刀——攒到 250 条以后，正在跑的那条会被
+   * 目录枚举顺序挤到 limit 之外，于是界面上运行中的任务整个消失。
+   * 读取侧的顺序已经修好（先按 mtime 取最新 N 条），但目录无限膨胀本身也是个问题：
+   * 每次读都要 stat 全量文件。这里按**终态记录的条数**裁剪，活着的一条都不动。
+   */
+  prune(keep = JOB_RECORD_KEEP) {
+    let names;
+    try {
+      names = readdirSync4(this.jobsDir).filter((f) => f.endsWith(".json"));
+    } catch {
+      return 0;
+    }
+    if (names.length <= keep) return 0;
+    const rows = [];
+    for (const name of names) {
+      const full = path28.join(this.jobsDir, name);
+      if (this.live.has(name.slice(0, -5))) continue;
+      try {
+        rows.push({ file: full, mtimeMs: statSync14(full).mtimeMs });
+      } catch {
       }
     }
-    return true;
+    rows.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    let removed = 0;
+    for (const row of rows.slice(keep)) {
+      try {
+        unlinkSync4(row.file);
+        removed += 1;
+      } catch {
+      }
+    }
+    return removed;
   }
   /** 进程重启后，把仍标记为 running 的任务标为中断，避免界面永远显示"进行中"。 */
   reconcileOnStartup() {
@@ -38637,6 +39052,12 @@ var ToolkitError = class extends Error {
     this.name = "ToolkitError";
   }
 };
+function projectDirDenialMessage() {
+  return [
+    "projectDir \u4E0D\u5728\u5141\u8BB8\u6253\u5F00\u5DE5\u4F5C\u53F0\u7684\u8303\u56F4\u5185\u3002\u5DE5\u4F5C\u53F0\u53EA\u80FD\u5F00\u5728\u5BBF\u4E3B\u4F1A\u8BDD\u7684\u5DE5\u4F5C\u76EE\u5F55\u6811\u5185\uFF0C\u6216\u7528\u6237\u663E\u5F0F\u8FFD\u52A0\u7684\u7D20\u6750\u76EE\u5F55\u5185\uFF08SEC-003 / F-076\uFF09\u3002",
+    ...mediaRootsHowTo().map((l) => `  \xB7 ${l}`)
+  ].join("\n");
+}
 function planAsrClips(clips) {
   const ordered = clips.slice().sort((a, b) => Number(a["order"] ?? 0) - Number(b["order"] ?? 0));
   const out = [];
@@ -38697,7 +39118,7 @@ var ChatCutToolkit = class {
   /* ─────────────── 项目定位 ─────────────── */
   projectRoot() {
     const dir = this.opts.currentProjectDir?.() ?? this.opts.defaultProjectDir;
-    return path27.resolve(dir);
+    return path29.resolve(dir);
   }
   mustLoad() {
     const root = this.projectRoot();
@@ -38717,8 +39138,147 @@ var ChatCutToolkit = class {
       ...extraReadRoots.map((r, i) => ({ id: `source-${i}`, root: r, access: "read" }))
     ];
   }
+  /**
+   * `clip_import` 的授权范围（F-063）。
+   *
+   * ── 之前是什么 ────────────────────────────────────────────────────────────
+   * `readRoots = input.paths.map(path.resolve)`——**把入参自己当授权**。
+   * 那不是守卫，那是一句 `return true` 写成了三十个字符。实测三态可区分：
+   *   `C:/Windows/System32/drivers/etc/hosts`      → UNSUPPORTED_FORMAT（存在）
+   *   `C:/Windows/System32/drivers/etc/nosuchfile` → NOT_FOUND（不存在）
+   *   `C:/Users/<me>/.ssh/id_rsa`                  → UNSUPPORTED_FORMAT（本机确认存在）
+   * F-054 刚把 `media_probe` 收紧到「已导入的具体文件」，而**「已导入」这件事本身没有门槛**——
+   * 想探测哪个文件，先 `clip_import` 它一下即可。同一个洞的两面，上一轮只堵了一边。
+   *
+   * ── 立场（F-063 的二选一，选第一条）─────────────────────────────────────
+   * **不承认「Agent 指定路径即视为用户选择」。** 理由：那句话一旦写进 Spec，
+   * `explicit-external-selection` 这条申报就等于 `filesystem: read /`，
+   * 而 F-054 收紧 `media_probe` 的全部理由都建立在「授权是有边界的」之上，
+   * 两者不能同时成立。要么都是自授权，要么都有边界——含糊着放过去，
+   * 下一轮还会在另一个 Tool 上重新发现同一个洞。
+   *
+   * ── 边界画在哪 ──────────────────────────────────────────────────────────
+   * 允许根 = 项目目录 ∪ **宿主会话的工作目录树** ∪ `CHATCUT_MEDIA_ROOTS` ∪ 已导入的具体文件。
+   *
+   * 「宿主会话的工作目录」不是随手挑的：`server/src/index.ts` 里
+   * `defaultProjectDir = CHATCUT_PROJECT_DIR ?? process.cwd()`，宿主就是在用户的工作目录里
+   * 拉起这个 MCP Server 的，那棵树本来就已经在宿主自己的读授权范围内
+   * （Agent 直接用 Read/Glob 就能看）。把导入限制在同一棵树里，
+   * 不给 Agent 任何它原本没有的能力，也就不构成新的信息泄露面；
+   * 而树外的 `C:/Windows`、`~/.ssh` 一律拒绝——那才是真正越界的部分。
+   *
+   * 素材放在别处（另一块盘、NAS 的挂载点）时，由**用户**在宿主配置里给
+   * `CHATCUT_MEDIA_ROOTS` 加目录。这是一次真实的用户授权动作：Agent 改不了自己进程的环境变量，
+   * 它只能请用户去改配置再重开会话。
+   *
+   * 越权与不存在给的是**同一种**拒绝（`outside-allowed-roots`，判定早于 existsSync），
+   * 逐字节一致，不构成存在性预言机。判据见 `tests/security/guard.test.ts`「F-063」一节。
+   *
+   * ── 逐条申报（F-074）─────────────────────────────────────────────────────
+   * 这四条根**必须与 `plugin.yaml` / `Plugin-Spec.md` SEC-003 / `Plugin-Design.md` §11
+   * 的申报逐条对上**。第四条（已导入的具体文件）此前三处申报里一条都没写——
+   * 而它正是 F-069 的放大器：申报里没有它，审查时就不会有人去问
+   * 「这个集合谁能往里塞东西」，于是 `clip_arrange` 能写 `sourcePath` 这件事
+   * 在三轮审查里都没被当成安全面看过。判据见 `tests/unit/skillContracts.test.ts`
+   * 「申报根数 = 实现根数」一节。
+   */
+  importRoots(root) {
+    return this.importRootDetail(root).flatMap((s) => s.roots);
+  }
+  /**
+   * 允许导入的根，**按申报条目分组**（F-074）。
+   *
+   * 分组不是为了好看：`IMPORT_ROOT_SOURCES` 是这份授权面的机器可读申报，
+   * 契约测试拿它与三份文档比对，任何一边多一条少一条都当场红。
+   */
+  /**
+   * 宿主拉起本进程时的工作目录树 = 用户这次会话交给宿主的范围。
+   *
+   * `process.cwd()` 与 `CHATCUT_PROJECT_DIR` **两个都要**，不是二选一：
+   * 前者是宿主启动本进程时所在的目录（Claude Code 就是在用户工作目录里起 MCP Server 的），
+   * 后者是显式指定的项目目录。写成 `env ?? cwd` 的话，一旦有人设了 CHATCUT_PROJECT_DIR，
+   * "宿主会话工作目录"就退化成项目目录本身——那已经在 roots 里了，等于这条根白加。
+   *
+   * 抽成方法是 F-076 逼出来的：`workspace_open` 的守卫必须查的是**这一份**表，
+   * 而不是"当前打开的项目"派生出来的表——否则 `workspace_open` 一调，
+   * 守卫查的那张表本身就被换掉了（守卫没坏，被换掉的是它查的那张表）。
+   */
+  sessionTreeRoots() {
+    const list = [process.cwd(), process.env["CHATCUT_PROJECT_DIR"], this.opts.defaultProjectDir].filter(
+      (c) => typeof c === "string" && c.trim().length > 0
+    );
+    return [...new Set(list.map((p) => path29.resolve(p)))];
+  }
+  /**
+   * 用户显式追加的素材目录。**两个取值源，并集生效**（F-073）：
+   *   ① 环境变量 `CHATCUT_MEDIA_ROOTS`——当次会话立即生效；
+   *   ② 用户级配置 `%APPDATA%\chatcut\config.json` 的 `mediaRoots`——长期有效。
+   * 只有第一个的时候，产品里根本没有配置入口：`.mcp.json` 没有 env 块，
+   * 插件安装是复制进宿主缓存、用户改的那份重装即被覆盖。
+   * 两个取值源都**只有用户能写**：Agent 改不了已运行进程的环境变量，
+   * 也没有任何 Tool 能写那份配置文件（`domain/src/userConfig.ts` 只有读函数）。
+   */
+  userMediaRootsAll() {
+    const envRoots = (process.env["CHATCUT_MEDIA_ROOTS"] ?? "").split(path29.delimiter).map((r) => r.trim()).filter((r) => r.length > 0);
+    return [...new Set([...envRoots, ...userMediaRoots()].map((p) => path29.resolve(p)))];
+  }
+  /**
+   * `workspace_open` 能把项目目录指到哪（F-076）。
+   *
+   * **刻意不含 `project-dir` 与 `imported-source-files` 两条**：那两条都是从"当前打开的项目"
+   * 派生出来的，拿它们来判"能不能打开这个项目"就是让入参给自己发通行证——
+   * 正是 F-076 的形状（`workspace_open` 一调，`importRootDetail()` 的第 1 条就被换成了新目录，
+   * 于是 media_probe / clip_import / clip_relink 三道守卫齐齐对新目录放行）。
+   *
+   * 剩下的两条都**不是 Agent 能写的**：会话树在进程启动时确定，用户素材目录只有用户能写。
+   * 这就是"Agent 无法自助扩根"这句申报的物理依据。
+   */
+  workspaceOpenRoots() {
+    return [.../* @__PURE__ */ new Set([...this.sessionTreeRoots(), ...this.userMediaRootsAll()])];
+  }
+  /**
+   * 项目目录守卫（F-076）——**全产品唯一实现点**。
+   *
+   * `workspace_open({projectDir})` 此前无任何守卫，`registry.open` 只查"存在"与"是目录"，
+   * 一次调用就把 `currentProjectDir()` → `projectRoot()` → `importRootDetail()` 第 1 条根
+   * 换成了磁盘上任意目录。实测：调用前 media_probe / clip_import / clip_relink 三态皆
+   * PERMISSION_DENIED，调用后同一批路径全部放行，并在目标目录里造出 `.chatcut/`。
+   *
+   * 这是「门禁只装在一个调用方」第四次发作（F-019→F-040、F-042→F-054、F-063→F-069、F-069→F-076），
+   * 所以判据落在这一处：`registry.open()` 与 `refreshMissingClips()` 两条路都调它，
+   * 不在各自的 handler 里各写一遍。
+   *
+   * **判定早于任何 statSync**：越界路径存不存在从不被查询，因此越界与不存在给的是
+   * 逐字节相同的一句拒绝，不构成存在性预言机（与 F-063 在 clip_import 上立的规矩同一条）。
+   */
+  assertProjectDirAllowed(projectDir) {
+    const abs = path29.resolve(projectDir);
+    const scopes = this.workspaceOpenRoots().map((r, i) => ({
+      id: `workspace-${i}`,
+      root: r,
+      access: "write"
+    }));
+    try {
+      assertPathAllowed(abs, scopes, "write");
+    } catch {
+      throw new ToolkitError("PERMISSION_DENIED", projectDirDenialMessage());
+    }
+    return abs;
+  }
+  importRootDetail(root) {
+    const uniq = (list) => [...new Set(list.map((p) => path29.resolve(p)))];
+    return [
+      { id: "project-dir", roots: uniq([root]) },
+      { id: "host-session-tree", roots: this.sessionTreeRoots() },
+      { id: "user-media-roots", roots: this.userMediaRootsAll() },
+      // 已经导入过的那些文件本身：重复导入与重新定位后的再导入不该被自己的历史挡住。
+      // **唯一合法写入者是带守卫的 `clip_import` / `clip_relink`**（F-069 / F-074）：
+      // 编排面写不到 `clips[].sourcePath`，见 `tools/operations.ts` 的 AGENT_UNWRITABLE_FIELDS。
+      { id: "imported-source-files", roots: uniq(this.importedSourceFiles(root)) }
+    ];
+  }
   jobs(root = this.projectRoot()) {
-    const key = path27.resolve(root).toLowerCase();
+    const key = path29.resolve(root).toLowerCase();
     let m = this.managers.get(key);
     if (!m) {
       m = new JobManager(root);
@@ -38727,9 +39287,14 @@ var ChatCutToolkit = class {
     }
     return m;
   }
-  startJob(kind, runner) {
+  /**
+   * @param requestId 这个任务替哪条队列请求跑（F-058）。落进 job 记录，
+   *   界面靠它判断「刚落定的这个任务是不是我正在跟的那次提交」。
+   *   Agent 在对话里直接起的任务不带它，记录里就是 null——不硬造。
+   */
+  startJob(kind, runner, requestId) {
     const root = this.projectRoot();
-    const jobId = this.jobs(root).start(kind, runner);
+    const jobId = this.jobs(root).start(kind, runner, requestId === void 0 ? {} : { requestId });
     return {
       jobId,
       kind,
@@ -38755,8 +39320,12 @@ var ChatCutToolkit = class {
     }
     const queue = new RequestQueue(root);
     const requestId = input.requestId;
+    const importFingerprint = operationFingerprint(
+      "clip_import",
+      input.paths.map((p) => normalizeForCompare(path29.resolve(root, p))).sort()
+    );
     if (requestId) {
-      const applied = queue.lookupApplied(requestId);
+      const applied = queue.lookupApplied(requestId, importFingerprint);
       if (applied) {
         return {
           clips: [],
@@ -38767,13 +39336,17 @@ var ChatCutToolkit = class {
       }
     }
     const before = currentProjectVersion(root);
-    const readRoots = input.paths.map((p) => path27.resolve(p));
-    const result = await importClips({ projectRoot: root, paths: input.paths, scopes: this.scopes(root, readRoots) });
+    const result = await importClips({
+      projectRoot: root,
+      paths: input.paths,
+      scopes: this.scopes(root, this.importRoots(root))
+    });
     if (requestId && result.imported.length > 0) {
       queue.markApplied(requestId, {
         basedOnProjectVersion: before,
         resultingProjectVersion: result.projectVersion,
-        status: "succeeded"
+        status: "succeeded",
+        fingerprint: importFingerprint
       });
     }
     return {
@@ -38782,6 +39355,121 @@ var ChatCutToolkit = class {
       version: result.projectVersion,
       idempotentReplay: false
     };
+  }
+  /**
+   * 素材失效标记（AC-010 / UX-005）。
+   *
+   * 挂在 `workspace_open` 与 `project_read` 上：用户重开工程时，被移走的素材必须**当场**
+   * 在界面上标出来。在这之前 `markMissingClips` 全产品零调用方——`clips[].missing`
+   * 从来没被写进过 project.json，于是界面上三处判据（缺失横幅、底栏被拒计数、
+   * 导出摘要那句「有素材缺失」）恒为假，AC-010 整条在成品里不存在。
+   */
+  refreshMissingClips(projectDir) {
+    const root = projectDir === void 0 ? this.projectRoot() : this.assertProjectDirAllowed(projectDir);
+    const missing = markMissingClips(root).map((m) => ({
+      clipId: m.clipId,
+      originalPath: m.originalPath,
+      annotationCount: m.annotationCount
+    }));
+    return { projectRoot: root, missing };
+  }
+  /**
+   * 把一个片段重新指向新的素材文件（AC-010 / UX-005 的另一半）。
+   *
+   * 领域层的 `relinkClip` 早就写好了完整语义——保留裁剪点与标注、作废 normHash/proxy、
+   * 出点超出新素材时收敛——但**产品里没有任何入口能走到它**：22 个 Tool 里没有 relink，
+   * 界面上那个「重新定位」按钮 onClick 是 `toast("由 relink Tool 处理")`，
+   * 指向一个不存在的 Tool（与第一轮 F-004「取消按钮只弹 toast」同型）。这个 Tool 就是那个入口。
+   *
+   * 三件必须一起做对的事：
+   * 1. **新素材要重新探测**。规格变了要告诉用户「这段会重新归一化」，
+   *    而不是等导出跑到一半才炸（DEC-004 两阶段归一化的前提是探测结果可信）。
+   * 2. **normHash / proxyPath 作废**。换了源文件还留着旧缓存，导出会拿旧素材拼进成片——
+   *    那是最坏的一种错：命令成功、文件产出、内容是错的（THR-007 同类）。
+   * 3. **出点收敛**。新素材更短时不收敛，ffmpeg 会在 trim 阶段报 seek 失败。
+   *
+   * 授权范围与 `clip_import` 同级（F-063）：新素材路径必须落在允许导入的根内。
+   */
+  async clipRelink(input) {
+    const root = this.projectRoot();
+    if (typeof input.clipId !== "string" || input.clipId.trim().length === 0) {
+      throw new ToolkitError("INVALID_INPUT", "clipId \u5FC5\u987B\u662F\u975E\u7A7A\u5B57\u7B26\u4E32");
+    }
+    if (typeof input.newPath !== "string" || input.newPath.trim().length === 0) {
+      throw new ToolkitError("INVALID_INPUT", "newPath \u5FC5\u987B\u662F\u975E\u7A7A\u5B57\u7B26\u4E32");
+    }
+    const queue = new RequestQueue(root);
+    const relinkFingerprint = operationFingerprint("clip_relink", input.clipId);
+    if (input.requestId) {
+      const applied = queue.lookupApplied(input.requestId, relinkFingerprint);
+      if (applied) {
+        const state = loadProject(root);
+        const clip = state?.clips?.find(
+          (c) => String(c["clipId"]) === input.clipId
+        );
+        const current = String(clip?.["sourcePath"] ?? "");
+        const stillAttached = (state?.annotations ?? []).filter(
+          (a) => String(a["clipId"] ?? "") === input.clipId
+        ).length;
+        return {
+          clipId: input.clipId,
+          oldPath: current,
+          newPath: current,
+          preservedAnnotations: stillAttached,
+          warnings: [],
+          version: applied.resultingProjectVersion,
+          idempotentReplay: true
+        };
+      }
+    }
+    const abs = path29.resolve(input.newPath);
+    try {
+      assertPathAllowed(abs, this.scopes(root, this.importRoots(root)), "read");
+    } catch {
+      throw new ToolkitError(
+        "PERMISSION_DENIED",
+        `${input.newPath} \u4E0D\u5728\u5141\u8BB8\u5BFC\u5165\u7684\u8303\u56F4\u5185\u3002\u672C\u63D2\u4EF6\u53EA\u5BFC\u5165\u9879\u76EE\u76EE\u5F55\u3001\u5BBF\u4E3B\u4F1A\u8BDD\u7684\u5DE5\u4F5C\u76EE\u5F55\u6811\uFF0C\u4EE5\u53CA\u7528\u6237\u663E\u5F0F\u8FFD\u52A0\u7684\u7D20\u6750\u76EE\u5F55\uFF08SEC-003\uFF09\u3002
+` + // F-073：只说"不在范围内"没有可操作性，把能照抄的两条路一起给出来。
+        // 拒绝语与被拒路径存不存在**无关**，这几行对任何路径都一样，不构成预言机。
+        mediaRootsHowTo().map((l) => `  \xB7 ${l}`).join("\n")
+      );
+    }
+    const before = currentProjectVersion(root);
+    const probe = await probeClip(abs);
+    const { pixelFormat, ...persistable } = probe;
+    const newProbe = { ...persistable, compliant: isCompliant(probe) };
+    let newProxyPath;
+    const proxyWarnings = [];
+    try {
+      const pr = await generateProxy(abs, input.clipId, projectPaths(root).cacheDir);
+      newProxyPath = pr.proxyPath;
+    } catch (e) {
+      proxyWarnings.push(
+        `\u9884\u89C8\u4EE3\u7406\u751F\u6210\u5931\u8D25\uFF08${e.message.slice(0, 200)}\uFF09\uFF1A\u91CD\u5B9A\u4F4D\u672C\u8EAB\u5DF2\u751F\u6548\uFF0C\u4F46\u8FD9\u4E2A\u7247\u6BB5\u7684\u9884\u89C8\u533A\u4F1A\u663E\u793A\u5360\u4F4D\u3002\u53EF\u7A0D\u540E\u91CD\u8BD5 clip_relink\uFF0C\u6216\u8BA9\u7528\u6237\u5728\u754C\u9762\u4E0A\u91CD\u65B0\u751F\u6210\u4EE3\u7406\u3002`
+      );
+    }
+    const r = relinkClip(root, input.clipId, abs, {
+      newProbe,
+      ...newProxyPath === void 0 ? {} : { newProxyPath }
+    });
+    r.warnings.push(...proxyWarnings);
+    markMissingClips(root);
+    const version2 = currentProjectVersion(root);
+    if (input.requestId) {
+      queue.markApplied(input.requestId, {
+        basedOnProjectVersion: before,
+        resultingProjectVersion: version2,
+        status: "succeeded",
+        fingerprint: relinkFingerprint
+      });
+      try {
+        queue.complete(input.requestId, "succeeded", version2, {
+          note: `\u5DF2\u628A ${input.clipId} \u91CD\u65B0\u6307\u5411 ${abs}\uFF1B\u88C1\u526A\u70B9\u4E0E ${r.preservedAnnotations} \u6761\u6807\u6CE8\u4FDD\u7559\u3002`
+        });
+      } catch {
+      }
+    }
+    return { ...r, version: version2, idempotentReplay: false };
   }
   clipArrange(input) {
     const root = this.projectRoot();
@@ -38916,24 +39604,72 @@ var ChatCutToolkit = class {
       logTail: rec.logTail,
       error: rec.error,
       artifacts: rec.artifacts,
-      result: rec.result
+      result: rec.result,
+      // 旧记录（本次改动之前落盘的）没有这个字段，读回来是 undefined：
+      // 归一成 null，"没有结论"只用一种写法表示。
+      strayScan: rec.strayScan ?? null
     };
   }
+  /**
+   * 取消带来的**队列侧终态**（F-070）。
+   *
+   * 判据是一句话：**只要一个 job 被取消、而且它带着 requestId，队列里那条请求就必须结成
+   * `cancelled`**。这句话与"谁发起的取消"无关——所以它落在这里（取消的唯一实现点），
+   * 而不是落在某个调用方身上。
+   *
+   * ── 之前是什么（F-061 修复的残留面）────────────────────────────────────────
+   * 这段语义原先叫 `settleCancelledRequest`，整个写在 `server/src/http.ts` 里，
+   * 只有 `POST /api/jobs/:id/cancel` 这一条 HTTP 路径会走到。而 MCP 的 `job_cancel`
+   * 直接调 `jobs().cancel()` 就返回了——队列条目仍停在 `claimed`，租约一到期
+   * `reclaimExpired()` 把它退回 pending，下一次 `request_claim` 又派给 Agent 重跑。
+   * 用户按了"停下"，系统过一分钟自己又开始跑，提示语还把「用户取消了」说成「上次没做完」。
+   *
+   * 这不只是个 bug，它与 `skills/chatcut-workspace/SKILL.md` 对 Agent 的白纸黑字承诺
+   * 「取消会连带把队列里那条请求结成 cancelled，它不会再被重新派回来」**方向相反**，
+   * 而那份 SKILL 教 Agent 用的正是 `job_cancel`。
+   *
+   * ── 为什么服务端做，不靠 Agent 补一刀 `request_resolve` ────────────────────
+   * 取消是**用户**的动作，它的终态不能挂在「Agent 记得再调一个 Tool」上：
+   * Agent 可能已经被杀、可能根本没在听、可能正卡在别的调用里。
+   *
+   * 返回值：true = 已结单；false = 有 requestId 但结单没成（已结过 / 条目已被保留策略裁掉）；
+   * null = 这个任务本来就不属于任何队列请求（Agent 在对话里直接起的）。
+   */
+  settleCancelledRequest(root, requestId, jobId) {
+    if (requestId === null || requestId === "") return null;
+    try {
+      new RequestQueue(root).complete(requestId, "cancelled", void 0, {
+        note: `\u7528\u6237\u53D6\u6D88\u4E86\u4EFB\u52A1 ${jobId}\uFF1B\u4E2D\u95F4\u4EA7\u7269\u5DF2\u4FDD\u7559\uFF0C\u53EF\u5728\u6B64\u57FA\u7840\u4E0A\u7EED\u8DD1\u3002`
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   async cancelJob(input) {
-    return this.jobs().cancel(input.jobId);
+    return this.cancelJobAt(this.projectRoot(), input.jobId);
   }
   /**
-   * 指定项目目录的取消（F-004）。
+   * 指定项目目录的取消（F-004）。**全产品唯一的取消实现点**（F-070）。
    *
-   * HTTP 面按会话绑定 projectDir 调这个，而不是 `cancelJob`——后者靠
-   * `currentProjectDir()` 猜，开两个工作台时会猜错，取消可能打到另一个项目的任务上。
+   * HTTP 面按会话绑定 projectDir 调这个，而不是靠 `currentProjectDir()` 猜——
+   * 开两个工作台时会猜错，取消可能打到另一个项目的任务上。
+   * MCP 面的 `cancelJob` 也收敛到这里，两条入口从此走同一段代码，
+   * 不再是"HTTP 那条结了队列单、MCP 那条没结"。
    */
   async cancelJobAt(projectRoot, jobId) {
-    return this.jobs(path27.resolve(projectRoot)).cancel(jobId);
+    const root = path29.resolve(projectRoot);
+    const jobs = this.jobs(root);
+    const before = jobs.status(jobId);
+    const cancelled = await jobs.cancel(jobId);
+    const after = jobs.status(jobId);
+    const requestId = after?.requestId ?? before?.requestId ?? null;
+    const requestSettled = cancelled ? this.settleCancelledRequest(root, requestId, jobId) : null;
+    return { cancelled, requestId, requestSettled };
   }
   /** 指定项目目录的领域写回（F-006）。理由同 cancelJobAt。 */
   applyOpsAt(projectRoot, input) {
-    const root = path27.resolve(projectRoot);
+    const root = path29.resolve(projectRoot);
     if (!Array.isArray(input.ops) || input.ops.length === 0) {
       throw new ToolkitError("INVALID_INPUT", "ops \u5FC5\u987B\u662F\u975E\u7A7A\u7684\u9886\u57DF\u64CD\u4F5C\u6570\u7EC4");
     }
@@ -38985,11 +39721,14 @@ var ChatCutToolkit = class {
     }
     if (input.outcome === "released") {
       const e2 = queue.release(input.requestId, { requireClaimed: true });
-      return { requestId: e2.requestId, status: e2.status, outcome: "released" };
+      return { requestId: e2.requestId, status: e2.status, outcome: "released", note: null };
     }
     const outcome = input.outcome ?? "succeeded";
-    const e = queue.complete(input.requestId, outcome, void 0, { requireClaimed: true });
-    return { requestId: e.requestId, status: e.status, outcome };
+    const e = queue.complete(input.requestId, outcome, void 0, {
+      requireClaimed: true,
+      ...input.note === void 0 ? {} : { note: input.note }
+    });
+    return { requestId: e.requestId, status: e.status, outcome, note: e.done?.note ?? null };
   }
   /* ─────────────── 按需获取重依赖（F-003 残留） ─────────────── */
   /**
@@ -39025,7 +39764,7 @@ var ChatCutToolkit = class {
       );
     }
     const target = modelPath(spec);
-    const verify = existsSync26(target) ? await verifyModel(spec, target) : null;
+    const verify = existsSync27(target) ? await verifyModel(spec, target) : null;
     return {
       id,
       label: spec.label,
@@ -39172,7 +39911,7 @@ var ChatCutToolkit = class {
         ttsCallCount: r.ttsCallCount,
         version: writeBack.newProjectVersion ?? null
       };
-    });
+    }, input.requestId);
   }
   annotationRender(input = {}) {
     const root = this.projectRoot();
@@ -39225,7 +39964,7 @@ var ChatCutToolkit = class {
         totalMs: pool.totalMs,
         version: writeBack.newProjectVersion ?? null
       };
-    });
+    }, input.requestId);
   }
   captionsGenerate(input = {}) {
     const root = this.projectRoot();
@@ -39258,7 +39997,7 @@ var ChatCutToolkit = class {
           for (const plan of asrPlan) {
             if (ctx.signal.aborted) throw new Error("CANCELLED");
             done += 1;
-            if (!existsSync26(plan.sourcePath)) {
+            if (!existsSync27(plan.sourcePath)) {
               warnings.push(`${plan.clipId} \u7D20\u6750\u4E0D\u5728\u539F\u4F4D\uFF0C\u8BE5\u7247\u6BB5\u6CA1\u6709\u8BC6\u522B\u5B57\u5E55`);
               ctx.log(`\u7247\u6BB5 ${plan.clipId} \u7D20\u6750\u7F3A\u5931\uFF0C\u8DF3\u8FC7\u8BC6\u522B\uFF08${done}/${asrPlan.length}\uFF09`);
               ctx.setStage("2/3 ASR \u8865\u9F50", done, asrPlan.length);
@@ -39317,11 +40056,13 @@ var ChatCutToolkit = class {
         warnings,
         version: writeBack.newProjectVersion ?? null
       };
-    });
+    }, input.requestId);
   }
   exportRenderJob(input = {}) {
     const root = this.projectRoot();
     const evidenceDir = this.opts.evidenceDir;
+    const state = loadProject(root);
+    if (state) assertExportable(state);
     return this.startJob("export_render", async (ctx) => {
       const onProgress = (p) => {
         ctx.setStage(p.label, p.done, p.total);
@@ -39358,7 +40099,7 @@ var ChatCutToolkit = class {
         reusedStages: r.reusedStages,
         projectVersion: r.projectVersion
       };
-    });
+    }, input.requestId);
   }
   /* ─────────────── App-only ─────────────── */
   /**
@@ -39386,7 +40127,7 @@ var ChatCutToolkit = class {
     const files = /* @__PURE__ */ new Set();
     for (const c of state.clips) {
       const p = c["sourcePath"];
-      if (typeof p === "string" && p.length > 0) files.add(path27.resolve(p));
+      if (typeof p === "string" && p.length > 0) files.add(path29.resolve(p));
     }
     return [...files];
   }
@@ -39403,9 +40144,9 @@ var ChatCutToolkit = class {
    */
   async mediaProbe(input) {
     const root = this.projectRoot();
-    const abs = path27.resolve(input.path);
+    const abs = path29.resolve(input.path);
     assertPathAllowed(abs, this.scopes(root, this.importedSourceFiles(root)), "read");
-    if (!existsSync26(abs)) throw new ToolkitError("NOT_FOUND", `\u6587\u4EF6\u4E0D\u5B58\u5728\uFF1A${abs}`);
+    if (!existsSync27(abs)) throw new ToolkitError("NOT_FOUND", `\u6587\u4EF6\u4E0D\u5B58\u5728\uFF1A${abs}`);
     const probe = await probeClip(abs);
     return { ...probe, compliant: isCompliant(probe), path: abs };
   }
@@ -39493,7 +40234,7 @@ var ChatCutToolkit = class {
   }
   /** 供 Tool 层给出人类可读的一行摘要。 */
   describeOutput(size) {
-    return existsSync26(size.path) ? `${(statSync14(size.path).size / 1024 / 1024).toFixed(1)} MB` : "\uFF08\u6587\u4EF6\u4E0D\u5B58\u5728\uFF09";
+    return existsSync27(size.path) ? `${(statSync15(size.path).size / 1024 / 1024).toFixed(1)} MB` : "\uFF08\u6587\u4EF6\u4E0D\u5B58\u5728\uFF09";
   }
 };
 function createToolkit(opts) {
@@ -39501,14 +40242,14 @@ function createToolkit(opts) {
 }
 
 // packages/server/src/workspace.ts
-import { createHash as createHash8 } from "node:crypto";
-import { statSync as statSync17 } from "node:fs";
-import path30 from "node:path";
+import { createHash as createHash9 } from "node:crypto";
+import { statSync as statSync18 } from "node:fs";
+import path32 from "node:path";
 
 // packages/server/src/http.ts
-import { createReadStream as createReadStream2, existsSync as existsSync27, readdirSync as readdirSync5, realpathSync as realpathSync3, statSync as statSync16 } from "node:fs";
+import { createReadStream as createReadStream2, existsSync as existsSync28, readdirSync as readdirSync5, realpathSync as realpathSync3, statSync as statSync17 } from "node:fs";
 import { createServer } from "node:http";
-import path29 from "node:path";
+import path31 from "node:path";
 import { fileURLToPath as fileURLToPath6 } from "node:url";
 
 // packages/server/src/sse.ts
@@ -39692,13 +40433,13 @@ function serializeSessionCookie(port, token) {
 }
 
 // packages/server/src/watch.ts
-import { statSync as statSync15 } from "node:fs";
-import path28 from "node:path";
+import { statSync as statSync16 } from "node:fs";
+import path30 from "node:path";
 var ABSENT = { exists: false, mtimeMs: 0, size: 0, version: null };
 function readVersion2(file2, key) {
   let st;
   try {
-    st = statSync15(file2);
+    st = statSync16(file2);
   } catch {
     return { ...ABSENT };
   }
@@ -39729,7 +40470,7 @@ var ProjectWatcher = class {
   started = false;
   constructor(opts) {
     const qp = queuePaths(opts.projectDir);
-    this.projectFile = path28.join(qp.stateDir, "project.json");
+    this.projectFile = path30.join(qp.stateDir, "project.json");
     this.queueFile = qp.queueFile;
     this.intervalMs = Math.max(20, opts.intervalMs ?? 200);
     this.onChange = opts.onChange;
@@ -39786,7 +40527,7 @@ var ProjectWatcher = class {
 };
 
 // packages/server/src/http.ts
-var HERE4 = path29.dirname(fileURLToPath6(import.meta.url));
+var HERE4 = path31.dirname(fileURLToPath6(import.meta.url));
 var PLUGIN_ROOT2 = PLUGIN_ROOT;
 var MEDIA_URL_PREFIX = "/api/media/";
 var MIME = nullDict({
@@ -39814,32 +40555,57 @@ function resolveUiRoot(explicit) {
   const candidates = [
     explicit,
     process.env.CHATCUT_UI_ROOT,
-    path29.join(PLUGIN_ROOT2, "dist", "ui"),
-    path29.join(PLUGIN_ROOT2, "packages", "ui", "dist"),
-    path29.join(PLUGIN_ROOT2, "packages", "ui", "public"),
-    path29.join(PLUGIN_ROOT2, "packages", "ui")
+    path31.join(PLUGIN_ROOT2, "dist", "ui"),
+    path31.join(PLUGIN_ROOT2, "packages", "ui", "dist"),
+    path31.join(PLUGIN_ROOT2, "packages", "ui", "public"),
+    path31.join(PLUGIN_ROOT2, "packages", "ui")
   ].filter((c) => typeof c === "string" && c.length > 0);
   for (const dir of candidates) {
     try {
-      if (existsSync27(path29.join(dir, "index.html"))) return path29.resolve(dir);
+      if (existsSync28(path31.join(dir, "index.html"))) return path31.resolve(dir);
     } catch {
     }
   }
   return null;
 }
+function normalizeStrayScan(raw) {
+  if (raw === null || typeof raw !== "object") return null;
+  const r = raw;
+  const killed = Array.isArray(r["killed"]) ? r["killed"].filter((k) => k !== null && typeof k === "object").map((k) => ({ pid: Number(k["pid"] ?? 0), name: String(k["name"] ?? "") })) : [];
+  return {
+    startedAt: String(r["startedAt"] ?? ""),
+    completedAt: String(r["completedAt"] ?? ""),
+    scanMs: Number(r["scanMs"] ?? 0),
+    killed,
+    ok: r["ok"] === true
+  };
+}
 function readJobBriefs(projectDir, limit = 200) {
-  const dir = path29.join(projectDir, ".chatcut", "jobs");
+  const dir = path31.join(projectDir, ".chatcut", "jobs");
   let names;
   try {
     names = readdirSync5(dir).filter((f) => f.endsWith(".json"));
   } catch {
-    return { list: [], brief: { active: null, running: 0, total: 0 } };
+    return { list: [], brief: { active: null, running: 0, total: 0, truncated: false } };
+  }
+  const total = names.length;
+  let picked = names;
+  if (names.length > limit) {
+    const stamped = [];
+    for (const name of names) {
+      try {
+        stamped.push({ name, mtimeMs: statSync17(path31.join(dir, name)).mtimeMs });
+      } catch {
+      }
+    }
+    stamped.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    picked = stamped.slice(0, limit).map((s) => s.name);
   }
   const list = [];
-  for (const name of names.slice(0, limit)) {
+  for (const name of picked) {
     let rec;
     try {
-      rec = JSON.parse(readFileWithRetry2(path29.join(dir, name)));
+      rec = JSON.parse(readFileWithRetry2(path31.join(dir, name)));
     } catch {
       continue;
     }
@@ -39863,15 +40629,41 @@ function readJobBriefs(projectDir, limit = 200) {
       createdAt: String(rec["createdAt"] ?? ""),
       startedAt: typeof rec["startedAt"] === "string" ? rec["startedAt"] : null,
       endedAt: typeof rec["endedAt"] === "string" ? rec["endedAt"] : null,
-      artifacts: Array.isArray(rec["artifacts"]) ? rec["artifacts"].length : 0
+      requestId: typeof rec["requestId"] === "string" ? rec["requestId"] : null,
+      artifacts: Array.isArray(rec["artifacts"]) ? rec["artifacts"].length : 0,
+      // F-080：取消后异步补报的残留扫描结论。这条通道就是界面既有的 1 秒任务轮询，
+      // 任务状态本来就不参与 projectVersion、不走 SSE（见 ui/src/store.ts 的说明）。
+      strayScan: normalizeStrayScan(rec["strayScan"])
     });
   }
   list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const live = list.filter((j) => j.state === "running" || j.state === "queued");
   return {
     list,
-    brief: { active: live[0] ?? null, running: live.length, total: list.length }
+    // total 是**目录里真实的条数**，不是本次读进来的条数。两者不等时 truncated=true，
+    // 界面据此知道自己看到的是一个窗口而不是全部（F-062）。
+    brief: { active: live[0] ?? null, running: live.length, total, truncated: total > list.length }
   };
+}
+function annotateMissingClips(project) {
+  const clips = project["clips"];
+  if (!Array.isArray(clips)) return [];
+  const missing = [];
+  for (const raw of clips) {
+    if (raw === null || typeof raw !== "object") continue;
+    const clip = raw;
+    const src = clip["sourcePath"];
+    if (typeof src !== "string" || src.length === 0) continue;
+    let gone = false;
+    try {
+      gone = !existsSync28(src);
+    } catch {
+      gone = true;
+    }
+    clip["missing"] = gone;
+    if (gone) missing.push(String(clip["clipId"] ?? ""));
+  }
+  return missing;
 }
 function parseRange(header, total) {
   if (header === void 0 || header.length === 0) return null;
@@ -39902,7 +40694,10 @@ var OPERATION_SELECTION = {
   "narration.synthesize": { key: "segIds", what: "\u65C1\u767D\u6BB5" },
   "annotation.render": { key: "annIds", what: "\u6807\u6CE8" },
   "captions.generate": { key: "clipIds", what: "\u7247\u6BB5" },
-  "export.render": { key: "clipIds", what: "\u7247\u6BB5" }
+  "export.render": { key: "clipIds", what: "\u7247\u6BB5" },
+  // F-057：重新定位必须点名要重绑哪几个片段。带着 segIds 之类的 selection 提交，
+  // Agent 认领后无从下手——那又是一次凭空的等待（与 F-043 同一条理由）。
+  "clip.relink": { key: "clipIds", what: "\u5931\u6548\u7247\u6BB5" }
 };
 function operationIssue(parsed) {
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return null;
@@ -40100,8 +40895,8 @@ async function startHttpServer(opts) {
       dependenciesError
     };
   };
-  const mediaRoot = path29.resolve(path29.join(opts.projectDir, ".chatcut", "cache"));
-  const projectFile = path29.join(queuePaths(opts.projectDir).stateDir, "project.json");
+  const mediaRoot = path31.resolve(path31.join(opts.projectDir, ".chatcut", "cache"));
+  const projectFile = path31.join(queuePaths(opts.projectDir).stateDir, "project.json");
   const publish = (nextReason, extra) => {
     revision += 1;
     updatedAt = (/* @__PURE__ */ new Date()).toISOString();
@@ -40215,7 +41010,7 @@ async function startHttpServer(opts) {
         return;
       case "/api/project": {
         if (watchEnabled) watcher.poll();
-        if (!existsSync27(projectFile)) {
+        if (!existsSync28(projectFile)) {
           json2(
             res,
             200,
@@ -40235,6 +41030,7 @@ async function startHttpServer(opts) {
         try {
           const parsed = JSON.parse(readFileWithRetry2(projectFile));
           const v = parsed["projectVersion"];
+          const missingClipIds = annotateMissingClips(parsed);
           json2(
             res,
             200,
@@ -40245,6 +41041,9 @@ async function startHttpServer(opts) {
               exists: true,
               projectVersion: typeof v === "number" ? v : null,
               project: parsed,
+              // 现算的缺失清单（F-057）。同时已写进 project.clips[].missing，
+              // 界面不必再自己 stat 一遍——浏览器也 stat 不了。
+              missingClipIds,
               readAt: (/* @__PURE__ */ new Date()).toISOString()
             },
             extraHeaders
@@ -40519,10 +41318,12 @@ async function startHttpServer(opts) {
       return;
     }
     try {
-      const cancelled = await cancel(jobId);
+      const outcome = await cancel(jobId);
+      const cancelled = outcome.cancelled;
       const after = readJobBriefs(opts.projectDir).list.find((j) => j.jobId === jobId) ?? before;
+      const settled = outcome.requestSettled ?? null;
       publish("job.changed", { jobId, source: "ui-cancel" });
-      log.info("job cancel requested", { jobId, cancelled, state: after.state });
+      log.info("job cancel requested", { jobId, cancelled, state: after.state, requestSettled: settled });
       json2(
         res,
         200,
@@ -40532,7 +41333,9 @@ async function startHttpServer(opts) {
           state: after.state,
           job: after,
           // 取消不是回滚：中间产物必须还在，供续跑复用（AC-012）。
-          artifactsKept: after.artifacts
+          artifactsKept: after.artifacts,
+          // 队列条目有没有被一起结掉（F-061）。null = 这个任务不属于任何队列请求。
+          requestSettled: settled
         },
         extraHeaders
       );
@@ -40553,15 +41356,15 @@ async function startHttpServer(opts) {
       json2(res, 400, { error: "BAD_REQUEST", detail: "\u5A92\u4F53\u8DEF\u5F84\u4E3A\u7A7A\u6216\u542B\u7A7A\u5B57\u8282" }, extraHeaders);
       return;
     }
-    const target = path29.resolve(mediaRoot, rel);
-    if (!target.startsWith(mediaRoot + path29.sep)) {
+    const target = path31.resolve(mediaRoot, rel);
+    if (!target.startsWith(mediaRoot + path31.sep)) {
       log.warn("media path traversal rejected", { pathname: url3.pathname });
       json2(res, 403, { error: "FORBIDDEN", detail: "path escapes cache root" }, extraHeaders);
       return;
     }
     let st;
     try {
-      st = statSync16(target);
+      st = statSync17(target);
     } catch {
       json2(res, 404, { error: "NOT_FOUND", detail: url3.pathname }, extraHeaders);
       return;
@@ -40573,7 +41376,7 @@ async function startHttpServer(opts) {
     try {
       const real = realpathSync3(target);
       const realRoot = realpathSync3(mediaRoot);
-      if (!real.startsWith(realRoot + path29.sep)) {
+      if (!real.startsWith(realRoot + path31.sep)) {
         log.warn("media symlink escape rejected", { pathname: url3.pathname });
         json2(res, 403, { error: "FORBIDDEN", detail: "symlink escapes cache root" }, extraHeaders);
         return;
@@ -40582,7 +41385,7 @@ async function startHttpServer(opts) {
       json2(res, 403, { error: "FORBIDDEN", detail: "realpath \u89E3\u6790\u5931\u8D25" }, extraHeaders);
       return;
     }
-    const type = MIME[path29.extname(target).toLowerCase()] ?? "application/octet-stream";
+    const type = MIME[path31.extname(target).toLowerCase()] ?? "application/octet-stream";
     const total = st.size;
     const range = parseRange(req.headers.range, total);
     if (range === "unsatisfiable") {
@@ -40653,15 +41456,15 @@ async function startHttpServer(opts) {
       return;
     }
     if (rel === "") rel = "index.html";
-    const target = path29.resolve(uiRoot, rel);
-    if (target !== uiRoot && !target.startsWith(uiRoot + path29.sep)) {
+    const target = path31.resolve(uiRoot, rel);
+    if (target !== uiRoot && !target.startsWith(uiRoot + path31.sep)) {
       log.warn("static path traversal rejected", { pathname: url3.pathname });
       json2(res, 403, { error: "FORBIDDEN", detail: "path escapes ui root" }, extraHeaders);
       return;
     }
     let st;
     try {
-      st = statSync16(target);
+      st = statSync17(target);
     } catch {
       json2(res, 404, { error: "NOT_FOUND", detail: url3.pathname }, extraHeaders);
       return;
@@ -40670,7 +41473,7 @@ async function startHttpServer(opts) {
       json2(res, 404, { error: "NOT_FOUND", detail: url3.pathname }, extraHeaders);
       return;
     }
-    const type = MIME[path29.extname(target).toLowerCase()] ?? "application/octet-stream";
+    const type = MIME[path31.extname(target).toLowerCase()] ?? "application/octet-stream";
     res.writeHead(200, {
       "content-type": type,
       "content-length": st.size,
@@ -40745,11 +41548,11 @@ function slug(name) {
 }
 function deriveProjectId(projectDir) {
   const normalized = normalizeKey(projectDir);
-  const hash2 = createHash8("sha256").update(normalized).digest("hex").slice(0, 8);
-  return `proj-${slug(path30.basename(projectDir))}-${hash2}`;
+  const hash2 = createHash9("sha256").update(normalized).digest("hex").slice(0, 8);
+  return `proj-${slug(path32.basename(projectDir))}-${hash2}`;
 }
 function normalizeKey(dir) {
-  const resolved = path30.resolve(dir);
+  const resolved = path32.resolve(dir);
   return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 var WorkspaceRegistry = class {
@@ -40780,10 +41583,23 @@ var WorkspaceRegistry = class {
     if (typeof raw !== "string" || raw.trim().length === 0) {
       throw new WorkspaceError("INVALID_INPUT", "projectDir \u5FC5\u987B\u662F\u975E\u7A7A\u5B57\u7B26\u4E32");
     }
-    const projectDir = path30.resolve(raw);
+    const projectDir = path32.resolve(raw);
+    const allow = this.hooks?.assertProjectDirAllowed;
+    if (!allow) {
+      throw new WorkspaceError(
+        "PERMISSION_DENIED",
+        "\u9879\u76EE\u76EE\u5F55\u5B88\u536B\u672A\u63A5\u5165\uFF08setHooks \u672A\u8C03\u7528\uFF09\uFF0C\u672C\u6B21\u6253\u5F00\u4E00\u5F8B\u62D2\u7EDD\u3002",
+        { projectDir }
+      );
+    }
+    try {
+      allow(projectDir);
+    } catch (e) {
+      throw new WorkspaceError("PERMISSION_DENIED", e.message, { projectDir });
+    }
     let st;
     try {
-      st = statSync17(projectDir);
+      st = statSync18(projectDir);
     } catch {
       throw new WorkspaceError("NOT_FOUND", `\u9879\u76EE\u76EE\u5F55\u4E0D\u5B58\u5728\uFF1A${projectDir}`, { projectDir });
     }
@@ -41002,7 +41818,12 @@ function createMcpServer(opts) {
     applyOps: (projectDir, input) => toolkit.applyOpsAt(projectDir, input),
     cancelJob: (projectDir, jobId) => toolkit.cancelJobAt(projectDir, jobId),
     // F-018：界面上的依赖状态从此只来自这里，与 dependency_check 是同一份数据。
-    checkDependencies: () => toolkit.dependencyBrief()
+    checkDependencies: () => toolkit.dependencyBrief(),
+    // F-076：`workspace_open` 的项目目录守卫。判据在 toolkit（唯一实现点），
+    // 这里只是把它交给 registry.open()——不在本 handler 里另判一次。
+    assertProjectDirAllowed: (dir) => {
+      toolkit.assertProjectDirAllowed(dir);
+    }
   });
   server.registerTool(
     "workspace_open",
@@ -41021,7 +41842,8 @@ function createMcpServer(opts) {
         usedFallback: external_exports.boolean().describe("true = \u9996\u9009\u7AEF\u53E3\u88AB\u5360\u7528\uFF0C\u5DF2\u56DE\u9000\u5230\u7CFB\u7EDF\u4E34\u65F6\u7AEF\u53E3"),
         reused: external_exports.boolean().describe("true = \u547D\u4E2D\u5E42\u7B49\uFF0C\u590D\u7528\u4E86\u65E2\u6709\u7AEF\u53E3\u4E0E\u8FDB\u7A0B"),
         pid: external_exports.number().int().describe("\u627F\u8F7D HTTP \u670D\u52A1\u7684 MCP Server \u8FDB\u7A0B\u53F7"),
-        startedAt: external_exports.string()
+        startedAt: external_exports.string(),
+        missingClips: external_exports.array(anyRecord).describe("\u91CD\u5F00\u65F6\u63A2\u5230\u7684\u5931\u6548\u7D20\u6750\uFF08AC-010\uFF09\u3002\u975E\u7A7A\u65F6\u5148\u95EE\u7528\u6237\u65B0\u8DEF\u5F84\uFF0C\u518D\u9010\u6761\u8C03 clip_relink\u3002")
       },
       annotations: {
         title: "\u6253\u5F00 ChatCut \u5DE5\u4F5C\u53F0",
@@ -41033,16 +41855,30 @@ function createMcpServer(opts) {
     },
     async ({ projectDir }) => {
       try {
+        const targetDir = projectDir ?? defaultProjectDir;
+        let missing = [];
+        try {
+          missing = toolkit.refreshMissingClips(targetDir).missing;
+        } catch (e) {
+          log.warn("mark missing clips failed", { error: e.message });
+        }
         const result = await opts.registry.open({ projectDir });
         const humanText = [
           `ChatCut \u5DE5\u4F5C\u53F0\u5DF2${result.reused ? "\u590D\u7528" : "\u542F\u52A8"}\uFF1A${result.url}`,
           `\u9879\u76EE\uFF1A${result.projectDir}\uFF08${result.projectId}\uFF09`,
           `\u7AEF\u53E3 ${result.port}${result.usedFallback ? "\uFF08\u9996\u9009\u7AEF\u53E3\u88AB\u5360\u7528\uFF0C\u5DF2\u56DE\u9000\uFF09" : ""}\uFF0C\u8FDB\u7A0B ${result.pid}`,
-          "\u628A\u4E0A\u9762\u7684 URL \u539F\u6837\u4EA4\u7ED9\u7528\u6237\u5728\u6D4F\u89C8\u5668\u6253\u5F00\uFF1BURL \u542B\u672C\u6B21\u4F1A\u8BDD\u51ED\u636E\uFF0C\u4E0D\u8981\u6539\u52A8\u3002"
+          "\u628A\u4E0A\u9762\u7684 URL \u539F\u6837\u4EA4\u7ED9\u7528\u6237\u5728\u6D4F\u89C8\u5668\u6253\u5F00\uFF1BURL \u542B\u672C\u6B21\u4F1A\u8BDD\u51ED\u636E\uFF0C\u4E0D\u8981\u6539\u52A8\u3002",
+          ...missing.length > 0 ? [
+            `\u26A0 \u6709 ${missing.length} \u4E2A\u7247\u6BB5\u7684\u7D20\u6750\u627E\u4E0D\u5230\u4E86\uFF0C\u754C\u9762\u5DF2\u6807\u51FA\u7F3A\u5931\uFF1A`,
+            ...missing.map(
+              (m) => `    ${m.clipId}\uFF1A${m.originalPath}` + (m.annotationCount > 0 ? `\uFF08\u6302\u7740 ${m.annotationCount} \u6761\u6807\u6CE8\uFF09` : "")
+            ),
+            "  \u95EE\u7528\u6237\u65B0\u8DEF\u5F84\uFF0C\u7136\u540E\u5BF9\u6BCF\u6761\u8C03 clip_relink\u2014\u2014\u88C1\u526A\u70B9\u4E0E\u6807\u6CE8\u90FD\u4F1A\u4FDD\u7559\u3002\u5BFC\u51FA\u5728\u91CD\u5B9A\u4F4D\u4E4B\u524D\u4F1A\u88AB\u963B\u6B62\u3002"
+          ] : []
         ].join("\n");
         return {
           content: [{ type: "text", text: humanText }],
-          structuredContent: { ...result }
+          structuredContent: { ...result, missingClips: missing }
         };
       } catch (e) {
         const err = e;
@@ -41105,6 +41941,42 @@ function createMcpServer(opts) {
         ),
         ...r.rejected.map((x) => `  \u62D2\u7EDD ${x.path}\uFF1A${x.code} ${x.message}`)
       ];
+      return { text: lines.join("\n"), data: { ...r } };
+    })
+  );
+  server.registerTool(
+    "clip_relink",
+    {
+      title: "\u91CD\u65B0\u5B9A\u4F4D\u5931\u6548\u7D20\u6750",
+      description: "\u628A\u67D0\u4E2A\u7247\u6BB5\u91CD\u65B0\u6307\u5411\u65B0\u7684\u7D20\u6750\u6587\u4EF6\uFF08AC-010 / UX-005\uFF09\u3002**\u88C1\u526A\u70B9\u4E0E\u6302\u5728\u8BE5\u7247\u6BB5\u4E0A\u7684\u6807\u6CE8\u5168\u90E8\u4FDD\u7559**\u2014\u2014\u5B83\u4EEC\u63CF\u8FF0\u7684\u662F\u300C\u7528\u8FD9\u6BB5\u7D20\u6750\u7684\u54EA\u4E00\u90E8\u5206\u300D\uFF0C\u4E0E\u6587\u4EF6\u653E\u5728\u54EA\u65E0\u5173\u3002\u6362\u6E90\u5FC5\u7136\u4F5C\u5E9F\u5F52\u4E00\u5316\u4E2D\u95F4\u4EF6\u4E0E\u65E7\u7684\u9884\u89C8\u4EE3\u7406\uFF0C\u672C Tool \u4F1A\u4E00\u5E76\u6E05\u6389\u5E76**\u5F53\u573A\u91CD\u65B0\u751F\u6210\u65B0\u4EE3\u7406**\uFF08F-071\uFF09\uFF0C\u6240\u4EE5\u91CD\u5B9A\u4F4D\u5B8C\u6210\u540E\u9884\u89C8\u533A\u7ACB\u523B\u80FD\u653E\uFF1B\u4EE3\u7406\u751F\u6210\u5931\u8D25\u53EA\u51FA warning\uFF0C\u4E0D\u56DE\u6EDA\u91CD\u5B9A\u4F4D\u3002\u65B0\u7D20\u6750\u66F4\u77ED\u65F6\u88C1\u526A\u70B9\u81EA\u52A8\u6536\u655B\uFF08\u51FA\u70B9\u6536\u5230\u7D20\u6750\u672B\u5C3E\uFF1B\u5165\u70B9\u6574\u6BB5\u843D\u7A7A\u65F6\u56DE\u843D\u4E3A\u4F7F\u7528\u6574\u6BB5\u65B0\u7D20\u6750\uFF09\uFF0C\u5E76\u5728 warnings \u91CC\u8BF4\u6E05\u540E\u679C\uFF08\u89C4\u683C\u53D8\u5316 = \u8BE5\u7247\u6BB5\u4F1A\u91CD\u65B0\u5F52\u4E00\u5316\uFF09\u3002\u7528\u6237\u8BF4\u300C\u7D20\u6750\u627E\u4E0D\u5230\u4E86\u300D\u300C\u6211\u628A\u6587\u4EF6\u632A\u5230\u4E86 X\u300D\u65F6\uFF1A\u5148 project_read \u770B missingClipIds\uFF0C\u518D\u5BF9\u6BCF\u6761\u8C03\u672C Tool\u3002\u65B0\u8DEF\u5F84\u7684\u6388\u6743\u8303\u56F4\u4E0E clip_import \u540C\u7EA7\uFF1A\u9879\u76EE\u76EE\u5F55\u3001\u5BBF\u4E3B\u4F1A\u8BDD\u5DE5\u4F5C\u76EE\u5F55\u6811\u3001CHATCUT_MEDIA_ROOTS\uFF08SEC-003\uFF09\u3002**\u4E0D\u6536 expectedVersion**\uFF08S-09\uFF09\uFF1A\u5B83\u5199\u7684\u662F\u300C\u8FD9\u4E2A\u7247\u6BB5\u7684\u6E90\u6587\u4EF6\u5728\u54EA\u300D\uFF0C\u4E0E\u7528\u6237\u5728\u754C\u9762\u4E0A\u5E76\u53D1\u7F16\u8F91\u7684\u6392\u5E8F/\u88C1\u526A/\u6807\u6CE8\u4E92\u4E0D\u91CD\u53E0\uFF0C\u7248\u672C\u53CC\u68C0\u5728\u8FD9\u91CC\u53EA\u4F1A\u5236\u9020\u5047\u51B2\u7A81\uFF1B\u5E42\u7B49\u7531 requestId \u4FDD\u8BC1\u3002",
+      inputSchema: {
+        clipId: external_exports.string().describe("\u8981\u91CD\u65B0\u5B9A\u4F4D\u7684\u7247\u6BB5 id\uFF0C\u53D6\u81EA project_read \u7684 missingClipIds"),
+        newPath: external_exports.string().describe("\u65B0\u7D20\u6750\u6587\u4EF6\u7684\u7EDD\u5BF9\u8DEF\u5F84"),
+        requestId: requestIdSchema.optional().describe(`\u5E42\u7B49\u952E\u3002\u754C\u9762\u63D0\u4EA4\u7684 clip.relink \u8BF7\u6C42\u5E26\u7684\u5C31\u662F\u5B83\u3002${REQUEST_ID_HINT}`)
+      },
+      outputSchema: {
+        clipId: external_exports.string(),
+        oldPath: external_exports.string(),
+        newPath: external_exports.string(),
+        preservedAnnotations: external_exports.number().int(),
+        warnings: external_exports.array(external_exports.string()),
+        version: external_exports.number().int(),
+        idempotentReplay: external_exports.boolean()
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+    },
+    guard("clip_relink", log, async (args) => {
+      const r = await toolkit.clipRelink(optionalRequestId(args));
+      const lines = r.idempotentReplay ? [
+        `${r.clipId} \u4E4B\u524D\u5DF2\u7528\u540C\u4E00\u4E2A requestId \u91CD\u5B9A\u4F4D\u8FC7\uFF0C\u8FD9\u6B21\u6CA1\u6709\u518D\u6539\u52A8\u4EFB\u4F55\u4E1C\u897F\uFF08\u5E42\u7B49\u91CD\u653E\uFF09`,
+        `  \u5F53\u524D\u7D20\u6750\uFF1A${r.newPath}`,
+        `  \u8BE5\u7247\u6BB5\u4E0A\u4ECD\u6302\u7740 ${r.preservedAnnotations} \u6761\u6807\u6CE8\uFF0C\u5DE5\u7A0B\u7248\u672C ${r.version}`
+      ] : [
+        `${r.clipId} \u5DF2\u91CD\u65B0\u6307\u5411 ${r.newPath}`,
+        `  \u539F\u8DEF\u5F84\uFF1A${r.oldPath}`,
+        `  \u4FDD\u7559\u6807\u6CE8 ${r.preservedAnnotations} \u6761\uFF0C\u88C1\u526A\u70B9\u672A\u6539\u52A8\uFF0C\u5DE5\u7A0B\u7248\u672C \u2192 ${r.version}`
+      ];
+      lines.push(...r.warnings.map((w) => `  \u26A0 ${w}`));
       return { text: lines.join("\n"), data: { ...r } };
     })
   );
@@ -41233,7 +42105,9 @@ function createMcpServer(opts) {
         logTail: external_exports.array(external_exports.string()),
         error: anyRecord.nullable(),
         artifacts: external_exports.array(external_exports.string()),
-        result: external_exports.unknown().optional()
+        result: external_exports.unknown().optional(),
+        // 取消后的残留渲染进程扫描结论（F-080）。异步补报：取消刚返回时通常是 null。
+        strayScan: anyRecord.nullable()
       },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
@@ -41293,9 +42167,12 @@ function createMcpServer(opts) {
       description: "\u628A\u8BA4\u9886\u6765\u7684\u8BF7\u6C42\u6807\u8BB0\u4E3A\u5DF2\u7ED3\u675F\u3002**\u53EA\u5728\u5199\u56DE\u4E0D\u4F1A\u81EA\u52A8\u7ED3\u5355\u65F6\u7528**\uFF1A\u5E26 requestId \u7684\u9886\u57DF\u5199\u56DE\u6210\u529F\u540E\u961F\u5217\u6761\u76EE\u4F1A\u81EA\u52A8 done\uFF0C\u90A3\u79CD\u60C5\u51B5\u4E0D\u5FC5\u518D\u8C03\u3002\u505A\u4E0D\u6210\u65F6\u7528 outcome=failed\uFF0C\u7528\u6237\u4E3B\u52A8\u53D6\u6D88\u7528 cancelled\uFF0C\u6682\u65F6\u4E0D\u5904\u7406\u7528 released \u9000\u56DE\u961F\u5217\u3002\u4E0D\u7ED3\u6389\u7684\u540E\u679C\u662F\u754C\u9762\u4E00\u76F4\u663E\u793A\u8FDB\u884C\u4E2D\uFF0C\u76F4\u5230\u79DF\u7EA6\u5230\u671F\u2014\u2014\u90A3\u6BB5\u65F6\u95F4\u91CC\u7684\u8FDB\u5EA6\u90FD\u662F\u5047\u7684\u3002",
       inputSchema: {
         requestId: requestIdSchema,
-        outcome: external_exports.enum(["succeeded", "partial", "failed", "cancelled", "released"]).optional().describe("\u9ED8\u8BA4 succeeded\uFF1Breleased = \u9000\u56DE\u961F\u5217\u4F9B\u540E\u7EED\u91CD\u65B0\u8BA4\u9886")
+        outcome: external_exports.enum(["succeeded", "partial", "failed", "cancelled", "released"]).optional().describe("\u9ED8\u8BA4 succeeded\uFF1Breleased = \u9000\u56DE\u961F\u5217\u4F9B\u540E\u7EED\u91CD\u65B0\u8BA4\u9886"),
+        note: external_exports.string().optional().describe(
+          "\u4E00\u53E5\u8BDD\u8BF4\u660E\u4E3A\u4EC0\u4E48\u662F\u8FD9\u4E2A\u7ED3\u679C\uFF08\u5931\u8D25\u539F\u56E0\u3001\u90E8\u5206\u6210\u529F\u7F3A\u4E86\u4EC0\u4E48\uFF09\u3002\u4F1A\u539F\u6837\u5199\u8FDB\u961F\u5217\u6761\u76EE\u5E76\u663E\u793A\u5728\u5DE5\u4F5C\u53F0\u5E95\u680F\u2014\u2014\u4E0D\u5199\u7684\u8BDD\u7528\u6237\u53EA\u770B\u5F97\u5230\u4E00\u4E2A failed\uFF0C\u5F97\u56DE\u6765\u95EE\u4F60\u624D\u77E5\u9053\u53D1\u751F\u4E86\u4EC0\u4E48\uFF08F-060\uFF09\u3002"
+        )
       },
-      outputSchema: { requestId: external_exports.string(), status: external_exports.string(), outcome: external_exports.string() },
+      outputSchema: { requestId: external_exports.string(), status: external_exports.string(), outcome: external_exports.string(), note: external_exports.string().nullable() },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
     },
     guard(
@@ -41304,7 +42181,10 @@ function createMcpServer(opts) {
       (args) => {
         requireRequestId(args.requestId);
         const r = toolkit.requestResolve(args);
-        return { text: `${r.requestId} \u2192 ${r.status}\uFF08${r.outcome}\uFF09`, data: { ...r } };
+        return {
+          text: `${r.requestId} \u2192 ${r.status}\uFF08${r.outcome}\uFF09${r.note ? `\uFF1A${r.note}` : ""}`,
+          data: { ...r }
+        };
       }
     )
   );
@@ -41312,28 +42192,35 @@ function createMcpServer(opts) {
     "job_cancel",
     {
       title: "\u53D6\u6D88\u957F\u4EFB\u52A1",
-      description: "\u53D6\u6D88\u4E00\u4E2A\u6B63\u5728\u8DD1\u7684\u957F\u4EFB\u52A1\uFF08Design \xA79 Job Lifecycle \xB7 Cancel\uFF09\u3002\u4F1A\u5411\u5B50\u8FDB\u7A0B\u6811\u53D1\u7EC8\u6B62\u4FE1\u53F7\u5E76\u5F3A\u6740\u6B8B\u7559\uFF08ffmpeg \u4F1A\u518D\u62C9\u8D77\u5B50\u8FDB\u7A0B\uFF0C\u53EA\u6740\u76F4\u63A5\u5B50\u8FDB\u7A0B\u4F1A\u7559\u5B64\u513F\uFF09\u3002**\u53D6\u6D88\u4E0D\u662F\u56DE\u6EDA**\uFF1A\u5DF2\u4EA7\u51FA\u7684\u4E2D\u95F4\u4EA7\u7269\u5168\u90E8\u4FDD\u7559\uFF0C\u4FEE\u597D\u540E\u53EF\u4EE5\u4ECE\u5931\u8D25/\u4E2D\u65AD\u7684\u90A3\u4E00\u9636\u6BB5\u7EED\u8DD1\u3002\u8FD4\u56DE cancelled=false \u65F6\u8BF4\u660E\u4EFB\u52A1\u5DF2\u7ECF\u7ED3\u675F\u6216\u4E0D\u5F52\u672C\u8FDB\u7A0B\u7BA1\uFF0C\u5982\u5B9E\u544A\u8BC9\u7528\u6237\uFF0C\u4E0D\u8981\u5F53\u6210\u53D6\u6D88\u6210\u529F\u3002",
+      description: "\u53D6\u6D88\u4E00\u4E2A\u6B63\u5728\u8DD1\u7684\u957F\u4EFB\u52A1\uFF08Design \xA79 Job Lifecycle \xB7 Cancel\uFF09\u3002\u4F1A\u5411\u5B50\u8FDB\u7A0B\u6811\u53D1\u7EC8\u6B62\u4FE1\u53F7\u5E76\u5F3A\u6740\u6B8B\u7559\uFF08ffmpeg \u4F1A\u518D\u62C9\u8D77\u5B50\u8FDB\u7A0B\uFF0C\u53EA\u6740\u76F4\u63A5\u5B50\u8FDB\u7A0B\u4F1A\u7559\u5B64\u513F\uFF09\u3002**\u53D6\u6D88\u4E0D\u662F\u56DE\u6EDA**\uFF1A\u5DF2\u4EA7\u51FA\u7684\u4E2D\u95F4\u4EA7\u7269\u5168\u90E8\u4FDD\u7559\uFF0C\u4FEE\u597D\u540E\u53EF\u4EE5\u4ECE\u5931\u8D25/\u4E2D\u65AD\u7684\u90A3\u4E00\u9636\u6BB5\u7EED\u8DD1\u3002\u8FD4\u56DE cancelled=false \u65F6\u8BF4\u660E\u4EFB\u52A1\u5DF2\u7ECF\u7ED3\u675F\u6216\u4E0D\u5F52\u672C\u8FDB\u7A0B\u7BA1\uFF0C\u5982\u5B9E\u544A\u8BC9\u7528\u6237\uFF0C\u4E0D\u8981\u5F53\u6210\u53D6\u6D88\u6210\u529F\u3002\u4EFB\u52A1\u66FF\u67D0\u6761\u754C\u9762\u8BF7\u6C42\u8DD1\u65F6\uFF0C\u53D6\u6D88\u4F1A**\u8FDE\u5E26\u628A\u961F\u5217\u91CC\u90A3\u6761\u8BF7\u6C42\u7ED3\u6210 cancelled**\uFF0C\u5B83\u4E0D\u4F1A\u518D\u88AB\u91CD\u65B0\u6D3E\u56DE\u6765\uFF08F-070\uFF09\uFF1B\u56DE\u5305\u91CC\u7684 requestSettled \u5C31\u662F\u8FD9\u4EF6\u4E8B\u7684\u7ED3\u8BBA\uFF1Atrue=\u5DF2\u7ED3\u5355\uFF0Cfalse=\u6709 requestId \u4F46\u6CA1\u7ED3\u6210\uFF0Cnull=\u8FD9\u4E2A\u4EFB\u52A1\u672C\u6765\u5C31\u4E0D\u5C5E\u4E8E\u4EFB\u4F55\u961F\u5217\u8BF7\u6C42\u3002",
       inputSchema: { jobId: external_exports.string().describe("\u957F\u4EFB\u52A1 Tool \u8FD4\u56DE\u7684\u90A3\u4E2A jobId\uFF0C\u5F62\u5982 job-<uuid>\u3002\u5F62\u72B6\u4E0D\u5BF9\u4E00\u5F8B INVALID_INPUT\uFF08F-040\uFF09") },
       outputSchema: {
         jobId: external_exports.string(),
         cancelled: external_exports.boolean(),
         state: external_exports.string(),
-        artifactsKept: external_exports.number().int()
+        artifactsKept: external_exports.number().int(),
+        requestId: external_exports.string().nullable(),
+        requestSettled: external_exports.boolean().nullable()
       },
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
     },
     guard("job_cancel", log, async (args) => {
       const before = toolkit.jobStatus(args);
-      const cancelled = await toolkit.cancelJob(args);
+      const outcome = await toolkit.cancelJob(args);
       const after = toolkit.jobStatus(args);
+      const queueLine = outcome.requestSettled === true ? `
+\u961F\u5217\u8BF7\u6C42 ${outcome.requestId} \u5DF2\u7ED3\u6210 cancelled\uFF0C\u4E0D\u4F1A\u518D\u88AB\u91CD\u65B0\u6D3E\u56DE\u6765\u3002` : outcome.requestSettled === false ? `
+\u6CE8\u610F\uFF1A\u961F\u5217\u8BF7\u6C42 ${outcome.requestId} \u672A\u80FD\u7ED3\u5355\uFF08\u53EF\u80FD\u5DF2\u7ED3\u8FC7\u6216\u5DF2\u88AB\u88C1\u6389\uFF09\u3002\u7528 request_resolve \u590D\u6838\uFF0C\u522B\u5BF9\u7528\u6237\u8BF4\u5B83\u5DF2\u7ECF\u505C\u4E86\u3002` : "\n\u8FD9\u4E2A\u4EFB\u52A1\u4E0D\u5C5E\u4E8E\u4EFB\u4F55\u754C\u9762\u8BF7\u6C42\uFF08\u4F60\u5728\u5BF9\u8BDD\u91CC\u76F4\u63A5\u8D77\u7684\uFF09\uFF0C\u6CA1\u6709\u961F\u5217\u6761\u76EE\u8981\u7ED3\u3002";
       return {
-        text: `\u4EFB\u52A1 ${args.jobId}\uFF1A${before.state} \u2192 ${after.state}` + (cancelled ? "" : "\uFF08\u672A\u6267\u884C\u53D6\u6D88\uFF1A\u4EFB\u52A1\u5DF2\u7ED3\u675F\u6216\u4E0D\u7531\u672C\u8FDB\u7A0B\u6301\u6709\uFF09") + `
-\u4E2D\u95F4\u4EA7\u7269\u4FDD\u7559 ${after.artifacts.length} \u9879\uFF0C\u53EF\u4ECE\u4E2D\u65AD\u5904\u7EED\u8DD1\u3002`,
+        text: `\u4EFB\u52A1 ${args.jobId}\uFF1A${before.state} \u2192 ${after.state}` + (outcome.cancelled ? "" : "\uFF08\u672A\u6267\u884C\u53D6\u6D88\uFF1A\u4EFB\u52A1\u5DF2\u7ED3\u675F\u6216\u4E0D\u7531\u672C\u8FDB\u7A0B\u6301\u6709\uFF09") + `
+\u4E2D\u95F4\u4EA7\u7269\u4FDD\u7559 ${after.artifacts.length} \u9879\uFF0C\u53EF\u4ECE\u4E2D\u65AD\u5904\u7EED\u8DD1\u3002` + queueLine,
         data: {
           jobId: args.jobId,
-          cancelled,
+          cancelled: outcome.cancelled,
           state: after.state,
-          artifactsKept: after.artifacts.length
+          artifactsKept: after.artifacts.length,
+          requestId: outcome.requestId,
+          requestSettled: outcome.requestSettled
         }
       };
     })
@@ -41693,7 +42580,7 @@ var isDirectRun = (() => {
   const entry = process.argv[1];
   if (!entry) return false;
   try {
-    return pathToFileURL(path31.resolve(entry)).href === import.meta.url;
+    return pathToFileURL(path33.resolve(entry)).href === import.meta.url;
   } catch {
     return false;
   }
