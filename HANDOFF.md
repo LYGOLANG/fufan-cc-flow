@@ -4,6 +4,253 @@
 
 ## 当前任务
 
+## 【2026-08-25】用户报四个 bug，正在逐个处理（macOS 本机）
+
+环境：用户改在 **macOS**（aarch64）上使用，本机版本 0.1.51 → 已拉到 **0.1.53**。
+用户是**在 Agent Flow 里跟 Claude 对话**的，所以每次重装都会掐断当轮会话。
+
+### Bug 1 ✅ 已修（上游 `3803448`，非本地改动）— 待装机验证
+
+**症状**：图片、视频不显示也放不大。
+
+**根因**：`<img>` / `<video>` 的请求由浏览器直发，**带不了自定义请求头**，
+而桌面版后端开着鉴权（`sidecar.rs` 注入 `CC_FLOW_AUTH_TOKEN`），于是每一次
+媒体请求都被自己的 `authMiddleware` 401 挡掉。前端 `MarkdownRenderer` 的
+`onError` 只是 `if (broken) return null` —— **静默隐藏**，401 / 文件不存在 /
+路径写错在界面上完全无法区分，控制台也不出声。这是「界面说谎」的又一实例。
+
+视频则是**根本没实现**：后端 `IMAGE_TYPES` 只认 9 个图片扩展名，`.mp4` 直接 415；
+前端把 `![](out.mp4)` 渲染成必然失败的 `<img>`，再被静默吞掉。
+
+**修法**（上游已提交，本地 `git pull` 即得）：媒体 URL 改走 `withAuthQuery`
+（令牌走 query，后端 `extractToken` 本来就支持 `?token=`）；后端补
+video/audio MIME + `Accept-Ranges` 分段；新增 `MediaPreview.tsx` +
+`mediaPaths.ts`（把散在三处的识别正则收口，带 108 行测试）。
+
+**验证**：typecheck 0 error；client 103 测试全过，**已确认新测试真的被收集**
+（阳性对照：`✔ 媒体 URL 构造必须经过 withAuthQuery`、`✔ 视频与音频都能认出来`）。
+
+⚠️ **这个 bug 在 `pnpm dev` 下永远复现不了** —— dev 模式不注入令牌、鉴权整体关闭。
+又一次「验证环境比生产宽松，那个维度上的 bug 就结构性地看不见」。
+
+### Bug 2 🔍 未定位 —— 切换会话后消息列表是空的
+
+**症状（用户原话）**：「就是切换会话的时候，打开的是什么东西都没有」。
+
+注意：用户最初描述为「回答过程中回复框文字会消失」，追问后才澄清是**切换会话**。
+第一轮子 Agent 按「输入框/流式气泡」查了一遍，**方向是错的**（但捞出了 Bug 4）。
+
+**三个待验假设**（子 Agent 正在查，会话被重装打断，结论未落盘）：
+- **A. 又是鉴权 401**：与 Bug 1 同源。查历史加载请求是否漏带令牌，
+  以及 `catch` 里是不是 `return []` / `setMessages([])` —— 项目记录在案的
+  反模式「把『不知道』当成『否定』」，加载失败被渲染成「这个会话本来就是空的」。
+- **B. macOS 路径哈希对不上**：项目原本在 Windows 开发，会话 JSONL 按项目路径
+  哈希定位（HANDOFF 旧条目：「Windows 下路径哈希先将 `\` 转换为 `/`」）。
+  在 macOS 上算出的目录可能与实际不符 → 找不到文件 → 返回空。
+- **C. 切换时清空了但没触发重新加载**：`useWebSocket` 的 effect 依赖**只有
+  `[projectPath]`**，sessionId 变化不会让它重跑。要查清 sessionId 变化时
+  到底谁负责拉历史。
+
+相关文件：`chatStore.ts:408-419 loadHistoryMessages`、`chatStore.ts:456-460`
+（persist 只存 `currentSessionId`）、`server/src/routes/sessions.ts`、
+`jsonlSanitize.ts`、`utils/pathUtils.ts`。
+
+### ✅ 滚动不跟随：真正的根因是「设计里存在永久性死状态」
+
+**用户实报**：发送消息 / 接收回复时视口都不跟到底部，必须手动滚才能看到；
+切换会话打开是空白。用户原话：「hi 是我滚动到底部才看见的」——
+**内容一直在，就是视口不动**。
+
+**根因（第七次才找对，前六次全错，见下方复盘）**：
+历代实现都用一个**布尔标志**表示「要不要跟随」，而这个标志一旦被误置为
+「用户想上翻」，自动跟随就**永久关闭且不可恢复**。三代死状态来源：
+
+1. `userScrolledUp = !atBottom` —— 把「程序化滚动收敛途中不在底部」当成用户上翻
+2. `scrollTop < lastTop → 停止跟随` —— 把浏览器夹住 scrollTop、macOS 橡皮筋
+   回弹、内容回缩（工具卡折叠）当成用户上翻
+3. 钉住循环的启动被写在 `if (!following) return` **之后** ——
+   标志一旦为假，连补救机制都启动不了，**补救被它要补救的状态锁死**
+
+前两条本质都是**猜用户心思**，而猜错的代价是功能彻底失效且不自愈 ——
+代价与收益完全不成比例。
+
+**修法**（`utils/scrollFollow.ts` + `hooks/useAutoScroll.ts`）：
+- 布尔开关 → **带过期时间的暂停**：用户明确上翻暂停 5 秒，持续上翻续期，
+  停手自动恢复；回到底部 / 发消息 / 切会话立即恢复。
+  **任何误判最多影响 5 秒，之后必然自愈 —— 不存在死状态。**
+- **滚轮噪声过滤**：小于 8px 的向上增量一律忽略。macOS 触控板惯性与橡皮筋
+  会在用户**向下滚**的过程中夹带一串向上的碎小增量，不过滤的话
+  一次正常下滚就能把跟随关掉。
+- **钉住循环**：内容一变就每帧 `el.scrollTop = el.scrollHeight`，
+  持续 1.5 秒（发送/切会话 3 秒）。**无条件启动**，该不该真滚由循环内部
+  每帧自判 —— 这是铁律 ②。
+  为什么不是「内容变了 scrollTo 一次」：单次滚动要求调用那一刻就知道最终高度，
+  而这个前提从不成立（Markdown 排版落定、代码高亮异步着色、图片视频加载完
+  才撑开、工具卡展开、字体替换回流全在滚动之后）。与其枚举「什么时候补一次」，
+  不如每帧都钉，对所有异步撑高天然免疫。
+
+11 条单测全部围绕「不存在永久关闭状态」这一性质。**改动时不要把它改回布尔标志。**
+
+### 同轮修掉的另外两条（独立问题）
+
+1. **`content-visibility: auto` 已彻底移除**（`2cc8dd6` 引入的长会话优化）。
+   WebKit 双内核实测：开启时 scrollHeight 被低估 35~47%
+   （15128/19643 vs 真值 28703/30051），且用户截图实证**整个聊天区不绘制**
+   （滚动条显示有内容，但一个像素都没画）。曾试过「只在 WebKit 上按 UA 关闭」，
+   装机后症状照旧 —— 说明这条声明的风险不是条件判断能兜住的。
+   **它换来的只是一点滚动流畅度，代价是界面直接空白，不要再加回来。**
+   长会话真卡了，用虚拟滚动这类可控方案。
+2. **用户附件的图片渲染 + 点击放大**。`UserBubble` 此前只把附件渲染成
+   文件名小标签，图片本体从来不显示、也点不开。注意它与「AI 消息里引用的图片」
+   是**两条独立链路** —— 上游 `3803448` 修的是后者（鉴权 401），
+   这条从来没实现过。现走 `MediaPreview`（新增 `UserAttachments`），
+   并给 `MediaPreview` 补了 `ImageLightbox`（此前只有视频有灯箱）。
+   ✅ 用户已确认「图片处理好了」。
+
+### ⚠️⚠️ 本轮最贵的教训：六次误判，每次都配了一套自证有效实则无效的验证
+
+按时间顺序，六次错误根因 + 六套失效的验证手段：
+
+| # | 错误假设 | 验证手段 | 为什么无效 |
+|---|---|---|---|
+| 1 | 滚动状态机时间窗错误 | 13 条纯逻辑单测 | 反向验证有效，但测的是**不存在的 bug** |
+| 2 | 同上 | Playwright + **Chromium** | **生产是 WebKit，内核不对，结构性免疫** |
+| 3 | content-visibility（WebKit） | Playwright + WebKit | 内核对了，但测试台是自己捏的假列表 |
+| 4 | 同上（加异步撑高） | WebKit + 异步撑高测试台 | 新旧实现**都 6/6 通过**，仍复现不出 |
+| 5 | 布局被输入框遮挡 | 后端埋点日志 | **日志行被 Rust sidecar 截断**，从残缺数据读出「dist 全是 0」 |
+| 6 | WebKit 重绘失效 | 录屏逐帧比对 | 结论正确（重绘正常），但方向仍错 |
+
+**共同点：每次都用一个没被检验过的手段去检验结论，拿到绿灯就信了。**
+连安装脚本都是假的 —— 它靠版本号判断成功，而每次构建版本号都是 0.1.53，
+**那个检查恒真**。已改为**二进制 sha256 比对**。
+
+**真正推进方向的只有两步**：
+- **录屏逐帧比对**（`screencapture` 连拍 + `sips` 裁剪 + 哈希比对）：
+  证明了激活标签页里跟随正常、重绘正常，把方向从「滚动逻辑」逼到别处
+- **用户截图 + 一句「hi 是我滚到底才看见的」**：直接定死「内容在、视口不动」
+
+**下次遇到 UI 类 bug 的正确顺序**：先要用户的**录屏**（不是静态截图、
+不是文字描述），再谈假设。文字描述和静态截图，我已经反复证明自己解读不可靠。
+
+**环境事实**（排查同类问题必读）：
+- 生产是 **Tauri 的 WKWebView**。Playwright 的 chromium **和** webkit
+  都复现不出这个问题 —— 别指望本地测试台能替代真机验证
+- WKWebView 的 console **读不到**（不进 Rust 日志、无 CDP，只认 Safari Web Inspector）
+- `screencapture` 的屏幕录制授权**绑二进制签名，每次重装即失效**，
+  需要用户重新授权
+- macOS 触控板会在向下滚动时夹带向上的碎小 wheel 增量，任何
+  「靠 deltaY 方向判断用户意图」的逻辑都必须设噪声阈值
+
+### Bug 3 原始调查（下面这段是修改前的分析，结论未被证实）
+
+**症状**：按 Enter 或点发送，消息列表不会自动滚到底部。
+
+**已查明的事实**（别重查）：
+- 全部逻辑只在 `client/src/hooks/useAutoScroll.ts`（173 行）+
+  `MessageList.tsx`（`:37` 接入、`:40-60` 发送强制滚底、`:84-93` 容器、
+  `:172` content-visibility）。**无虚拟滚动库**。
+- **发送时确实有强制滚底**：`useAutoScroll.ts:167 scrollToBottom()` 会把
+  `userScrolledUp` 重置为 false 再滚。所以「用户上翻过一次就永远不跟随」
+  这个直觉假设**不成立**，真正要查的是「强制滚底之后是否被立刻打回」。
+- 祖先链全是 `overflow-hidden`，滚动容器唯一，`scrollTo` 不会作用错对象。
+- 全项目无 `scroll-behavior` / `overflow-anchor` 设置。
+
+**两条候选机制**：
+1. **滚到了但没到真底**：`MessageList.tsx:172` 的
+   `content-visibility:auto` + `contain-intrinsic-size: auto 140px` 让视口外
+   消息一律按 140px 估算，而真实消息普遍 200~600px → `el.scrollHeight` 是
+   **被严重低估的移动靶**，一次 `scrollTo` 落在「当时以为的底部」，靠
+   ResizeObserver 迭代补位收敛。
+2. **收敛途中被自己判成「用户上翻」**：`useAutoScroll.ts:119`
+   `userScrolledUp.current = !atBottom` 把「此刻不在底部」直接等同于
+   「用户想往回看」，而收敛过程中本来就合法地不在底部。一旦某个 scroll 事件
+   落在 150ms 抑制窗口（`SUPPRESS_MS.auto`）之外，标志被置真，此后
+   `useLayoutEffect`（`:124`）和 ResizeObserver（`:137`）两条补位路径
+   第一行都是 `if (userScrolledUp.current) return`，**全部熄火**。
+
+**核心判断**：用**时间窗**（150ms）去守一个本质上是**状态**的条件
+（「程序化滚动还在收敛中」），这个原语从一开始就是错的 —— 收敛要几轮取决于
+布局多久落定，长会话轻松超过 150ms。
+
+⚠️ **这段代码已被修过两次，每次都在修上一次改出来的回归**
+（`5a65614` → `15c25cc` → `7a54c10`），别再凭感觉糊第三层。
+建议修法：把 `suppressUntil` 时间窗换成显式的「程序化滚动进行中」状态，
+只有真正抵达底部、或用户通过 wheel/touch 表达明确上翻意图时才清除；
+并按项目惯例（`taskErrorCodes.ts` / `forkDecision.ts` / `mediaPaths.ts`）
+把判定抽成纯函数 + 单测——**本机没有 Playwright，滚动只能靠纯逻辑单测取证**。
+
+**待用户回答的关键问题**（改错就是第三次回归）：按下 Enter 后列表是
+① 完全没动 / ② 动了一下但停在半路 / ③ 到底了但之后 AI 输出时不跟随；
+以及是每次都发生还是只在长会话/先上翻过时发生。
+
+### Bug 4 📌 已发现未处理 —— 多轮回答时上一轮文字被下一轮覆盖
+
+**这是子 Agent 查 Bug 2 时顺带捞出来的独立真 bug**，对得上用户最初那句
+「回答过程中文字会消失」。**是推理链，尚无实证，动手前先复现。**
+
+`chatStore.ts:184` 的 `updateAssistantContent` 是**整体替换**语义
+（`content: text`）而非追加。而后端 `new_turn`（该换新气泡了）的时机
+**永远滞后一轮**：
+- `new_turn` 只在**完整 assistant 消息**分支发出（`claudeAgentService.ts:1157`），
+- 而 `assistant_text`（`:1312`）/ `tool_use_start`（`:1335`）来自
+  `stream_event`，**到得更早**，
+- 加上 `this.lastMessageId !== null` 守卫使**第 1 轮一定不发** `new_turn`，
+  整条链被永久推后一轮。
+
+结果：第 2 轮的文字提交进第 1 轮的气泡，把第 1 轮已显示的文字原地抹掉。
+**只在带工具调用的多轮回答里出现**，单轮纯文本不触发 —— 所以它藏得住。
+
+同一份报告还记了两个相关隐患：
+- `useWebSocket.ts:619-627` `case "error"`：`accumulatedText` 为空时
+  `updateAssistantContent(errorText)` 会把该气泡**已提交的全部文字**
+  替换成一行错误提示（不是追加）。
+- `useWebSocket.ts:156-157` `case "session_init"`：**无条件清空
+  `accumulatedText` 且事先不提交**，而服务端在断线重连、任务仍在跑时会
+  **补发 session_init**（`chatHandler.ts:377-384`）→ 已渲染的实时文字整段蒸发。
+
+### 本轮踩的两个坑（macOS 打包）
+
+1. **`cmd | tail` 会把失败伪装成成功** —— pipeline 退出码取最后一节。
+   一次 `tauri build` 明明 exit 1，因为套了 `| tail -300` 报成 exit 0，
+   差点当成打包成功。打包一律 `> log 2>&1; echo $?`。
+   （同类：用 `tail -30` 截断后的日志去 grep「新测试跑了没」，得到 0 命中
+   —— 搜的是残缺日志，**验证手段本身没被验证**，这是第 N 次。）
+2. **macOS dmg 打包会被同名挂载卷卡死**：`bundle_dmg.sh` 固定挂到
+   `/Volumes/<productName>`，只要有任何一个旧版本 dmg 还挂着（双击开过、
+   或上一轮打包被 kill 在半路），新包必挂，且报错只有一句
+   `failed to run bundle_dmg.sh`，**不提卷名**。
+   打包前先 `hdiutil detach "/Volumes/Agent Flow"`，并清 `bundle/macos/rw.*.dmg`
+   临时文件（一次积了 2.3 GB）。
+   只装机不发布时可以 `--bundles app` 跳过 dmg，快一半且绕开这个坑。
+
+### macOS 打包现状（回答「Mac 打包会不会简单点」）
+
+**比 Windows 简单**，代码里 macOS 分支早就写全了，一条 `pnpm package:desktop`
+即可，全程约 2 分钟：
+- `scripts/package-desktop.mjs` 在 darwin 下自动追加 `--bundles app,dmg`，
+  绕过 `tauri.conf.json` 里 Windows-only 的 `"nsis"`
+- `client/scripts/prepare-sidecar.mjs` 有完整 macOS 分支：下载官方
+  Node 22.23.1 standalone + sha256 校验（**不用 Homebrew 的 node**，避免
+  依赖未随包分发的 dylib），按 `aarch64-apple-darwin` 命名 sidecar
+
+**两个限制**：
+1. 本机**没有更新签名私钥**（`~/.tauri/` 不存在），打包脚本检测不到私钥会
+   **静默关掉 updater 产物**，包能装能跑但**不能用于自动更新分发**。
+   要正式发布需从 Windows 机拷 `fufan-ccflow.key` 并
+   `export TAURI_SIGNING_PRIVATE_KEY="$(cat ...)"`。
+2. **没做 Apple 公证**，别人下载会被 Gatekeeper 拦，需右键打开或
+   `xattr -dr com.apple.quarantine`。线上 `latest.json` 目前只挂 Windows 包，
+   Mac 版属于另一条分发线，尚未规划。
+
+### 本地安装脚本
+
+`/tmp/install-agentflow.sh`（本轮临时写的，未入库）。设计要点：
+**耗时的拷贝在旧应用仍运行时完成（暂存到 `/Applications/.Agent Flow.app.staged`），
+真正的「退出 → 换掉 → 重启」压缩到最短窗口**，且失败自动回滚到
+`/Applications/.Agent Flow.app.backup`。因为安装会连带杀掉发起它的进程
+（Claude 自己就跑在 Agent Flow 的 sidecar 里），必须脱离进程树运行。
+日志在 `/tmp/install-agentflow.log`。
+
 ## 【2026-08-10】v0.1.46 已发布上线
 
 https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/tag/v0.1.46

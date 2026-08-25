@@ -11,6 +11,7 @@ import ErrorBoundary from "../shared/ErrorBoundary";
 import TaskResultCard from "./TaskResultCard";
 import CompactDivider from "./CompactDivider";
 import { api } from "../../services/api";
+import MediaPreview from "../shared/MediaPreview";
 import type { Session } from "../../types/session";
 
 function formatTime(ts: number) {
@@ -58,6 +59,22 @@ export default function MessageList() {
     prevUserMsgIdRef.current = lastUserMsgId;
     if (userMsgChanged && !projectChanged && lastUserMsgId) scrollToBottom();
   }, [lastUserMsgId, projectPath, scrollToBottom]);
+
+  // 切换会话必须复位视口 —— 否则打开的会话停在与新内容毫不相干的旧偏移上
+  // （用户实报「切换会话的时候，打开的是什么东西都没有」）。
+  //
+  // 上面那个 effect 管不到这种情况：它在跨项目切会话时因 projectChanged 为真
+  // 被整条跳过，而 HistoryModal 列的是**全部项目**的会话，跨项目选择是常规操作。
+  // 单独一个以 currentSessionId 为依赖的 effect，语义清晰、跳过条件互不干扰。
+  //
+  // 历史消息是 await 回来的，切换那一刻 messages 往往还是空的 —— 所以这里的
+  // 真正作用是把「跟随」重新打开，实际滚动交给消息到达后的 layout effect。
+  const prevSessionRef = useRef(currentSessionId);
+  useEffect(() => {
+    if (prevSessionRef.current === currentSessionId) return;
+    prevSessionRef.current = currentSessionId;
+    if (currentSessionId) scrollToBottom();
+  }, [currentSessionId, scrollToBottom]);
 
   const handleLoadMore = useCallback(async () => {
     if (!currentSessionId || loadingMore || !hasMoreHistory) return;
@@ -165,11 +182,20 @@ export default function MessageList() {
               <div
                 key={msg.id}
                 className={isDimmed ? "opacity-50" : ""}
-                // 长会话优化:视口外的历史消息跳过渲染/布局/绘制(content-visibility),
-                // 几百条消息的会话滚动不再随长度线性变卡。intrinsic-size 只是滚动条
-                // 高度估算,偏差无碍正确性。流式中的当前消息不加,保证实时更新不受
-                // 渲染跳过的影响。
-                style={isCurrentAssistant ? undefined : { contentVisibility: "auto", containIntrinsicSize: "auto 140px" }}
+                // ⚠️ 这里曾经有 `content-visibility: auto` + `contain-intrinsic-size`
+                // 的长会话渲染优化（2cc8dd6 引入），**已彻底移除**，不要再加回来。
+                //
+                // 它在 macOS 的 WKWebView 上会造成两个致命后果，用户实测截图为证：
+                //   ① 内容占着高度但**根本不绘制** —— 整个聊天区一片空白，
+                //      滚动条却显示有内容，看起来像「消息全没了」
+                //   ② scrollHeight 被严重低估（实测 15128 vs 真值 28703，差 47%），
+                //      于是任何 scrollTo(scrollHeight) 都停在半路，
+                //      表现为「发了消息滚不到底」「回答时不跟随」
+                //
+                // 曾试过「只在 WebKit 上按 UA 关闭」，装机后症状照旧 —— 说明这条
+                // 声明的风险不是靠条件判断能兜住的。它换来的只是长会话滚动的
+                // 一点流畅度，而代价是界面直接空白。**收益与风险完全不成比例。**
+                // 长会话真的卡了，要用虚拟滚动这类可控方案，不要再用它。
               >
                 {/* Hint banner at the very first dimmed message */}
                 {isDimmed && idx === 0 && (
@@ -294,6 +320,51 @@ function AiAvatar() {
 }
 
 /* ── User message bubble ── */
+/**
+ * 用户自己发的附件。
+ *
+ * 此前**只渲染一个文件名小标签**：发一张图过去，气泡里就一行「🖼 image.png」,
+ * 既看不到内容也点不开 —— 用户报的「图片没有显示，而且没有点击放大的功能」
+ * 说的正是这里。注意它与「AI 消息里引用的图片」是两条独立链路，
+ * 上游 3803448 修的是后者（鉴权 401），这条从来就没实现过。
+ *
+ * 图片走 MediaPreview（内部经 withAuthQuery 带令牌，否则桌面版后端 401，
+ * 而 <img onError> 会静默隐藏 —— 又变成「什么都看不见」）。
+ * 非图片仍按文件名标签显示，没必要为一个 .txt 撑出一块预览区。
+ */
+function UserAttachments({ items }: { items: import("../../types/claude").Attachment[] }) {
+  const projectPath = useUIStore((s) => s.projectPath);
+  const images = items.filter((a) => a.type.startsWith("image/") && a.serverPath);
+  const rest = items.filter((a) => !(a.type.startsWith("image/") && a.serverPath));
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {images.map((a) => (
+        // serverPath 是相对项目根的路径（.claude/attachments/<uuid>.png），
+        // 要靠 projectPath 兜成绝对路径，后端 /files/raw 才找得到
+        <MediaPreview key={a.id} path={a.serverPath!} projectPath={projectPath} />
+      ))}
+      {rest.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {rest.map((a) => (
+            <span
+              key={a.id}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 border border-white/8 text-xs text-slate-400"
+            >
+              {a.type.startsWith("image/") ? (
+                <ImageIcon size={12} className="text-purple-glow/70" />
+              ) : (
+                <FileText size={12} className="text-amber-glow/70" />
+              )}
+              {a.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UserBubble({ content, timestamp, attachments }: { content: string; timestamp?: number; attachments?: import("../../types/claude").Attachment[] }) {
   return (
     <div className="flex flex-row-reverse gap-4">
@@ -307,23 +378,7 @@ function UserBubble({ content, timestamp, attachments }: { content: string; time
         </div>
         <div className="w-fit px-4 py-2.5 rounded-2xl rounded-tr-none bg-white/5 border border-white/5 text-slate-300 leading-relaxed text-sm">
           <MarkdownRenderer content={content} />
-          {attachments && attachments.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {attachments.map((a) => (
-                <span
-                  key={a.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 border border-white/8 text-xs text-slate-400"
-                >
-                  {a.type.startsWith("image/") ? (
-                    <ImageIcon size={12} className="text-purple-glow/70" />
-                  ) : (
-                    <FileText size={12} className="text-amber-glow/70" />
-                  )}
-                  {a.name}
-                </span>
-              ))}
-            </div>
-          )}
+          {attachments && attachments.length > 0 && <UserAttachments items={attachments} />}
         </div>
       </div>
     </div>

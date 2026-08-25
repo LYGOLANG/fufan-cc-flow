@@ -206,7 +206,7 @@ function ImagePreview({ src }: { src: string }) {
         />
       </div>
 
-      {/* Lightbox overlay —— 必须 portal 到 body:消息气泡带 content-visibility:auto
+      {/* Lightbox overlay —— 必须 portal 到 body:消息气泡曾带 content-visibility:auto（已移除），且父层有 contain/transform
           (等价 contain:layout paint),会使 fixed 定位以气泡为包含块并被裁剪成
           气泡内一个小方块。同项目 MarkdownRenderer 的灯箱正是用 portal 才不受影响。 */}
       {open && createPortal(

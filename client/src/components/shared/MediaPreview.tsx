@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Film, Music, Download } from "lucide-react";
 import { httpBase, withAuthQuery } from "../../services/endpoint";
@@ -38,6 +38,41 @@ export function localMediaUrl(src: string, projectPath?: string | null): string 
 function fileNameOf(p: string): string {
   // 同时切 / 和 \：媒体路径既可能来自 Unix 也可能是 Windows 绝对路径
   return p.split(/[\\/]/).pop() || p;
+}
+
+/** 图片全屏灯箱。Esc / 点遮罩 / × 关闭 */
+function ImageLightbox({ url, alt, onClose }: { url: string; alt?: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // 必须 portal 到 body：消息条目的父层可能带 contain/transform，
+  // 会把 position:fixed 的包含块限制在该条目内，灯箱直接被裁掉。
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-8 cursor-zoom-out"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-slate-300 hover:text-white"
+        title="关闭 (Esc)"
+      >
+        <X size={22} />
+      </button>
+      <img
+        src={url}
+        alt={alt}
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-full max-h-full rounded-lg shadow-2xl object-contain cursor-default"
+      />
+    </div>,
+    document.body
+  );
 }
 
 /** 视频全屏灯箱。Esc / 点遮罩 / × 关闭 */
@@ -93,13 +128,26 @@ export default function MediaPreview({
   }
 
   if (kind === "image") {
+    // 点击放大。此前只有视频有灯箱，图片点了没反应 —— 用户实报
+    // 「没有点击放大的功能」。缩略图受 max-h-[420px] 约束，长截图缩得很小，
+    // 看不清就等于没显示。
     return (
-      <img
-        src={url}
-        alt={fileNameOf(path)}
-        onError={() => setFailed(true)}
-        className="max-w-full max-h-[420px] rounded-lg border border-white/10 object-contain"
-      />
+      <>
+        <button
+          type="button"
+          onClick={() => setFull(true)}
+          className="block cursor-zoom-in"
+          title="点击放大"
+        >
+          <img
+            src={url}
+            alt={fileNameOf(path)}
+            onError={() => setFailed(true)}
+            className="max-w-full max-h-[420px] rounded-lg border border-white/10 object-contain"
+          />
+        </button>
+        {full && <ImageLightbox url={url} alt={fileNameOf(path)} onClose={() => setFull(false)} />}
+      </>
     );
   }
 
