@@ -6,15 +6,24 @@
 
 三批改动已全部提交推送，v0.1.55 打包中。
 
-### 已提交（master，auto-push 已推）
-- `819cd10` fix(ui) Mac 触控板上翻误判修复 + 内置浏览器面板整体移除（原 v0.1.54 那批）
-- `43205b7` feat(context) 上下文将满时交接到新会话，取代自动压缩
-- `e263305` feat(project) 添加项目不再写入任何文件，Agent 模板改由标签右键显式触发
+### 已提交（master）
+- `c9dbb31` fix(chat) 自动滚动根因重写 —— **上游另一会话推的**，我变基到它上面
+- `1b74b37` refactor(ui) 移除内置浏览器面板，外链改走系统浏览器
+- `9d9ad1f` feat(context) 上下文将满时交接到新会话，取代自动压缩
+- `a2ae606` feat(project) 添加项目不再写入任何文件，Agent 模板改由标签右键显式触发
 - 版本号 0.1.53 → 0.1.55（tauri.conf.json、Cargo.toml、Cargo.lock）
+
+### 变基时的一次让位（重要，别改回去）
+我原本在 `useAutoScroll.ts` 加了 `WHEEL_UP_THRESHOLD=12` 挡触控板抖动，
+与上游 `c9dbb31` 撞车。**取上游、弃我的**：上游把布尔标志换成带过期时间的
+暂停，从设计上消除「永久关闭且不自愈」的死状态，并自带触控板碎小增量的
+回归测试，覆盖面严格大于我那条补丁。我的 `client/tests/autoScrollWheel.test.ts`
+一并删除（它按源码文本断言 WHEEL_UP_THRESHOLD 存在，对新实现必然失败）。
+上游提交说明明确写着「不要把它改回布尔标志」。
 
 ### 验证证据（改版本号后重跑）
 typecheck 0 error、lint 0 error（28 warning 均为历史遗留）、
-测试 199+109 全过（交接新增 19 个用例）、cargo check 通过。
+测试 199+118 全过（交接 19 个用例 + 上游 scrollFollow 11 个）、cargo check 通过。
 
 ### 自动交接功能要点
 - 阈值默认 90%（`configStore.ts:97`），上下文栏「上下文管理」里拖，拖到 100% 关闭
