@@ -2,6 +2,85 @@
 
 状态: 进行中
 
+## 当前任务（2026-09-03 晚）
+
+三批改动已全部提交推送，v0.1.55 打包中。
+
+### 已提交（master，auto-push 已推）
+- `819cd10` fix(ui) Mac 触控板上翻误判修复 + 内置浏览器面板整体移除（原 v0.1.54 那批）
+- `43205b7` feat(context) 上下文将满时交接到新会话，取代自动压缩
+- `e263305` feat(project) 添加项目不再写入任何文件，Agent 模板改由标签右键显式触发
+- 版本号 0.1.53 → 0.1.55（tauri.conf.json、Cargo.toml、Cargo.lock）
+
+### 验证证据（改版本号后重跑）
+typecheck 0 error、lint 0 error（28 warning 均为历史遗留）、
+测试 199+109 全过（交接新增 19 个用例）、cargo check 通过。
+
+### 自动交接功能要点
+- 阈值默认 90%（`configStore.ts:97`），上下文栏「上下文管理」里拖，拖到 100% 关闭
+- 只在一轮对话刚结束时判定 → 打开已经很满的旧会话不会被误交接（有回归测试）
+- 交接文档短于 120 字符视为模型没照做，保留原会话且不重试
+- 5 个百分点回差，避免贴着阈值反复触发
+- 决策 `client/src/utils/autoHandoff.ts`，执行 `handoffRunner.ts`（手动按钮共用）
+- 自动压缩代码已整体删除，手动压缩按钮保留
+
+### 下一步
+1. 打包产物核对：`release/updates/AgentFlow_0.1.55_x64-setup.exe` + 签名
+2. 装机由用户执行——**本会话跑在 Agent Flow sidecar 里（PORT=57038），装新版会自断会话**
+3. 发布 v0.1.55 到 LYGOLANG/fufan-cc-flow-releases，等用户拍板
+4. 3 条进化建议待用户逐条拍板（见 `.claude/evolution/proposals.md` 待审阅区）：
+   改用户环境的动作一律用户触发 / ProjectTabs 加地雷标记 / `.claude/CLAUDE.md` 里重复四遍的协议合并。
+   同意即改文档并删 signals.jsonl 对应行；全盘否定即删 signal + proposal。
+5. fable 适配四条仍未拍板（见下一段）
+
+### 死路
+- 别再查 `CONTEXT_CATALOG` 对 fable 的窗口推断，已确认正确（1M）。
+- Git Bash 里 heredoc 会吃反斜杠，脚本里避免反斜杠或用 Write 工具落文件。
+- 转录取证别用字符串匹配找 "Set model to"/"compact_boundary"，自己的命令文本会污染结果，按 JSON 字段判。
+
+---
+
+## 上一段任务（2026-09-03，压缩后立即更新）
+
+用户切到 `claude-fable-5-1` 后觉得"变傻"，问是否要按模型调整 Agent Flow。已查清，结论见下。
+
+### 结论（有证据）
+- 不是模型没切过去：转录里切换后每条 assistant 消息 `model=claude-fable-5-1`，有 thinking 块，无降级 sonnet。后端日志 `setModel 热切换 → claude-fable-5-1(进程保留)`。
+- 真因是**压缩**：切换前主线程上下文已到 999,299 tokens（1M 顶格）。切换后的第一条请求触发 CLI 自动压缩：preTokens 1,000,550 → postTokens 69,282，本会话第 4 次压缩，累计丢弃 3,880,088 tokens。fable 看到的第一眼就是一份 69k 的摘要。原生 CLI 里用户多半是新开会话，所以觉得 CLI 更聪明。
+- Agent Flow 的上下文推断对 fable 是对的：`costCalculator.ts` CONTEXT_CATALOG 已有 `/^claude-(fable|mythos|sonnet|opus)-(?:[5-9]|\d{2,})/ → 1M`，不会误触发本地自动压缩。**别再往这个方向查**。
+- 官方文档（code.claude.com/docs/en/model-config）：Fable 5.1 默认 1M、无需 [1m]；effort 支持 low/medium/high/xhigh/max；**Fable 系永远自适应思考，固定预算与关闭开关均无效**；CLI 的 effort 是按模型分别记忆的。
+
+### Agent Flow 真正该按模型调整的（待做，未拍板）
+1. 思考开关 + 预算档位对 fable/mythos/sonnet-5/opus-4.7+ 是空操作，UI 应对这些模型隐藏或置灰，否则"拨到关模型照样思考"。
+2. effort 改为按模型记忆（对齐 CLI 的 modelSettings），现在是全局一个值，热切模型后沿用旧模型的档位。
+3. MODEL_LABELS / FALLBACK_MODELS / SlashCommandMenu 三处加 fable 显示名（CLAUDE.md 要求三处同步）。
+4. deriveFallbackModel 对 fable 返回 undefined（无备用模型），可考虑 fable→sonnet。
+
+### 本 session 已完成及证据
+- v0.1.53 已发布上线（媒体预览 + `<img>/<video>` 鉴权 401 根因修复），线上 latest.json 返回 0.1.53、包大小一致。
+- v0.1.54 已打包并本机安装（`D:\cc-flow`），**未提交、未发布**：Mac 滚动根因修复（useAutoScroll 触控板抖动阈值 WHEEL_UP_THRESHOLD=12，WebKit 实测误判 4→0、真实上翻 3→3）、内置浏览器面板整体移除（外链改走系统浏览器）、AppLayout 三层补 min-h-0（无害但非根因）、playwright 装回 devDeps 供 WebKit 验 Mac。
+- ProjectTabs：新建项目不再"没冲突就直接写模板"，永远先弹预览再写（用户不要"自动加 agent"）。**未打包**。
+
+### 下一步
+1. 提交 v0.1.54 这批（git status 里 13 个文件）并推送；问用户是否发布 v0.1.54。
+2. ProjectTabs 改动需要打 v0.1.55 才生效。
+3. 上面"该按模型调整"四条，先问用户要不要做。
+4. 有未消化的进化信号（check-evolution 提示），按 CLAUDE.md 应派 evolution-runner。
+
+### 关键文件
+- server/src/services/claudeAgentService.ts:221 spawnFingerprint、:523 query()、:638 setModel 热切
+- client/src/utils/costCalculator.ts CONTEXT_CATALOG
+- client/src/hooks/useAutoScroll.ts、client/tests/autoScrollWheel.test.ts
+- client/src/components/layout/ProjectTabs.tsx handleCreateProject
+- 后端日志 %LOCALAPPDATA%/com.fufan.ccflow/logs/Agent Flow.log
+
+### 死路
+- Mac 滚动：min-h-0 缺失、content-visibility 在 Safari 失效，两个假设都被 WebKit 实验推翻。
+- 转录取证时别用字符串匹配找 "Set model to"/"compact_boundary"——自己的命令文本会污染结果，要按 JSON 的 type/subtype 字段判。
+- Git Bash 里 heredoc 会吃反斜杠（连引号 heredoc 也吃），脚本里避免反斜杠或用 Write 工具落文件。
+
+---
+
 ## 当前任务
 
 ## 【2026-08-25】用户报四个 bug，正在逐个处理（macOS 本机）
