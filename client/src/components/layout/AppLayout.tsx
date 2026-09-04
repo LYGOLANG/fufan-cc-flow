@@ -53,7 +53,14 @@ export default function AppLayout() {
       <Sidebar />
 
       {/* ── 中+右区域：光晕仅在这里（与参考样式保持一致）── */}
-      <div className="relative flex-1 flex overflow-hidden min-w-0">
+      {/* min-h-0 不能省，即使已有 overflow-hidden。
+          规范上 overflow≠visible 会让 flex 子项的 min-height:auto 解析为 0，
+          Chromium 严格照做（所以 Windows 上一直没事），WebKit 在嵌套 flex 里
+          处理有出入 —— 高度被撑成内容全高，消息列表那层就**根本不滚动**：
+          新消息堆在看不见的底部、scrollTo 对不滚动的容器无效（自动跟随失效）、
+          只有滚外层才看得到内容。Mac 上报的三个滚动症状都源于此。
+          显式写死，不赌浏览器的宽容度。 */}
+      <div className="relative flex-1 flex overflow-hidden min-w-0 min-h-0">
         {/* Ambient glow — solid color + blur，参考 bg-secondary-900/20 + bg-primary-900/10 */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
           <div
@@ -73,8 +80,8 @@ export default function AppLayout() {
         </div>
 
         {/* 内容列（z-10 覆盖在光晕之上）*/}
-        <div className="relative z-10 flex flex-1 overflow-hidden">
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="relative z-10 flex flex-1 overflow-hidden min-h-0">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
             <ProjectTabs />
             <ChatPanel />
           </div>

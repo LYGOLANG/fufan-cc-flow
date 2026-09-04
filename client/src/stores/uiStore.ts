@@ -24,7 +24,7 @@ const RESOLVED_PROJECT_PATH = (() => {
 
 type SidebarTab = "sessions" | "files" | "agents" | "extensions" | "settings";
 export type LeftNavPanel = "files" | "search" | "checkpoints";
-export type RightSidebarTab = "monitor" | "extensions" | "agent" | "browser";
+export type RightSidebarTab = "monitor" | "extensions" | "agent";
 export type RunMode = "default" | "acceptEdits" | "plan" | "bypassPermissions";
 
 interface UIState {
@@ -38,8 +38,6 @@ interface UIState {
   rightPanelOpen: boolean;
   rightPanelWidth: number;
   rightSidebarTab: RightSidebarTab;
-  /** 内置浏览器当前地址;null=显示输入引导页 */
-  browserUrl: string | null;
 
   // Right-panel terminal (collapsed by default)
   terminalOpen: boolean;
@@ -108,7 +106,6 @@ interface UIState {
   setRightPanelOpen: (open: boolean) => void;
   setRightPanelWidth: (w: number) => void;
   setRightSidebarTab: (tab: RightSidebarTab) => void;
-  setBrowserUrl: (url: string | null) => void;
 
   toggleTerminal: () => void;
   setTerminalOpen: (open: boolean) => void;
@@ -135,7 +132,9 @@ interface UIState {
   /** 由目录浏览器调用：交回结果并退出选择器模式 */
   resolveFolderPick: (path: string | null) => void;
   setSkillBrowserOpen: (open: boolean) => void;
-  setSkillBrowserInitialSelection: (sel: { tab: "project" | "user" | "plugin"; name: string } | null) => void;
+  setSkillBrowserInitialSelection: (
+    sel: { tab: "project" | "user" | "plugin"; name: string } | null
+  ) => void;
   setCreateSkillModalOpen: (open: boolean) => void;
 
   setSettingsPageOpen: (open: boolean) => void;
@@ -155,7 +154,6 @@ export const useUIStore = create<UIState>((set) => ({
   rightPanelOpen: true,
   rightPanelWidth: 380,
   rightSidebarTab: "monitor",
-  browserUrl: null,
 
   terminalOpen: false,
   terminalHeight: 260,
@@ -201,7 +199,6 @@ export const useUIStore = create<UIState>((set) => ({
   setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
   setRightPanelWidth: (w) => set({ rightPanelWidth: w }),
   setRightSidebarTab: (tab) => set({ rightSidebarTab: tab }),
-  setBrowserUrl: (url) => set({ browserUrl: url }),
 
   toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
   setTerminalOpen: (open) => set({ terminalOpen: open }),

@@ -3,7 +3,6 @@ import {
   ChevronLeft, ChevronRight, Activity, Puzzle, Bot,
   TerminalSquare, Plus, X, Maximize2, Minimize2, ChevronDown, ChevronUp,
   CheckCircle2, Loader2, Clock, BarChart2, Coins, RotateCcw, ListChecks, Wrench,
-  Globe,
 } from "lucide-react";
 import { useUIStore, type RightSidebarTab } from "../../stores/uiStore";
 import { useChatStore } from "../../stores/chatStore";
@@ -16,14 +15,12 @@ const XTerminal = lazy(() => import("../shared/XTerminal"));
 const ExtensionsPanel = lazy(() => import("./ExtensionsPanel"));
 // 六个 Agent 视图约 1900 行 + 4 个专属 store
 const AgentPanel = lazy(() => import("./AgentPanel"));
-const BrowserPanel = lazy(() => import("./BrowserPanel"));
 
 /* ── Tab config ── */
 const TABS: { id: RightSidebarTab; label: string; icon: typeof Activity }[] = [
   { id: "monitor",    label: "实时监控", icon: Activity },
   { id: "extensions", label: "拓展",          icon: Puzzle },
   { id: "agent",      label: "Agent",         icon: Bot },
-  { id: "browser",    label: "浏览器",        icon: Globe },
 ];
 
 /* ── Terminal tab type ── */
@@ -145,7 +142,6 @@ export default function RightPanel() {
               <Suspense fallback={<PanelLoading />}>
                 {rightSidebarTab === "extensions" && <ExtensionsPanel />}
                 {rightSidebarTab === "agent" && <AgentPanel />}
-                {rightSidebarTab === "browser" && <BrowserPanel />}
               </Suspense>
             )}
           </div>
