@@ -80,7 +80,7 @@ export default function ProjectInitConfirmModal({
             <FolderPlus size={14} className="text-amber-glow" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-sm font-semibold text-white">新建项目</h2>
+            <h2 className="text-sm font-semibold text-white">初始化 Agent 模板</h2>
             <p className="text-[11px] text-slate-500 truncate" title={targetPath}>
               {targetPath}
             </p>
@@ -198,7 +198,7 @@ export default function ProjectInitConfirmModal({
             className="px-4 py-1.5 text-sm rounded-lg bg-[#ca5d3d] hover:bg-amber-glow text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            初始化项目
+            写入模板
           </button>
         </div>
       </div>

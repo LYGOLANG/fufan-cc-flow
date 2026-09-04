@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, X, Folder, Loader2, CheckCircle } from "lucide-react";
+import { Plus, X, Folder, FolderPlus, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import { useUIStore } from "../../stores/uiStore";
 import { useChatStore } from "../../stores/chatStore";
 import { openProject, startNewSession, dropProjectChatState } from "../../utils/openProject";
@@ -73,7 +73,9 @@ export default function ProjectTabs() {
   const [initPreview, setInitPreview] = useState<ProjectInitPreview | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [initBusy, setInitBusy] = useState(false);
-  const [initToast, setInitToast] = useState<string | null>(null);
+  const [initToast, setInitToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  // 标签右键菜单——「初始化 Agent 模板」的唯一入口。
+  const [tabMenu, setTabMenu] = useState<{ x: number; y: number; path: string } | null>(null);
 
   // Remember the active session for the current project, so returning resumes it.
   useEffect(() => {
@@ -83,9 +85,23 @@ export default function ProjectTabs() {
 
   useEffect(() => {
     if (!initToast) return undefined;
-    const timer = window.setTimeout(() => setInitToast(null), 3200);
+    const timer = window.setTimeout(() => setInitToast(null), initToast.kind === "err" ? 6000 : 3200);
     return () => window.clearTimeout(timer);
   }, [initToast]);
+
+  useEffect(() => {
+    if (!tabMenu) return undefined;
+    const close = () => setTabMenu(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [tabMenu]);
 
   // 统一走 openProject:切路径 + 恢复该项目的会话与历史消息。
   const switchToProject = (p: string) => openProject(p);
@@ -103,7 +119,7 @@ export default function ProjectTabs() {
     try {
       const result = await api.initProject(targetPath, decisions);
       await openProject(result.targetPath);
-      setInitToast(`项目初始化完成: ${baseName(result.targetPath)}`);
+      setInitToast({ kind: "ok", text: `Agent 模板已写入: ${baseName(result.targetPath)}` });
       setInitTargetPath(null);
       setInitPreview(null);
     } catch (err) {
@@ -113,12 +129,9 @@ export default function ProjectTabs() {
     }
   };
 
-  const handleCreateProject = async () => {
+  const handleAddProject = async () => {
     if (initBusy) return;
     setInitBusy(true);
-    setInitError(null);
-    setInitPreview(null);
-    setInitTargetPath(null);
     try {
       // 系统原生目录框弹在**后端所在机器**上。远程连到 headless 服务器时那台
       // 机器没有图形环境,后端会回 unavailable —— 此时改用应用内目录浏览,
@@ -130,12 +143,30 @@ export default function ProjectTabs() {
       }
       if (!targetPath) return;
 
-      setInitTargetPath(targetPath);
+      // 添加项目只做一件事：打开它。目录里一个字节都不写。
+      //
+      // Agent 模板（.claude/ 含 code-reviewer、evolution-runner 两个 Agent、
+      // .codex/、.agents/、AGENTS.md）曾经在这一步自动落盘——先是「没冲突就
+      // 直接写」，后改成「先弹预览」，用户三次说的都是「去掉」，不是「先问我」。
+      // 现在只能从标签右键「初始化 Agent 模板…」显式触发，且仍先预览再确认。
+      await openProject(targetPath);
+    } catch (err) {
+      setInitToast({ kind: "err", text: formatProjectInitError(err) });
+    } finally {
+      setInitBusy(false);
+    }
+  };
+
+  const handleInitTemplate = async (targetPath: string) => {
+    if (initBusy) return;
+    setTabMenu(null);
+    setInitBusy(true);
+    setInitError(null);
+    setInitPreview(null);
+    setInitTargetPath(targetPath);
+    try {
+      // 往别人的目录里写文件是有后果的动作：永远先给用户看会写什么，再由他点确认。
       const preview = await api.previewProjectInit(targetPath);
-      if (!preview.hasConflicts && !preview.hasMissing) {
-        await finishProjectInit(preview.targetPath, []);
-        return;
-      }
       setInitPreview(preview);
     } catch (err) {
       setInitError(formatProjectInitError(err));
@@ -172,7 +203,11 @@ export default function ProjectTabs() {
           <button
             key={p}
             onClick={() => switchToProject(p)}
-            title={awaitingPermission ? `${p}（等待权限确认）` : busy ? `${p}（任务运行中）` : p}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setTabMenu({ x: e.clientX, y: e.clientY, path: p });
+            }}
+            title={awaitingPermission ? `${p}（等待权限确认）` : busy ? `${p}（任务运行中）` : `${p}（右键：初始化 Agent 模板）`}
             className={`group flex items-center gap-1.5 pl-2.5 pr-1.5 h-7 rounded-md text-xs whitespace-nowrap transition-colors flex-shrink-0 ${
               active
                 ? "bg-white/10 text-white"
@@ -206,8 +241,8 @@ export default function ProjectTabs() {
         );
       })}
       <button
-        onClick={handleCreateProject}
-        title="添加并初始化项目"
+        onClick={handleAddProject}
+        title="添加项目（只打开，不写入任何文件）"
         disabled={initBusy}
         className="flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:bg-white/5 hover:text-amber-glow transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
       >
@@ -223,10 +258,39 @@ export default function ProjectTabs() {
           if (initPreview) void finishProjectInit(initPreview.targetPath, decisions);
         }}
       />
+      {tabMenu && (
+        <div
+          className="fixed z-50 min-w-[180px] py-1 rounded-lg border border-white/10 shadow-xl"
+          style={{
+            left: Math.min(tabMenu.x, window.innerWidth - 200),
+            top: tabMenu.y,
+            background: "rgba(24,22,34,0.95)",
+            backdropFilter: "blur(12px)",
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 pt-1 pb-1.5 text-[11px] text-slate-500 truncate max-w-[260px]" title={tabMenu.path}>
+            {baseName(tabMenu.path)}
+          </div>
+          <button
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/8 transition-colors text-left"
+            onClick={() => void handleInitTemplate(tabMenu.path)}
+          >
+            <FolderPlus size={12} className="text-amber-glow" /> 初始化 Agent 模板…
+          </button>
+        </div>
+      )}
       {initToast && (
-        <div className="fixed top-12 right-4 z-50 flex items-center gap-2 rounded-lg border border-emerald-ok/20 bg-obsidian-800/95 px-3 py-2 text-xs text-emerald-ok shadow-xl shadow-black/30">
-          <CheckCircle size={14} />
-          <span>{initToast}</span>
+        <div
+          className={`fixed top-12 right-4 z-50 flex items-center gap-2 rounded-lg border px-3 py-2 text-xs shadow-xl shadow-black/30 ${
+            initToast.kind === "err"
+              ? "border-rose-err/20 text-rose-err"
+              : "border-emerald-ok/20 text-emerald-ok"
+          }`}
+          style={{ background: "rgba(24,22,34,0.95)" }}
+        >
+          {initToast.kind === "err" ? <AlertTriangle size={14} /> : <CheckCircle size={14} />}
+          <span className="whitespace-pre-line max-w-[360px]">{initToast.text}</span>
         </div>
       )}
     </div>
