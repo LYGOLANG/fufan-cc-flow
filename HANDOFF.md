@@ -33,14 +33,26 @@ typecheck 0 error、lint 0 error（28 warning 均为历史遗留）、
 - 决策 `client/src/utils/autoHandoff.ts`，执行 `handoffRunner.ts`（手动按钮共用）
 - 自动压缩代码已整体删除，手动压缩按钮保留
 
+### v0.1.55 已打包（未安装、未发布）
+- 产物 `release/updates/AgentFlow_0.1.55_x64-setup.exe`，110,268,316 字节
+- `latest.json` 已生成，验签通过（alg=ED, keyid=19d9f96e097fbd06），
+  用户的应用能用内置公钥验过这个包
+- 产物内容核对：`autoHandoffThreshold`、`handleAddProject` 均命中 dist，
+  `BrowserPanel` 命中 0（确认已移除）
+
 ### 下一步
-1. 打包产物核对：`release/updates/AgentFlow_0.1.55_x64-setup.exe` + 签名
-2. 装机由用户执行——**本会话跑在 Agent Flow sidecar 里（PORT=57038），装新版会自断会话**
-3. 发布 v0.1.55 到 LYGOLANG/fufan-cc-flow-releases，等用户拍板
-4. 3 条进化建议待用户逐条拍板（见 `.claude/evolution/proposals.md` 待审阅区）：
+1. **装机由用户执行** —— 本会话跑在 Agent Flow sidecar 里（PORT=57038），
+   装新版 = 自断会话。断开后新会话读本文件即可接上。
+2. 发布（等用户拍板）：
+   `gh release create v0.1.55 --repo LYGOLANG/fufan-cc-flow-releases --title "v0.1.55" --notes-file <说明文件> "release/updates/AgentFlow_0.1.55_x64-setup.exe" "release/updates/latest.json"`
+   发布说明写「对外净差异」：线上最新是 v0.1.53，故 v0.1.54 那批（浏览器面板移除）
+   也要一并写进说明。
+3. 3 条进化建议待用户逐条拍板（见 `.claude/evolution/proposals.md` 待审阅区）：
    改用户环境的动作一律用户触发 / ProjectTabs 加地雷标记 / `.claude/CLAUDE.md` 里重复四遍的协议合并。
    同意即改文档并删 signals.jsonl 对应行；全盘否定即删 signal + proposal。
-5. fable 适配四条仍未拍板（见下一段）
+4. fable 适配四条仍未拍板（见下一段）
+5. **另一个会话正在同一个仓库并行推送**（c9dbb31 就是它推的，我推的过程中它又推了一次）。
+   动手前先 `git fetch` 看分歧，别硬推。备份分支 `backup-before-rebase-0155` 留着。
 
 ### 死路
 - 别再查 `CONTEXT_CATALOG` 对 fable 的窗口推断，已确认正确（1M）。
