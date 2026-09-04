@@ -10,6 +10,7 @@ import ToolCallCard from "./ToolCallCard";
 import ErrorBoundary from "../shared/ErrorBoundary";
 import TaskResultCard from "./TaskResultCard";
 import CompactDivider from "./CompactDivider";
+import HandoffDivider from "./HandoffDivider";
 import { api } from "../../services/api";
 import MediaPreview from "../shared/MediaPreview";
 import type { Session } from "../../types/session";
@@ -203,7 +204,12 @@ export default function MessageList() {
                     以下为完整历史记录 — {senderNameFallback} 已将这些内容压缩为摘要，不再逐条记忆
                   </div>
                 )}
-                {msg.role === "system" && msg.compactData ? (
+                {msg.role === "system" && msg.handoffData ? (
+                  <HandoffDivider
+                    pct={msg.handoffData.pct}
+                    fromSessionId={msg.handoffData.fromSessionId}
+                  />
+                ) : msg.role === "system" && msg.compactData ? (
                   <CompactDivider
                     tokensBefore={msg.compactData.tokensBefore}
                     tokensAfter={msg.compactData.tokensAfter}
@@ -271,7 +277,12 @@ function RolledBackGroup({
         <div className="opacity-40 border-l-2 border-amber-glow/15 pl-4 ml-2 space-y-8">
           {items.map(({ msg }) => (
             <div key={msg.id}>
-              {msg.role === "system" && msg.compactData ? (
+              {msg.role === "system" && msg.handoffData ? (
+                <HandoffDivider
+                  pct={msg.handoffData.pct}
+                  fromSessionId={msg.handoffData.fromSessionId}
+                />
+              ) : msg.role === "system" && msg.compactData ? (
                 <CompactDivider
                   tokensBefore={msg.compactData.tokensBefore}
                   tokensAfter={msg.compactData.tokensAfter}

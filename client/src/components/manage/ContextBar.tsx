@@ -7,6 +7,7 @@ import { buildEngineParams } from "../../utils/sendPayload";
 import { formatTokens, formatCost, inferContextMax } from "../../utils/costCalculator";
 import { MODEL_LABELS } from "../../types/claude";
 import { wsService } from "../../services/websocket";
+import { beginHandoff } from "../../utils/handoffRunner";
 import { useEffect, useState } from "react";
 
 /** "2h 57m" / "57m" until the given ISO reset time. */
@@ -66,7 +67,7 @@ function UsageRow({ label, win }: { label: string; win: UsageWindow | null }) {
 
 export default function ContextBar() {
   const { currentSessionId, contextTokens, isStreaming, totalCost } = useChatStore();
-  const { model, providerId, engine, autoCompactThreshold, setAutoCompactThreshold } = useConfigStore();
+  const { model, providerId, engine, autoHandoffThreshold, setAutoHandoffThreshold } = useConfigStore();
   const providers = useProviderStore((s) => s.providers);
   const currentProvider = providers.find((p) => p.id === providerId);
   const isCodexProvider = engine === "codex" || providerId === "openai" || currentProvider?.kind === "codex";
@@ -106,6 +107,27 @@ export default function ContextBar() {
   // Use contextTokens from real-time task_complete events or history estimation
   const displayTokens = contextTokens;
   const pct = effectiveMax > 0 ? Math.min((displayTokens / effectiveMax) * 100, 100) : 0;
+
+  /**
+   * 手动交接到新会话 —— 与达阈值自动触发同一份实现(utils/handoffRunner.ts)。
+   * 有它才能不必把上下文真烧到 90% 就验证这条链路。
+   */
+  const handleHandoff = () => {
+    const res = beginHandoff(pct);
+    const chat = useChatStore.getState();
+    if (res === "no-session") {
+      chat.setStatusText("当前还没有会话可交接");
+    } else if (res === "busy") {
+      chat.setStatusText("交接已在进行中");
+    } else if (res === "not-sent") {
+      chat.setStatusText("网络未连接，交接未执行");
+    }
+    if (res !== "started") {
+      setTimeout(() => useChatStore.getState().setStatusText(""), 5000);
+      return;
+    }
+    setShowCompact(false);
+  };
 
   const handleCompact = () => {
     // Build the /compact prompt (same as typing it in InputBar)
@@ -186,7 +208,7 @@ export default function ContextBar() {
           className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-amber-glow transition-colors disabled:opacity-40 disabled:hover:text-slate-500"
         >
           <Minimize2 size={11} />
-          压缩上下文
+          上下文管理
         </button>
       )}
 
@@ -196,22 +218,29 @@ export default function ContextBar() {
             value={compactHint}
             onChange={(e) => setCompactHint(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleCompact(); }}
-            placeholder="侧重于...（可选）"
+            placeholder="压缩时侧重...（可选）"
             className="w-full text-xs bg-white/5 border border-white/10 rounded-md px-2.5 py-1.5 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-glow/40"
           />
           <button
-            onClick={handleCompact}
-            className="w-full text-xs py-1.5 rounded-md bg-[#ca5d3d] hover:bg-amber-glow text-white font-medium transition-colors shadow-sm shadow-[#703123]/30"
+            onClick={handleHandoff}
+            disabled={!currentSessionId}
+            className="w-full text-xs py-1.5 rounded-md bg-[#ca5d3d] hover:bg-amber-glow text-white font-medium transition-colors shadow-sm shadow-[#703123]/30 disabled:opacity-40"
           >
-            立即压缩
+            立即交接到新会话
+          </button>
+          <button
+            onClick={handleCompact}
+            className="w-full text-xs py-1.5 rounded-md border border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20 transition-colors"
+          >
+            压缩当前会话（不新建）
           </button>
 
-          {/* 自动压缩阈值 —— 此前该配置无任何 UI 入口,设了也没处设 */}
+          {/* 自动交接阈值 —— 取代原来的自动压缩,理由见 utils/autoHandoff.ts */}
           <div className="pt-1.5 border-t border-white/5">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] text-slate-400">用量达到时自动压缩</span>
+              <span className="text-[11px] text-slate-400">用量达到时交接新会话</span>
               <span className="text-[11px] font-mono text-slate-300">
-                {autoCompactThreshold >= 100 ? "关闭" : `${autoCompactThreshold}%`}
+                {autoHandoffThreshold >= 100 ? "关闭" : `${autoHandoffThreshold}%`}
               </span>
             </div>
             <input
@@ -219,14 +248,14 @@ export default function ContextBar() {
               min={50}
               max={100}
               step={5}
-              value={autoCompactThreshold}
-              onChange={(e) => setAutoCompactThreshold(Number(e.target.value))}
+              value={autoHandoffThreshold}
+              onChange={(e) => setAutoHandoffThreshold(Number(e.target.value))}
               className="w-full accent-amber-glow"
             />
             <p className="text-[10px] text-slate-600 mt-0.5">
-              {autoCompactThreshold >= 100
-                ? "拖到 100% 表示不自动压缩，只手动触发"
-                : `上下文超过 ${autoCompactThreshold}% 时自动执行一次压缩`}
+              {autoHandoffThreshold >= 100
+                ? "拖到 100% 表示不自动交接，上下文满了自己处理"
+                : `上下文超过 ${autoHandoffThreshold}% 时，让本会话写一份交接文档，再自动开新会话接着干（不压缩历史）`}
             </p>
           </div>
         </div>

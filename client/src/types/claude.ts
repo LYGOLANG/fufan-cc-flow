@@ -140,6 +140,11 @@ export interface ChatMessage {
   attachments?: Attachment[];
   /** Present only when role === "system" and this is a compact divider */
   compactData?: { tokensBefore: number; tokensAfter: number; summary?: string };
+  /**
+   * Present only when role === "system" and this is a session-handoff divider.
+   * 上下文将满时不压缩,而是由旧会话写交接文档、开新会话(见 utils/autoHandoff.ts)。
+   */
+  handoffData?: { pct: number; fromSessionId?: string };
   /** True if this message was part of a rolled-back segment */
   rolledBack?: boolean;
   /** 产生这条 assistant 消息的供应商显示名(发送时盖章,切换供应商后历史署名不变) */

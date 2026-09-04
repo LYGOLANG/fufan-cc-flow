@@ -6,7 +6,7 @@ import { useUIStore } from "../stores/uiStore";
  *
  * 为什么要收口成一个函数:这组字段原先在 4 个调用点各手抄一遍
  * (InputBar 的正常发送与 slash 分支、ContextBar 的手动压缩、
- * useAutoCompact 的自动压缩),抄漏是必然的,而且漏了不报错、只是行为变差:
+ * handoffRunner 的会话交接),抄漏是必然的,而且漏了不报错、只是行为变差:
  *
  * 后端 claudeAgentService.spawnFingerprint 会把 effort / thinkingBudget /
  * maxBudget 等一起算进「常驻进程指纹」。某个调用点少带一个字段,指纹就与

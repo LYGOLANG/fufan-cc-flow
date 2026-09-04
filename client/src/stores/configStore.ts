@@ -25,7 +25,11 @@ interface ConfigState {
   thinking: boolean;
   /** 扩展思考预算(tokens)。0 = 自适应(SDK adaptive);>0 经 thinking.budgetTokens 注入 */
   thinkingBudget: number;
-  autoCompactThreshold: number;
+  /**
+   * 上下文用量达到该百分比时,自动交接到新会话(旧会话先写交接文档)。
+   * >= 100 表示关闭。取代了原来的「自动压缩」——为什么换,见 utils/autoHandoff.ts。
+   */
+  autoHandoffThreshold: number;
   /**
    * 单次任务费用上限(美元)。0 = 不限制。
    *
@@ -57,7 +61,7 @@ interface ConfigState {
   setEffort: (e: EffortChoice) => void;
   setThinking: (t: boolean) => void;
   setThinkingBudget: (n: number) => void;
-  setAutoCompactThreshold: (v: number) => void;
+  setAutoHandoffThreshold: (v: number) => void;
   setMaxBudget: (v: number) => void;
   setApiKey: (k: string) => void;
   setEngine: (e: Engine) => void;
@@ -90,7 +94,7 @@ export const useConfigStore = create<ConfigState>()(
       effort: "high",
       thinking: true,
       thinkingBudget: 0,
-      autoCompactThreshold: 95,
+      autoHandoffThreshold: 90,
       maxBudget: 0,
       apiKey: "",
       engine: "claude",
@@ -108,8 +112,8 @@ export const useConfigStore = create<ConfigState>()(
       setEffort: (effort) => set({ effort }),
       setThinking: (thinking) => set({ thinking }),
       setThinkingBudget: (thinkingBudget) => set({ thinkingBudget }),
-      setAutoCompactThreshold: (autoCompactThreshold) =>
-        set({ autoCompactThreshold }),
+      setAutoHandoffThreshold: (autoHandoffThreshold) =>
+        set({ autoHandoffThreshold }),
       setMaxBudget: (maxBudget) => set({ maxBudget: Math.max(0, maxBudget) }),
       setApiKey: (apiKey) => set({ apiKey }),
       setEngine: (engine) => set({ engine }),
@@ -151,13 +155,29 @@ export const useConfigStore = create<ConfigState>()(
     }),
     {
       name: "fufan-cc-config",
+      // v1:autoCompactThreshold(自动压缩)换成 autoHandoffThreshold(自动交接新会话)。
+      // 只搬运「关闭」这一个意图:老用户把滑块拖到 100 是明确表达过「别自动动我的会话」,
+      // 必须尊重;其余数值不搬——95% 是为压缩挑的阈值,交接要在更早的 90% 触发,
+      // 否则写交接文档那一轮自己就可能把窗口撑爆。
+      version: 1,
+      migrate: (persisted, from) => {
+        const s = (persisted ?? {}) as Record<string, unknown> & {
+          autoHandoffThreshold?: number;
+        };
+        if (from < 1) {
+          const old = s.autoCompactThreshold;
+          s.autoHandoffThreshold = typeof old === "number" && old >= 100 ? 100 : 90;
+          delete s.autoCompactThreshold;
+        }
+        return s;
+      },
       // Persist user preferences but NEVER the API key (lives in settings.json).
       partialize: (s) => ({
         model: s.model,
         effort: s.effort,
         thinking: s.thinking,
         thinkingBudget: s.thinkingBudget,
-        autoCompactThreshold: s.autoCompactThreshold,
+        autoHandoffThreshold: s.autoHandoffThreshold,
         maxBudget: s.maxBudget,
         engine: s.engine,
         codexModel: s.codexModel,

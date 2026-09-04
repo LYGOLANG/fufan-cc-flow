@@ -50,6 +50,8 @@ interface ChatState {
   stopStreaming: (taskResult?: TaskResult) => void;
   setStatusText: (text: string) => void;
   addCompactEvent: (tokensBefore: number, tokensAfter: number, summary?: string) => void;
+  /** 交接分隔符:上下文将满,旧会话已写完交接文档,这里起是新会话 */
+  addHandoffEvent: (pct: number, fromSessionId?: string) => void;
   /** Update the tokensAfter on the most recent compact divider (for delayed post-compact stats) */
   updateLatestCompactAfter: (tokensAfter: number) => void;
   updateContextTokens: (tokens: number) => void;
@@ -315,6 +317,20 @@ export const useChatStore = create<ChatState>()(
     }),
 
   setStatusText: (text) => set({ statusText: text }),
+
+  addHandoffEvent: (pct, fromSessionId) =>
+    set((s) => ({
+      messages: [
+        ...s.messages,
+        {
+          id: `handoff_${++msgCounter}`,
+          role: "system" as const,
+          content: "",
+          timestamp: Date.now(),
+          handoffData: { pct, fromSessionId },
+        },
+      ],
+    })),
 
   addCompactEvent: (tokensBefore, tokensAfter, summary) =>
     set((s) => ({

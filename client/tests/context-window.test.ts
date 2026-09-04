@@ -74,7 +74,7 @@ test("第三方与 Codex 模型按各自目录", () => {
 });
 
 test("未知模型给保守的 200K，不给 0", () => {
-  // 返回 0 会让 autoCompact 里的 contextMax > 0 判定失败而整体跳过，
+  // 返回 0 会让 autoHandoff 里的 contextMax > 0 判定失败而整体跳过，
   // 表现为「自动压缩静默失灵」——宁可保守也不能给 0。
   assert.equal(inferContextMax("某个没见过的模型"), K200);
   assert.equal(inferContextMax(""), K200);

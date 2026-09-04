@@ -5,10 +5,10 @@ import InterruptedTasksBanner from "./components/shared/InterruptedTasksBanner";
 import SafeModeBanner from "./components/shared/SafeModeBanner";
 import UpdatePrompt from "./components/shared/UpdatePrompt";
 import { useWebSocket } from "./hooks/useWebSocket";
-import { useAutoCompact } from "./hooks/useAutoCompact";
+import { useAutoHandoff } from "./hooks/useAutoHandoff";
 import { restoreOnBoot } from "./utils/openProject";
 import { getCrashRecoveryState } from "./utils/crashRecovery";
-import { installExternalLinkHandler, resolveExternalUrl } from "./utils/openExternal";
+import { installExternalLinkHandler, openExternal } from "./utils/openExternal";
 import { installHeartbeat } from "./utils/heartbeat";
 import { installCrashReporter } from "./utils/crashReporter";
 import { useUIStore } from "./stores/uiStore";
@@ -19,8 +19,8 @@ export default function App() {
   // Connect WebSocket (always, regardless of projectPath)
   useWebSocket();
 
-  // 上下文用量达阈值自动压缩(此前 autoCompactThreshold 是死配置,无人消费)
-  useAutoCompact();
+  // 上下文用量达阈值时交接到新会话(取代自动压缩,见 utils/autoHandoff.ts)
+  useAutoHandoff();
 
   const [safeModeFailures, setSafeModeFailures] = useState(0);
 
@@ -48,22 +48,15 @@ export default function App() {
     })();
   }, []);
 
-  // 外链拦截:桌面端送内置浏览器面板(右侧栏预览、自动切到该标签),
-  // 既不会把主窗口导航走,也不用离开应用去看网页
-  useEffect(
-    () =>
-      installExternalLinkHandler((url) => {
-        const ui = useUIStore.getState();
-        ui.setRightSidebarTab("browser");
-        if (!ui.rightPanelOpen) ui.setRightPanelOpen(true);
-        // 远程模式下 localhost 链接指向的是远程机器,须先转发端口再显示 ——
-        // 直接 setBrowserUrl(url) 会让内置浏览器面板去连本机自己的同号端口。
-        void resolveExternalUrl(url).then((resolved) => {
-          useUIStore.getState().setBrowserUrl(resolved);
-        });
-      }),
-    []
-  );
+  // 外链拦截:改走**系统浏览器**。
+  //
+  // 内置浏览器面板已移除 —— 它是个半成品 WebView:没有地址栏、前进后退、
+  // 书签、扩展、登录态,滚动行为也和真浏览器不一致,用户宁可去 Chrome。
+  // 与其维护一个不好用的替身,不如把链接交给系统里那个真正好用的。
+  //
+  // openExternal 内部会做远程端口转发(远程模式下 localhost 指的是远端机器)
+  // 并在非 Tauri 形态回退到 window.open。
+  useEffect(() => installExternalLinkHandler((url) => void openExternal(url)), []);
 
   // 心跳:让 Rust 看门狗能感知渲染进程存活,崩溃时自动重载而非留下死屏
   useEffect(() => installHeartbeat(), []);

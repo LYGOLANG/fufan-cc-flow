@@ -8,7 +8,7 @@
 
 Fufan-CC Flow（发布名 **Agent Flow**）是 Claude Code 的图形化桌面客户端：**Tauri 2 外壳 + WebView2**，Node 后端以 **sidecar 二进制**随应用一起分发。通过 **Claude Agent SDK** 把 Claude Code CLI 的能力以友好 UI 呈现，并支持 **Claude / Codex 双引擎**切换。
 
-功能包括：实时对话流、Tool Call 可视化、HIL 权限确认、Session 管理、上下文压缩（手动 + 达阈值自动）、MCP 管理、Memory 管理、终端集成、Sub-Agent 树、内置浏览器面板、桌面自动更新。
+功能包括：实时对话流、Tool Call 可视化、HIL 权限确认、Session 管理、上下文将满时交接到新会话（手动压缩仍可用）、MCP 管理、Memory 管理、终端集成、Sub-Agent 树、内置浏览器面板、桌面自动更新。
 
 同一套前后端代码也能以纯 Web 模式跑（`pnpm dev`），这是日常开发调试的方式；桌面安装包由 `pnpm package:desktop` 产出。
 
@@ -111,7 +111,7 @@ pnpm package:desktop  # 打包 Windows 桌面安装包（NSIS）
 - Windows 下 Claude Code CLI 需要 Git Bash，路径由 `CLAUDE_CODE_GIT_BASH_PATH` 环境变量覆盖
 - 权限请求（HIL）超时为 60 秒，超时后自动拒绝
 - 单次任务费用上限在 **设置 → 应用 → 任务费用上限** 配置（0 = 不限制），落到 SDK 的 `maxBudgetUsd`
-- 上下文达阈值自动压缩在 **上下文栏 → 压缩上下文** 里调（默认 95%，拖到 100% 关闭）。只在一轮对话结束时判定，打开已经很满的旧会话不会被误压
+- **上下文将满时交接到新会话，不再自动压缩**（默认 90%，在 **上下文栏 → 上下文管理** 里调，拖到 100% 关闭）。达阈值先让当前会话写一份交接文档（纯文本，禁止调工具/写文件），再开一个真正的新会话把文档当开场白发进去。只在一轮对话结束时判定，打开已经很满的旧会话不会被误交接；拿不到文档就保留原会话、不重试。决策与文案在 `client/src/utils/autoHandoff.ts`，执行在 `handoffRunner.ts`（手动按钮共用）。自动压缩已删除，手动压缩按钮保留
 - 模型显示名在三处各存了一份（`client/src/types/claude.ts` 的 `MODEL_LABELS`、`server/src/routes/system.ts` 的 `FALLBACK_MODELS`、`SlashCommandMenu.tsx` 的 `/model` 子命令），改一处要三处同步——曾经漂移成同一别名两个代次
 - 打包前先确认没有残留的 sidecar `node.exe` 占着 `server-dist`，否则 EBUSY（按命令行精确 kill，别按名字批量杀）
 - `tauri.conf.json` 的 `additionalBrowserArgs` 里 `--disable-renderer-accessibility` 是修 WebView2 渲染进程 STATUS_BREAKPOINT 崩溃的（外部 UIA 客户端激活无障碍即崩，崩溃点 msedge.dll 固定偏移，2026-07-26 两份 dump 实证），不要删；该字段一旦自定义就会覆盖 wry 默认参数，前两组 flag 就是抄的 wry 0.55.1 默认值，升级 wry 时要对照同步
