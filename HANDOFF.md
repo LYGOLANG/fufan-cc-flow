@@ -46,23 +46,24 @@ Rust target 缓存烙着旧 C 盘绝对路径，需删 `target/debug` 与 `targe
 - 后台跑打包时**别用 `| tail` 收尾**——管道会把退出码换成 tail 的 0，
   失败会被报成成功。本轮因此误判过一次。
 
-### v0.1.56 产物
-`release/updates/AgentFlow_0.1.56_x64-setup.exe`，115,643,133 字节，
-`latest.json` 已生成，验签通过（alg=ED, keyid=19d9f96e097fbd06）。
-产物内容核对：`新建文件夹`/`guessed`/`dirname` 均命中 dist，
-U+2500 正则在包内；残留的 `lastIndexOf` 是取扩展名与 dirname 自身实现，非回归。
+### v0.1.56 已发布上线
+https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/tag/v0.1.56
+
+产物 `release/updates/AgentFlow_0.1.56_x64-setup.exe`，115,643,133 字节，
+验签通过（alg=ED, keyid=19d9f96e097fbd06）。
+
+发布后从**公开端点**实测（不是拿上传返回码当验证）：
+`releases/latest/download/latest.json` HTTP 200、version=0.1.56、
+签名与 url 与本地逐字一致、安装包 HTTP 200 且 Content-Length 115643133
+与本地相同、前 1MB 哈希一致。老版本会经这条路发现新版并自动更新。
+
+上一版线上是 **v0.1.55**（09-04 已发布），本次是干净的 +1，
+发布说明只写自 v0.1.55 以来的对外净差异。
 
 ### 下一步
 1. **装机由用户执行** —— 本会话跑在 Agent Flow sidecar 里（PORT=59611），
-   装新版 = 自断会话。
-2. 发布等用户拍板：
-   `gh release create v0.1.56 --repo LYGOLANG/fufan-cc-flow-releases --title "v0.1.56" --notes-file <说明文件> "release/updates/AgentFlow_0.1.56_x64-setup.exe" "release/updates/latest.json"`
-   线上最新仍是 v0.1.53，说明要按「对外净差异」把 0.1.54–0.1.56 一起写。
-3. **工作区仍有另一会话 2026-09-04 留下的未提交 fable 适配**
-   （`modelCapabilities.ts`、`modelFallback.ts`、`ModelSelector`、`configStore`、
-   `chatHandler` 等，17 天未动、typecheck/测试均绿）。**它已被打进 v0.1.56 产物**
-   （打包用的是工作区而非 HEAD）。我没提交它——要么请用户确认后提交，
-   要么下次打包前先决定去留。
+   装新版 = 自断会话。也可以等应用自己弹更新提示。
+2. 本轮已无待办。工作区干净，所有改动均已提交推送。
 
 ---
 
