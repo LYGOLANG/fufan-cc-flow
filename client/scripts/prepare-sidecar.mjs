@@ -10,9 +10,51 @@
 // and verify the official standalone Node.js LTS binary instead.
 import { execFileSync, execSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, rmSync, copyFileSync, mkdirSync, cpSync, readFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  rmSync,
+  copyFileSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  readFileSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+
+/**
+ * 递归拷贝目录。**不要换回 fs.cpSync。**
+ *
+ * Node v22.23.2 的 `cpSync(recursive)` 在**路径含非 ASCII 字符**时会让整个
+ * 进程硬崩：Windows 退出码 3221226505 (0xC0000409 STACK_BUFFER_OVERRUN)，
+ * 不抛异常、stderr 一个字都没有。打包时表现为
+ * `beforeBuildCommand ... failed with exit code -1073740791`，
+ * 看起来像 Tauri 或 pnpm 坏了，跟"路径里有中文"八竿子打不着。
+ *
+ * 一次只变一个变量的对照实验（同内容、同操作、只改路径）：
+ *     cpSync  + D:\cc_cp_ascii\      → 成功
+ *     cpSync  + D:\cc_cp_中文目录\    → status=3221226505，stderr 空
+ * 仓库从 `C:\Users\...\fufan-cc-flow-remote` 搬到 `D:\桌面大文件\...` 之后
+ * 就再也打不出包，根因就是这个。
+ *
+ * 注意**异步的 `fs.promises.cp` 没有这个毛病**（同样实验下中文路径通过），
+ * 所以 server 侧 projectInitService / bundledPluginService 用的 `await fs.cp`
+ * 是安全的，别顺手一起改。这里因为脚本是同步流程，改用手写递归。
+ */
+function copyDirSync(src, dest, filter) {
+  if (filter && !filter(src)) return;
+  const st = statSync(src);
+  if (!st.isDirectory()) {
+    mkdirSync(path.dirname(dest), { recursive: true });
+    copyFileSync(src, dest);
+    return;
+  }
+  mkdirSync(dest, { recursive: true });
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    copyDirSync(path.join(src, entry.name), path.join(dest, entry.name), filter);
+  }
+}
 
 const clientDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const repoRoot = path.resolve(clientDir, "..");
@@ -97,7 +139,7 @@ execSync("pnpm --filter server build", { cwd: repoRoot, stdio: "inherit" });
 console.log("[prepare-sidecar] assembling production server bundle...");
 if (existsSync(serverDistDir)) rmSync(serverDistDir, { recursive: true, force: true });
 mkdirSync(serverDistDir, { recursive: true });
-cpSync(path.join(repoRoot, "server", "dist"), path.join(serverDistDir, "dist"), { recursive: true });
+copyDirSync(path.join(repoRoot, "server", "dist"), path.join(serverDistDir, "dist"));
 copyFileSync(path.join(repoRoot, "server", "package.json"), path.join(serverDistDir, "package.json"));
 execSync(
   "pnpm install --prod --node-linker=hoisted --ignore-workspace --config.onlyBuiltDependencies=node-pty --config.onlyBuiltDependencies=esbuild",
@@ -145,10 +187,7 @@ console.log("[prepare-sidecar] bundling project templates...");
 for (const item of [".claude", ".codex", ".agents", "AGENTS.md", "bundled-plugins"]) {
   const src = path.join(repoRoot, item);
   if (existsSync(src)) {
-    cpSync(src, path.join(serverDistDir, item), {
-      recursive: true,
-      filter: (source) => !isTemplateExcluded(src, source),
-    });
+    copyDirSync(src, path.join(serverDistDir, item), (source) => !isTemplateExcluded(src, source));
   } else {
     throw new Error(`[prepare-sidecar] required template item missing in repo root: ${item}`);
   }
