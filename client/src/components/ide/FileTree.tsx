@@ -29,7 +29,7 @@ import {
 import { useFileStore } from "../../stores/fileStore";
 import { useUIStore } from "../../stores/uiStore";
 import { api } from "../../services/api";
-import { relativePath, splitPath } from "../../utils/hostPath";
+import { dirname, joinPath, relativePath, samePath, splitPath } from "../../utils/hostPath";
 import { currentHost } from "../../stores/connectionStore";
 import type { FileNode } from "../../types/file";
 
@@ -230,18 +230,22 @@ export default function FileTree({ onFileClickOverride }: { onFileClickOverride?
     }
     const { parentPath, type, mode, oldName } = inlineInput;
     try {
+      // 用目标平台的分隔符拼,不写死 "/":后端在 Windows 时拼出的
+      // "D:\proj/新目录" 虽能被 normalize 救回,但父目录一旦算错就无从补救,
+      // 两处一起用同一套 hostPath 工具才不会再各自跑偏。
       if (mode === "create") {
-        const fullPath = `${parentPath}/${value.trim()}`;
+        const fullPath = joinPath(parentPath, value.trim());
         if (type === "folder") {
           await api.createFolder(fullPath, projectPath);
         } else {
           await api.createFile(fullPath, "", projectPath);
         }
       } else if (mode === "rename" && oldName) {
-        const dir = parentPath;
-        const oldFullPath = `${dir}/${oldName}`;
-        const newFullPath = `${dir}/${value.trim()}`;
-        await api.renameFile(oldFullPath, newFullPath, projectPath);
+        await api.renameFile(
+          joinPath(parentPath, oldName),
+          joinPath(parentPath, value.trim()),
+          projectPath
+        );
       }
       refreshTree();
     } catch (err) {
@@ -268,6 +272,19 @@ export default function FileTree({ onFileClickOverride }: { onFileClickOverride?
             title="新建文件"
           >
             <Plus size={12} />
+          </button>
+          {/* 头部此前只有「新建文件」。想建目录必须右键一个已有节点,
+              而右键文件那条路正好是坏的 —— 两件事叠起来就是「建不了文件夹」。*/}
+          <button
+            onClick={() => {
+              if (projectPath) {
+                handleNewFolder(projectPath, 0);
+              }
+            }}
+            className="p-1 rounded hover:bg-white/5 text-slate-500 hover:text-slate-300 transition-colors"
+            title="新建文件夹"
+          >
+            <FolderPlus size={12} />
           </button>
           <button
             onClick={() => projectPath && loadTree(projectPath)}
@@ -372,16 +389,17 @@ export default function FileTree({ onFileClickOverride }: { onFileClickOverride?
           y={contextMenu.y}
           isDir={contextMenu.isDir}
           onNewFile={() => {
-            const parentPath = contextMenu.isDir ? contextMenu.nodePath : contextMenu.nodePath.substring(0, contextMenu.nodePath.lastIndexOf("/"));
+            // 父目录必须按后端平台算。手写正斜杠查找在 Windows 路径上恒为 -1,
+            // 而 substring(0,-1) 得空串,拼出 "/新文件" 被项目根校验 403。
+            const parentPath = contextMenu.isDir ? contextMenu.nodePath : dirname(contextMenu.nodePath);
             handleNewFile(parentPath, 0);
           }}
           onNewFolder={() => {
-            const parentPath = contextMenu.isDir ? contextMenu.nodePath : contextMenu.nodePath.substring(0, contextMenu.nodePath.lastIndexOf("/"));
+            const parentPath = contextMenu.isDir ? contextMenu.nodePath : dirname(contextMenu.nodePath);
             handleNewFolder(parentPath, 0);
           }}
           onRename={() => {
-            const parentPath = contextMenu.nodePath.substring(0, contextMenu.nodePath.lastIndexOf("/"));
-            handleRename(parentPath, contextMenu.nodeName, 0);
+            handleRename(dirname(contextMenu.nodePath), contextMenu.nodeName, 0);
           }}
           onDelete={() => handleDelete(contextMenu.nodePath, contextMenu.nodeName)}
           onAddToChat={() => handleAddToChat(contextMenu.nodePath)}
@@ -557,9 +575,13 @@ function TreeNode({
   }, [isDir, expanded, node.children, node.path]);
 
   // Check if this node is being renamed
+  //
+  // 这里同样不能手写取父目录：Windows 路径里没有正斜杠，旧写法恒得空串，
+  // 于是这个等式永远不成立 —— 点了「重命名」输入框根本不出现，
+  // 界面上毫无反应也不报错。
   const isBeingRenamed = inlineInput?.mode === "rename"
     && inlineInput.oldName === node.name
-    && node.path.substring(0, node.path.lastIndexOf("/")) === inlineInput.parentPath;
+    && samePath(dirname(node.path), inlineInput.parentPath);
 
   // Check if inline input should show inside this directory
   const showInlineChild = isDir && expanded && inlineInput?.mode === "create" && inlineInput.parentPath === node.path;

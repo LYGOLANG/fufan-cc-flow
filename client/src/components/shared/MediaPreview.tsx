@@ -106,9 +106,16 @@ function VideoLightbox({ url, onClose }: { url: string; onClose: () => void }) {
 export default function MediaPreview({
   path,
   projectPath,
+  guessed,
 }: {
   path: string;
   projectPath?: string | null;
+  /**
+   * 这条路径是从正文/工具输出里**猜**出来的(extractMediaPaths)，不是用户或
+   * 模型显式声明的媒体。猜错是常态 —— 目录树图示里的裸文件名按项目根解析
+   * 必然 404 —— 所以猜错时安静地什么都不显示，别在界面上堆错误提示。
+   */
+  guessed?: boolean;
 }) {
   const kind = mediaKindOf(path);
   const url = localMediaUrl(path, projectPath);
@@ -117,8 +124,10 @@ export default function MediaPreview({
 
   if (!kind) return null;
 
-  // 加载失败要说出来。静默隐藏的话，用户只知道"没显示"，
+  // 显式声明的媒体加载失败要说出来。静默隐藏的话，用户只知道"没显示"，
   // 分不清是文件没生成、路径不对，还是预览本身坏了。
+  // 猜出来的则相反：见上面 guessed 的注释。
+  if (failed && guessed) return null;
   if (failed) {
     return (
       <div className="text-[10px] text-slate-500 px-2 py-1.5 rounded-md bg-white/5 break-all">

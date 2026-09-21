@@ -106,3 +106,69 @@ test("媒体 URL 构造必须经过 withAuthQuery", async () => {
     }
   }
 });
+
+/**
+ * 回归：目录树图示里的文件名不是要预览的产物。
+ *
+ * 用户实报「渲染不出来」，截图里连着四条「图片无法加载：char-001-G1.png」。
+ * 真相不是预览坏了 —— 那几个名字来自模型画的一棵目录树，真身在
+ * E:\漫剧\04-assets\ 下，而裸文件名按项目根(E:\漫剧)解析必然 404
+ * （实测 /api/files/raw?path=char-001-G1.png&base=<root> → HTTP 404）。
+ */
+test("目录树图示里的文件名不当成待预览的媒体", () => {
+  const tree = [
+    "04-assets/",
+    "├── char-001-G1.png          ★ 尼克特写锚，已锚定",
+    "├── char-001-G3.png    ★ 三格表",
+    "└── prop-001.png             木盒·六格状态表",
+  ].join("\n");
+  assert.deepEqual(extractMediaPaths(tree), []);
+});
+
+test("制表符只影响它自己那一行，不波及上下文", () => {
+  const text = ["├── ignored.png", "视频已导出到 out/demo.mp4"].join("\n");
+  assert.deepEqual(extractMediaPaths(text), ["out/demo.mp4"]);
+});
+
+test("普通陈述里的裸文件名仍要认（别把修复做成一刀切）", () => {
+  // 这是本功能的主用例：模型只说「配音 voice.mp3 完成」，不写 markdown
+  assert.deepEqual(extractMediaPaths("配音 voice.mp3 完成"), ["voice.mp3"]);
+});
+
+/**
+ * 猜出来的路径加载失败必须安静。
+ *
+ * 显式 `![](x.png)` 失败要报出来（区分"没生成"与"读不到"）；
+ * 但自动识别是**猜**，猜错就该什么都不显示 —— 否则一条消息能刷出一屏
+ * 「图片无法加载」，用户只会判定"预览功能坏了"。
+ */
+test("自动识别的媒体在渲染时标记为 guessed", async () => {
+  const { readFileSync } = await import("node:fs");
+
+  const md = readFileSync("src/components/shared/MarkdownRenderer.tsx", "utf8");
+  // detectedPaths 那一段里，两种渲染都必须带 guessed
+  const detected = md.slice(md.indexOf("detectedPaths.length > 0"));
+  assert.ok(
+    /<InlineImage[^>]*guessed/.test(detected),
+    "自动识别的图片没标 guessed，失败时会留下错误残骸"
+  );
+  assert.ok(
+    /<MediaPreview[^>]*guessed/.test(detected),
+    "自动识别的视频/音频没标 guessed"
+  );
+
+  // 两个组件都必须真的对 guessed 做了静默分支
+  for (const [f, needle] of [
+    ["src/components/shared/MarkdownRenderer.tsx", "broken && guessed"],
+    ["src/components/shared/MediaPreview.tsx", "failed && guessed"],
+  ] as const) {
+    assert.ok(
+      readFileSync(f, "utf8").includes(`if (${needle}) return null;`),
+      `${f} 没有对 guessed 的静默分支`
+    );
+  }
+
+  // 工具输出扫出来的同样是猜的
+  const tc = readFileSync("src/components/chat/ToolCallCard.tsx", "utf8");
+  assert.ok(/<MediaPreview[^>]*guessed/.test(tc), "工具卡片里的媒体没标 guessed");
+});

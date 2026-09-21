@@ -343,7 +343,8 @@ function ResultView({ tc, projectPath }: { tc: ToolCall; projectPath: string | n
       return (
         <div className="space-y-2">
           {media.map((p) => (
-            <MediaPreview key={p} path={p} projectPath={projectPath} />
+            // guessed：这些路径是从工具输出里扫出来的，扫错了就别留错误残骸
+            <MediaPreview key={p} path={p} projectPath={projectPath} guessed />
           ))}
           {tc.result.trim() && (
             <pre className="text-[10px] font-mono text-slate-500 whitespace-pre-wrap max-h-24 overflow-y-auto">

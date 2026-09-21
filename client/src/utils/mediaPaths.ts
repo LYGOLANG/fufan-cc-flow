@@ -57,6 +57,27 @@ export function mediaKindOf(pathOrUrl: string): MediaKind | null {
  * @param exclude 已由别的渲染路径处理掉的路径（如 markdown 的 ![](x)），避免重复渲染
  * @param limit   最多取几个 —— 一次输出里报十几个路径时全渲染会把界面撑爆
  */
+/**
+ * 制表符画的目录树那一行，里面的文件名是**清单**不是**产物**。
+ *
+ * 模型很爱画这种图：
+ *   ├── char-001-G1.png          ★ 尼克特写锚，已锚定
+ *   └── prop-001.png             木盒·六格状态表
+ * 这些是相对某个子目录的裸文件名（真身在 04-assets/ 下），按项目根解析
+ * 必然 404。实测一条消息刷出四个「图片无法加载」——用户当成预览坏了。
+ *
+ * 判据用 Unicode 制表符区块(U+2500–U+257F)，只认真正画了线的行，
+ * 不会误伤「视频已导出到 out/demo.mp4」这类正常陈述。
+ */
+const BOX_DRAWING_RE = /[─-╿]/;
+
+/** 取 index 所在的那一行 */
+function lineAt(content: string, index: number): string {
+  const start = content.lastIndexOf("\n", index) + 1;
+  const end = content.indexOf("\n", index);
+  return content.slice(start, end === -1 ? undefined : end);
+}
+
 export function extractMediaPaths(content: string, exclude?: Set<string>, limit = 6): string[] {
   const out: string[] = [];
   const re = mediaRegex();
@@ -65,6 +86,7 @@ export function extractMediaPaths(content: string, exclude?: Set<string>, limit 
     const s = m[0];
     if (s.includes("://")) continue; // 远程 URL 交给 <img>/<video> 直接加载
     if (exclude?.has(s)) continue;
+    if (BOX_DRAWING_RE.test(lineAt(content, m.index))) continue; // 目录树图示
     out.push(s);
   }
   return [...new Set(out)].slice(0, limit);

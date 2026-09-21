@@ -62,6 +62,33 @@ export function joinPath(base: string, name: string, host: HostInfo = currentHos
 }
 
 /**
+ * 取父目录。已经是根(或没有父级)时原样返回。
+ *
+ * 前端此前在 FileTree 里手写 `p.substring(0, p.lastIndexOf("/"))` 取父目录。
+ * 那行在 Windows 上**必然返回空字符串** —— 后端发来的路径是
+ * `D:\proj\README.md`，里面一个 `/` 都没有，`lastIndexOf("/")` 得 -1，
+ * 而 JS 的 `substring(0, -1)` 等同 `substring(0, 0)`，即空串。
+ * 于是「右键一个文件 → 新建文件夹」拼出的是 `/新文件夹`，
+ * 被后端的项目根校验挡下(403 path不在允许的目录内)，界面只说「操作失败」。
+ * 右键目录时走的是另一分支，所以表现为「有时能建有时不能」。
+ */
+export function dirname(p: string, host: HostInfo = currentHost()): string {
+  if (!p) return p;
+  const sep = host.pathSep;
+  const trimmed = p.replace(/[\\/]+$/, "") || p;
+  // Windows 上两种分隔符都算;POSIX 上反斜杠是合法文件名字符,不能当分隔符
+  const idx = sep === "\\"
+    ? Math.max(trimmed.lastIndexOf("\\"), trimmed.lastIndexOf("/"))
+    : trimmed.lastIndexOf("/");
+  if (idx < 0) return trimmed;           // 没有分隔符:已经是最顶层，没有父级
+  if (idx === 0) return sep === "\\" ? trimmed : "/"; // POSIX 根下的一级
+  const parent = trimmed.slice(0, idx);
+  // "C:" 是盘符而不是目录,补回分隔符才是根
+  if (sep === "\\" && /^[A-Za-z]:$/.test(parent)) return `${parent}\\`;
+  return parent;
+}
+
+/**
  * 计算 child 相对 parent 的路径。不在 parent 之下时返回 null。
  *
  * 原实现用 `toLowerCase()` 做前缀比较,在 Linux 上会把 `/Src/a.ts` 误判成

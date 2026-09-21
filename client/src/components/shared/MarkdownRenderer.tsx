@@ -71,15 +71,25 @@ function ImageLightbox({ url, alt, onClose }: { url: string; alt?: string; onClo
   );
 }
 
-/** 图片预览:点击在应用内放大 */
-function InlineImage({ url, alt }: { url: string; alt?: string }) {
+/**
+ * 图片预览:点击在应用内放大。
+ *
+ * `guessed` 区分两种来源，决定加载失败时怎么表现：
+ *   - false(默认) = 模型显式写了 `![](path)`。它**声称**这里有张图，
+ *     failure 是真信号，要把文件名摆出来，否则「401 挡下 / 文件不存在 /
+ *     路径写错」三种情况在界面上长得一模一样。
+ *   - true = 我们自己从正文里**猜**出来的路径(extractMediaPaths)。
+ *     猜错是常态：模型画一棵目录树
+ *     `├── char-001-G1.png   ★ 特写锚`，里面每个文件名都会被捞出来，
+ *     而它们是**相对某个子目录**的裸文件名，按项目根解析必然 404。
+ *     实测一条消息就能刷出四个「图片无法加载」——那不是信号，是噪声，
+ *     且会让用户以为预览功能坏了。猜错就安静地什么都不显示。
+ */
+function InlineImage({ url, alt, guessed }: { url: string; alt?: string; guessed?: boolean }) {
   const [broken, setBroken] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // 加载失败**不再静默隐藏**。原先失败就 return null，于是「后端 401 挡下」
-  // 「文件不存在」「路径写错」三种情况在界面上长得一模一样 —— 都是什么都
-  // 没有、也没有任何提示，用户只会说"图片没显示"，我也只能靠猜。
-  // 现在把文件名摆出来，至少能分清是"没生成"还是"读不到"。
+  if (broken && guessed) return null;
   if (broken) {
     const name = (alt || url).split(/[\\/]/).pop()?.split("?")[0] || "图片";
     return (
@@ -211,12 +221,13 @@ export default function MarkdownRenderer({ content, detectImages = false }: Prop
         <div className="mt-1 flex flex-col gap-2">
           {detectedPaths.map((p) =>
             mediaKindOf(p) === "image" ? (
-              // 图片沿用原有 InlineImage：它自带灯箱与错误态，行为已被验证过
-              <InlineImage key={p} url={localImageUrl(p, projectPath)} alt={p} />
+              // 图片沿用原有 InlineImage：它自带灯箱与错误态，行为已被验证过。
+              // guessed：这条路径是猜出来的，猜错了就别在界面上留残骸。
+              <InlineImage key={p} url={localImageUrl(p, projectPath)} alt={p} guessed />
             ) : (
               // 视频/音频走 MediaPreview：<video> + 后端 Range 流式，
               // 不整读进内存，进度条能拖
-              <MediaPreview key={p} path={p} projectPath={projectPath} />
+              <MediaPreview key={p} path={p} projectPath={projectPath} guessed />
             )
           )}
         </div>
