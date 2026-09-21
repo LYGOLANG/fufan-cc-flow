@@ -36,8 +36,9 @@ const CONTEXT_CATALOG: Array<{ test: RegExp; window: number }> = [
   { test: /^claude-sonnet-4-(?:[6-9]|\d{2,})/i, window: 1_000_000 },
   // Haiku 系列仍是 200K
   { test: /^(claude-haiku|claude-3.*haiku|haiku$)/i, window: 200_000 },
-  // 裸别名 opus/sonnet 解析到最新代 → 1M
-  { test: /^(opus|sonnet)$/i, window: 1_000_000 },
+  // 裸别名解析到最新代 → 1M。fable 曾漏在这里:它掉到最后的 200K 兜底,
+  // 于是 1M 窗口的模型被按 200K 计,进度条虚高 5 倍、交接在真实用量约 18% 时就触发。
+  { test: /^(fable|opus|sonnet|best|opusplan)$/i, window: 1_000_000 },
   // 旧 Claude(Opus 4.5/4.1、Sonnet 4.5 及更早)标准窗口 200K 兜底
   { test: /^claude-/i, window: 200_000 },
 ];

@@ -6,6 +6,7 @@ import { useProviderStore } from "../../stores/providerStore";
 import { useUIStore } from "../../stores/uiStore";
 import { MODEL_LABELS, type EffortChoice, type ModelOption } from "../../types/claude";
 import { inferContextMax, formatTokens } from "../../utils/costCalculator";
+import { isAdaptiveThinking } from "../../utils/modelCapabilities";
 
 const EFFORT_OPTIONS: { value: EffortChoice; label: string }[] = [
   { value: "low", label: "低" },
@@ -78,6 +79,10 @@ export default function ModelSelector({ direction = "down" }: { direction?: "up"
   // 推理力度对所有 Claude 引擎模型开放(CLI 对不支持的档位会静默降级),
   // 不再限制只有 Opus 可见。
   const showEffort = isClaudeEngine;
+  // Fable 5/5.1、Sonnet 5、Opus 5 起思考关不掉、也不接受固定预算:
+  // 模型按推理力度自行决定每一步想多少。这类模型上开关和预算档位是纯摆设,
+  // 留着只会让用户以为「我已经关掉思考了」。见 utils/modelCapabilities.ts。
+  const thinkingIsAdaptive = isAdaptiveThinking(model);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -285,8 +290,22 @@ export default function ModelSelector({ direction = "down" }: { direction?: "up"
             </div>
           )}
 
-          {/* Extended Thinking(仅 Claude 引擎系供应商) */}
-          {isClaudeEngine && (
+          {/* 自适应思考的模型:没有可拨的开关,只说明为什么没有 */}
+          {isClaudeEngine && thinkingIsAdaptive && (
+            <div className="p-3">
+              <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-obsidian-700/30">
+                <Sparkles size={14} className="text-amber-bright flex-shrink-0 mt-0.5" />
+                <div className="text-[11px] leading-relaxed text-slate-400">
+                  <span className="text-slate-300">扩展思考始终开启</span>
+                  ——该模型自行决定每一步想多久,由上面的推理力度调节。
+                  开关与固定预算对它无效,故不显示。
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Extended Thinking(仅 Claude 引擎系供应商,且开关真实生效的模型) */}
+          {isClaudeEngine && !thinkingIsAdaptive && (
             <div className="p-3">
               <button
                 onClick={() => setThinking(!thinking)}

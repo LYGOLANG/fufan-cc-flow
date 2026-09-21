@@ -1,5 +1,6 @@
 import { useConfigStore } from "../stores/configStore";
 import { useUIStore } from "../stores/uiStore";
+import { isAdaptiveThinking } from "./modelCapabilities";
 
 /**
  * 发送 send_message 时必须携带的「引擎参数」公共字段。
@@ -35,6 +36,13 @@ export function buildEngineParams(): EngineParams {
   const cfg = useConfigStore.getState();
   const { runMode } = useUIStore.getState();
 
+  // Fable 5/5.1、Sonnet 5、Opus 5 起思考关不掉、也不吃预算(官方文档明示)。
+  // 这类模型上 UI 已经把开关藏起来了 —— 如果这里还照发 thinking:false,
+  // 就成了「界面上没有的开关仍在背后生效」的镜像版说谎:用户看不到它,
+  // 却要承受它的后果(带进 spawnFingerprint,凭空触发常驻进程重启)。
+  // 藏了就是真的不发。
+  const thinkingControllable = !isAdaptiveThinking(cfg.model);
+
   return {
     model: cfg.model,
     effort: cfg.effort,
@@ -48,9 +56,12 @@ export function buildEngineParams(): EngineParams {
     // 此前只传 budget,于是「关掉开关」和「开着但用自适应」的 payload 完全相同,
     // 拨到关模型照样思考 —— 那个开关实际只是预算档位的显示开关。
     // 只在关闭时传:开启是默认态,不传可兼容旧后端。
-    thinking: cfg.thinking ? undefined : false,
+    thinking: thinkingControllable && !cfg.thinking ? false : undefined,
     // 仅在开启扩展思考且选了具体档位时注入(0 = 交给 SDK 自适应)
-    thinkingBudget: cfg.thinking && cfg.thinkingBudget > 0 ? cfg.thinkingBudget : undefined,
+    thinkingBudget:
+      thinkingControllable && cfg.thinking && cfg.thinkingBudget > 0
+        ? cfg.thinkingBudget
+        : undefined,
     // 单次任务费用上限;0 = 不限制
     maxBudget: cfg.maxBudget > 0 ? cfg.maxBudget : undefined,
   };

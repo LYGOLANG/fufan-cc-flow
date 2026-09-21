@@ -5,6 +5,7 @@ import { registerAgent, unregisterAgent } from "../services/agentRegistry.js";
 import { readProxy } from "../services/proxyConfig.js";
 import { getProvider } from "../services/providerService.js";
 import { getMcpConfigVersion } from "../services/mcpService.js";
+import { deriveFallbackModel } from "../services/modelFallback.js";
 import { cleanupFiles } from "../services/attachmentService.js";
 import { WorkflowService } from "../services/workflowService.js";
 import { WorkflowEngine } from "../services/workflow/engine.js";
@@ -94,21 +95,6 @@ const TERMINAL_EVENTS = new Set(["task_complete", "aborted", "process_close"]);
  * 此时冒出一条陈旧的任务结果卡片反而困惑。
  */
 const MISSED_TERMINAL_TTL_MS = 10 * 60_000;
-
-/**
- * F1.10:按模型家族推导自动降级链(opus→sonnet→haiku;haiku/未知不降级)。
- * 仅官方端点注入——第三方兼容端点不一定有对应模型,降级反而把任务打死。
- */
-function deriveFallbackModel(
-  model: string | undefined,
-  isCompat: boolean,
-): string | undefined {
-  if (isCompat || !model) return undefined;
-  const base = model.replace(/\[1m\]$/i, "");
-  if (base === "opus" || /^claude-opus/i.test(base)) return "sonnet";
-  if (base === "sonnet" || /^claude-sonnet/i.test(base)) return "haiku";
-  return undefined;
-}
 
 /** 收尾一个项目的会话:中断引擎、清附件、注销 agent、从注册表移除。幂等。 */
 function teardownSession(projectPath: string, session: ProjectSession) {

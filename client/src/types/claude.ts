@@ -88,7 +88,8 @@ export interface ModelOption {
  *  会同时出现在界面上。)
  */
 export const MODEL_LABELS: Record<string, string> = {
-  opus: "Claude Opus 4.8",
+  fable: "Claude Fable 5.1",
+  opus: "Claude Opus 5",
   sonnet: "Claude Sonnet 5",
   haiku: "Claude Haiku 4.5",
 };

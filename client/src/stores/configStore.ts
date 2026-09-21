@@ -50,6 +50,17 @@ interface ConfigState {
   providerId: string;
   /** 每个供应商上次选过的模型,切回时恢复 */
   providerModels: Record<string, string>;
+  /**
+   * 每个模型各自的推理力度,切回该模型时恢复。
+   *
+   * 对齐 Claude Code CLI 的 `modelSettings`——官方文档原话:
+   * "It saves the level per model … so each model keeps its own saved level."
+   *
+   * 此前是全局一个 effort:在 Opus 上调到 max,热切到 Haiku 后仍然带着 max,
+   * 反过来在轻量模型上调到 low,切回主力模型也还是 low。用户以为自己
+   * 换了模型,实际还拖着上一个模型的档位。
+   */
+  modelEfforts: Record<string, EffortChoice>;
 
   /**
    * 每个项目独立的模型选择档案(供应商/模型/力度/引擎一整组)。
@@ -102,14 +113,22 @@ export const useConfigStore = create<ConfigState>()(
       codexEffort: "high",
       providerId: "anthropic",
       providerModels: {},
+      modelEfforts: {},
       projectSelections: {},
 
       setModel: (model) =>
         set((s) => ({
           model,
           providerModels: { ...s.providerModels, [s.providerId]: model },
+          // 该模型记过档位就恢复它,没记过则沿用当前值作为它的起点
+          // (与 providerModels 同样的「首次继承、此后独立」语义)
+          effort: s.modelEfforts[model] ?? s.effort,
         })),
-      setEffort: (effort) => set({ effort }),
+      setEffort: (effort) =>
+        set((s) => ({
+          effort,
+          modelEfforts: { ...s.modelEfforts, [s.model]: effort },
+        })),
       setThinking: (thinking) => set({ thinking }),
       setThinkingBudget: (thinkingBudget) => set({ thinkingBudget }),
       setAutoHandoffThreshold: (autoHandoffThreshold) =>
@@ -148,6 +167,9 @@ export const useConfigStore = create<ConfigState>()(
           return {
             providerId,
             model,
+            // 切供应商同样会换模型,力度必须跟着换 —— 否则「按模型记忆」
+            // 只在模型下拉里生效,走供应商这条路进来就漏了。
+            effort: s.modelEfforts[model] ?? s.effort,
             // 同步旧的 engine 字段,让 Codex 相关旧逻辑(状态徽标等)继续工作
             engine: opts?.kind === "codex" ? ("codex" as Engine) : ("claude" as Engine),
           };
@@ -184,6 +206,7 @@ export const useConfigStore = create<ConfigState>()(
         codexEffort: s.codexEffort,
         providerId: s.providerId,
         providerModels: s.providerModels,
+        modelEfforts: s.modelEfforts,
         projectSelections: s.projectSelections,
       }),
     }
