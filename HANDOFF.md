@@ -2,7 +2,71 @@
 
 状态: 进行中
 
-## 当前任务（2026-09-03 晚）
+## 当前任务（2026-09-21）
+
+用户报两个问题，都已修复并打包 v0.1.56（**未安装、未发布**）。
+
+### 仓库已搬家
+源码现在在 `D:\桌面大文件\fufan-cc-flow-remote`，
+原 `C:\Users\Administrator\Desktop\fufan-cc-flow-remote` 已是空目录。
+搬家的连带后果（都已处理）：pnpm 软链失效需 `CI=true pnpm install`；
+Rust target 缓存烙着旧 C 盘绝对路径，需删 `target/debug` 与 `target/release/build`。
+
+### 已提交
+- `70bcfab` fix(ide) 文件树建目录/重命名 + 媒体预览误判
+- `eb29b50` chore(release) 版本号 0.1.56
+- `4eb0bf1` fix(build) cpSync 中文路径硬崩
+
+### 三个根因（都有实测证据，别再重查）
+1. **建不了文件夹/重命名没反应**：FileTree 手写
+   `p.substring(0, p.lastIndexOf("/"))` 取父目录。Windows 路径无正斜杠 →
+   -1 → `substring(0,-1)` 等同 `substring(0,0)` → **空串** → 拼出 `/新文件夹`
+   → 后端 403 `path不在允许的目录内`。右键目录走 isDir 分支正常，故表现为
+   「有时能有时不能」。同一写法还用在重命名命中判定（旧第 580 行），
+   那个等式在 Windows 上永不成立 → 点重命名输入框根本不出现。
+   修：hostPath 新增 `dirname()`，FileTree 改用 dirname/joinPath/samePath；
+   并补上头部缺失的「新建文件夹」按钮。
+   实测对照：修复前 403、修复后 200 且目录真建出来。
+2. **满屏「图片无法加载」**：模型画的目录树图示里的裸文件名被自动媒体识别
+   捞走，按项目根解析必然 404（真身在 `E:\漫剧\04-assets\`，项目根是
+   `E:\漫剧`）。后端无辜：同接口给真实相对路径返回 200。
+   修：①制表符区块 U+2500–U+257F 所在行的文件名不进预览；
+   ②`guessed` 标记——显式 `![](x)` 失败照旧报错，猜出来的失败静默跳过。
+3. **打包必挂**：Node v22 的 `fs.cpSync(recursive)` 在**非 ASCII 路径**下
+   进程硬崩（0xC0000409，无异常、stderr 空），表现为
+   `beforeBuildCommand failed with exit code -1073740791`。
+   改手写同步递归拷贝。
+
+### 死路（别再走）
+- **不要**把 server 侧 `projectInitService` / `bundledPluginService` 的
+  `await fs.cp` 一起改掉。实测：**异步 `fs.promises.cp` 在中文路径下正常**，
+  只有同步的 `cpSync` 会崩。一度以为「初始化 Agent 模板」会崩 sidecar，已证伪。
+- pnpm 装包走本机代理 7897 时大量并发 TLS 被打断（ECONNRESET），
+  而 curl 单发 200。解法：打包前 unset 代理 + `npm_config_network_concurrency=4`。
+- 后台跑打包时**别用 `| tail` 收尾**——管道会把退出码换成 tail 的 0，
+  失败会被报成成功。本轮因此误判过一次。
+
+### v0.1.56 产物
+`release/updates/AgentFlow_0.1.56_x64-setup.exe`，115,643,133 字节，
+`latest.json` 已生成，验签通过（alg=ED, keyid=19d9f96e097fbd06）。
+产物内容核对：`新建文件夹`/`guessed`/`dirname` 均命中 dist，
+U+2500 正则在包内；残留的 `lastIndexOf` 是取扩展名与 dirname 自身实现，非回归。
+
+### 下一步
+1. **装机由用户执行** —— 本会话跑在 Agent Flow sidecar 里（PORT=59611），
+   装新版 = 自断会话。
+2. 发布等用户拍板：
+   `gh release create v0.1.56 --repo LYGOLANG/fufan-cc-flow-releases --title "v0.1.56" --notes-file <说明文件> "release/updates/AgentFlow_0.1.56_x64-setup.exe" "release/updates/latest.json"`
+   线上最新仍是 v0.1.53，说明要按「对外净差异」把 0.1.54–0.1.56 一起写。
+3. **工作区仍有另一会话 2026-09-04 留下的未提交 fable 适配**
+   （`modelCapabilities.ts`、`modelFallback.ts`、`ModelSelector`、`configStore`、
+   `chatHandler` 等，17 天未动、typecheck/测试均绿）。**它已被打进 v0.1.56 产物**
+   （打包用的是工作区而非 HEAD）。我没提交它——要么请用户确认后提交，
+   要么下次打包前先决定去留。
+
+---
+
+## 上一段任务（2026-09-03 晚）
 
 三批改动已全部提交推送，v0.1.55 打包中。
 
