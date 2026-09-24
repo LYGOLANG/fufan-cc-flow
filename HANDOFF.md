@@ -2,7 +2,42 @@
 
 状态: 进行中
 
-## 当前任务（2026-09-21）
+## 当前任务（2026-09-24）
+
+v0.1.57 已打包（**未安装、未发布**），带三批改动：
+
+1. 随包模板整体升级（`6e844b6`）：产品经理那套换成 ep-112 的终态模型
+   六件套 grill/design/plan/build/review/release，取代原来的
+   product-spec-builder 等 8 个技能；帮手换成 reviewer + scout；保留
+   Agent Flow 自己的 evolution-engine/goal-creator/skill-builder。
+   已实测：默认模型下 `/grill` 端到端正常（原话建档、五层漏斗、具名
+   拷问手法、拒绝模糊答案），换 `--model haiku` 会静默漏掉"先建档
+   再问"这一步——弱模型对这套重指令遵循的人设吃不住，已写进项目记忆
+   （mem-18d8241c60452500），未做代码层面的应对。
+2. 右侧栏标签栏修复（`60c9318` + `e07d131`）：顶部三标签撑满、
+   AgentPanel 六个子标签+ExtensionsPanel 五个+TeamPanel 三个统一改成
+   "原宽度不折行、装不下横向滚动"，全应用排查过用同款 tab 样式的地方
+   全部覆盖，Sidebar（纵向导航）和 CreateSkillModal（固定宽度弹窗）
+   确认不是同类问题，未动。
+
+### 打包产物
+`release/updates/AgentFlow_0.1.57_x64-setup.exe`，117,830,923 字节，
+验签通过（alg=ED, keyid=19d9f96e097fbd06）。内容核对：server-dist 里
+`.claude/skills` 是新 9 个技能目录、旧技能已清空；前端 bundle 命中新增
+的 `whitespace-nowrap`。
+
+### 下一步
+1. **装机由用户执行** —— 本会话跑在 Agent Flow sidecar 里，装新版会
+   自断会话。
+2. 发布等用户拍板：
+   `gh release create v0.1.57 --repo LYGOLANG/fufan-cc-flow-releases --title "v0.1.57" --notes-file <说明文件> "release/updates/AgentFlow_0.1.57_x64-setup.exe" "release/updates/latest.json"`
+   上一版线上是 v0.1.56，发布说明按对外净差异写。
+3. 还没做、用户提过但未拍板的：实测一遍 `/design`（自带出厂零件那套，
+   目前只测过 grill）；在界面上提示 haiku 用于这套人设时的降级风险。
+
+---
+
+## 上一段任务（2026-09-21）
 
 用户报两个问题，都已修复并打包 v0.1.56（**未安装、未发布**）。
 
