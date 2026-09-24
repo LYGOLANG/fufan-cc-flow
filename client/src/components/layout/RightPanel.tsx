@@ -104,14 +104,13 @@ export default function RightPanel() {
         {/* ── Tab bar (hidden when terminal is maximized) ── */}
         {!termMaximized && (
           <div className="flex items-center gap-0 px-3 border-b border-white/5 flex-shrink-0 pt-1">
-            {/* 标签保持原始宽度不换行;面板窄到挤不下时(约三个可见)横向滚动,
-                而不是把每个标签压瘦到文字竖排 */}
-            <div className="flex items-center flex-1 min-w-0 overflow-x-auto -mb-px">
+            {/* 只有三个标签,不会挤到装不下,撑满整条栏比左对齐留一截空白好看 */}
+            <div className="flex items-center flex-1 min-w-0 -mb-px">
               {TABS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setRightSidebarTab(id)}
-                  className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap flex-shrink-0 transition-all border-b-2 ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${
                     rightSidebarTab === id
                       ? "tab-active"
                       : "tab-inactive"

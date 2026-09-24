@@ -34,13 +34,16 @@ export default function AgentPanel() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Sub-tab bar */}
-      <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-3">
+      {/* Sub-tab bar
+          六个标签比三个标签的顶栏(RightPanel)挤,面板窄时不能靠压瘦文字撑过去
+          ——"Agent 管理"四个字被压到两行,难看且点不准。做法与顶栏相反:
+          标签保持原始宽度不换行,装不下就横向滚动,不压瘦、不折行。 */}
+      <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-3 overflow-x-auto">
         {AGENT_TABS.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`px-3 py-2 text-xs font-medium transition-all border-b-2 -mb-px flex items-center gap-1 ${
+            className={`px-3 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all border-b-2 -mb-px flex items-center gap-1 ${
               tab === id ? "tab-active" : "tab-inactive"
             }`}
           >
