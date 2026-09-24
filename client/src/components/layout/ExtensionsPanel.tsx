@@ -28,13 +28,15 @@ export default function ExtensionsPanel() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Sub-tab bar — compact with icons */}
-      <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-2">
+      {/* Sub-tab bar — compact with icons
+          五个标签 + 图标按算下来约 275px,右侧栏最窄能拖到 300px,离临界点
+          很近——不能靠压瘦文字硬撑,装不下就横向滚动(与 AgentPanel 同款修法)。 */}
+      <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-2 overflow-x-auto">
         {EXT_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-1 px-2 py-2 text-xs font-medium transition-all border-b-2 -mb-px ${
+            className={`flex items-center gap-1 px-2 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all border-b-2 -mb-px ${
               tab === id ? "tab-active" : "tab-inactive"
             }`}
           >

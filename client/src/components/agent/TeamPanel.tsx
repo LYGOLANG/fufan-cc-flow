@@ -131,13 +131,16 @@ export default function TeamPanel() {
           </button>
         </div>
 
-        {/* Detail sub-tabs */}
-        <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-2">
+        {/* Detail sub-tabs
+            只有三个短标签,目前不会挤到装不下;仍然加上防护,与本应用其余
+            标签栏(RightPanel/AgentPanel/ExtensionsPanel)同一套写法一致:
+            标签本身不折行,容器装不下就横向滚动,不留将来再踩同一个坑的缺口。 */}
+        <div className="flex gap-0 border-b border-white/5 flex-shrink-0 px-2 overflow-x-auto">
           {DETAIL_TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setDetailTab(id)}
-              className={`flex items-center gap-1 px-2.5 py-2 text-xs font-medium transition-all border-b-2 -mb-px ${
+              className={`flex items-center gap-1 px-2.5 py-2 text-xs font-medium whitespace-nowrap flex-shrink-0 transition-all border-b-2 -mb-px ${
                 detailTab === id ? "tab-active" : "tab-inactive"
               }`}
             >
