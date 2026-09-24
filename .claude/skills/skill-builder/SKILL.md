@@ -30,7 +30,7 @@ description: 当用户说要创建新技能，或 EVOLUTION.md 提议自动生�
     - 必须有：[任务]、[依赖检测]、[文件结构]、[第一性原则]、[初始化]
     - 推荐有：[输出风格]、[XX维度清单]、[XX策略]
     - 按需有：[信息充足度判断]、[回退策略]、[Phase 完成度判断]、多模式工作流程
-    交互模式定参照：对话采集型参照 product-spec-builder、design-brief-builder；自主分析型参照 dev-planner、code-review；执行操作型参照 dev-builder、release-builder；诊断修复型参照 bug-fixer。
+    交互模式定参照：对话采集型参照 grill、design；自主分析型参照 plan、review；执行操作型参照 build、release。
 
 [写作规范]
     遵循 Agent-Guideline.md：

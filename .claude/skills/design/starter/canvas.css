@@ -1,0 +1,67 @@
+/* 画布类零件：画布、浮动工具条、属性面板、图层树、选中框与手柄。主任务区不可压缩。 */
+.cv-stage { position: relative; background: var(--bg); border-radius: var(--r-island); overflow: hidden; min-height: 480px;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 24px 24px; }
+.cv-stage.dots { background-image: radial-gradient(var(--line-2) 1px, transparent 1px); background-size: 20px 20px; }
+.cv-zoom { position: absolute; right: 16px; bottom: 16px; display: inline-flex; align-items: center; gap: 2px; height: 28px; padding: 3px; border-radius: var(--r-pill); background: var(--island); box-shadow: var(--shadow-pop); }
+.cv-zoom button { height: 22px; min-width: 22px; padding: 0 6px; border: 0; background: transparent; color: var(--t2); border-radius: var(--r-pill); font: 500 12px/1 var(--font); cursor: pointer; }
+.cv-zoom button:hover { background: var(--island-2); color: var(--text); }
+.cv-zoom .v { font-family: var(--mono); font-size: 11px; color: var(--text); padding: 0 6px; }
+.cv-tools { position: absolute; left: 16px; top: 16px; display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: var(--r-panel); background: var(--island); box-shadow: var(--shadow-pop); }
+.cv-tools.h { flex-direction: row; top: auto; bottom: 16px; left: 50%; transform: translateX(-50%); }
+.cv-tools button { width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent; color: var(--t2); display: grid; place-items: center; cursor: pointer; position: relative; }
+.cv-tools button:hover, .cv-tools button.is-hover { background: var(--island-2); color: var(--text); }
+.cv-tools button.on { background: var(--ink); color: var(--ink-fg); }
+.cv-tools button svg { width: 16px; height: 16px; }
+.cv-tools .k { position: absolute; right: 3px; bottom: 2px; font: 500 9px/1 var(--mono); color: inherit; opacity: 0.7; }
+.cv-tools button:active { transform: scale(0.94); }
+.cv-tools button:disabled { opacity: 0.35; cursor: default; }
+.cv-tools .sep { width: 26px; height: 1px; background: var(--line); margin: 3px auto; }
+.cv-tools.h .sep { width: 1px; height: 26px; margin: auto 3px; }
+.cv-panel { position: absolute; right: 16px; top: 16px; width: 240px; max-height: calc(100% - 72px); overflow: auto; border-radius: var(--r-panel); background: var(--island); box-shadow: var(--shadow-pop); padding: 6px 0; }
+.cv-panel .ph { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 6px; font-size: var(--fs-xs); font-weight: 500; color: var(--t3); }
+.cv-panel .ph .caret { color: var(--t3); font-size: 10px; }
+.cv-panel .pr { display: grid; grid-template-columns: 56px 1fr 1fr; gap: 6px; align-items: center; padding: 3px 14px; font-size: var(--fs-xs); color: var(--t2); }
+.cv-panel .pr.one { grid-template-columns: 56px 1fr; }
+.cv-panel .pv { height: 26px; display: flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: var(--r-xs); background: var(--island-2); color: var(--text); font-family: var(--mono); font-size: 11px; border: 1px solid transparent; min-width: 0; }
+.cv-panel input.pv { width: 100%; } .cv-panel .pv:hover { border-color: var(--line-2); } .cv-panel .pv:focus-within, .cv-panel input.pv:focus { border-color: var(--acc); outline: none; }
+.cv-panel .ph { cursor: pointer; width: 100%; } .cv-panel .ph:hover { color: var(--text); }
+.cv-panel .pv .u { color: var(--t3); margin-left: auto; font-size: 10px; }
+.cv-panel .pv.color i { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.cv-panel .sep { height: 1px; background: var(--line); margin: 6px 0; }
+.cv-layers { position: absolute; left: 16px; bottom: 16px; width: 220px; border-radius: var(--r-panel); background: var(--island); box-shadow: var(--shadow-pop); padding: 6px 0; }
+.cv-layers .ph { padding: 8px 14px 6px; font-size: var(--fs-xs); font-weight: 500; color: var(--t3); }
+.cv-layers .ly { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px 0 14px; font-size: var(--fs-xs); color: var(--t2); }
+.cv-layers .ly { width: 100%; cursor: pointer; }
+.cv-layers .ly:is(:hover, .is-hover) { background: var(--island-2); color: var(--text); }
+.cv-layers .ly:is(.on, [aria-selected="true"]) { background: var(--acc-soft); color: var(--text); }
+.cv-layers .ly.hidden { color: var(--t3); opacity: 0.6; } .cv-layers .ly.locked .eye { opacity: 1; }
+.cv-layers .ly.child { padding-left: 30px; }
+.cv-layers .ly svg { width: 12px; height: 12px; flex: none; }
+.cv-layers .ly .eye { margin-left: auto; color: var(--t3); opacity: 0; }
+.cv-layers .ly:is(:hover, .is-hover, :focus-within) .eye, .cv-layers .ly:is(.on, [aria-selected="true"]) .eye { opacity: 1; }
+.cv-obj { position: absolute; border-radius: 10px; background: var(--island-2); }
+.cv-obj:hover { outline: 1px solid color-mix(in srgb, var(--acc) 50%, transparent); }
+.cv-obj:is(.sel, [aria-selected="true"]) { outline: 1.5px solid var(--acc); }
+.cv-obj.locked { outline: 1px dashed var(--t3); }
+.cv-marquee { position: absolute; border: 1px solid var(--acc); background: var(--acc-soft); border-radius: 2px; pointer-events: none; }
+.cv-obj.sel .hd { position: absolute; width: 8px; height: 8px; background: var(--island); border: 1.5px solid var(--acc); border-radius: 2px; }
+.cv-obj .hd::after { content: ""; position: absolute; inset: -6px; }   /* 手柄视觉 8，点击范围 20。八个方向按罗盘叫 nw / n / ne / w / e / sw / s / se，和光标名对得上，也不和别的零件包撞名（tl 曾和剪辑包的时间线外框 .tl 撞过） */
+.cv-obj .hd.nw, .cv-obj .hd.se { cursor: nwse-resize; } .cv-obj .hd.ne, .cv-obj .hd.sw { cursor: nesw-resize; } .cv-obj .hd.n, .cv-obj .hd.s { cursor: ns-resize; } .cv-obj .hd.w, .cv-obj .hd.e { cursor: ew-resize; }
+.cv-obj .hd.nw { left: -5px; top: -5px; } .cv-obj .hd.ne { right: -5px; top: -5px; } .cv-obj .hd.sw { left: -5px; bottom: -5px; } .cv-obj .hd.se { right: -5px; bottom: -5px; }
+.cv-obj .hd.n { left: calc(50% - 4px); top: -5px; } .cv-obj .hd.s { left: calc(50% - 4px); bottom: -5px; } .cv-obj .hd.w { left: -5px; top: calc(50% - 4px); } .cv-obj .hd.e { right: -5px; top: calc(50% - 4px); }
+.cv-obj .size { position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); padding: 2px 6px; border-radius: 4px; background: var(--acc); color: var(--acc-fg); font: 500 10px/14px var(--mono); white-space: nowrap; }
+.cv-guide { position: absolute; background: var(--bad); }
+.cv-guide.v { width: 1px; top: 0; bottom: 0; } .cv-guide.h { height: 1px; left: 0; right: 0; }
+.cv-ctx { position: absolute; min-width: 180px; padding: 6px; border-radius: var(--r-panel); background: var(--island); box-shadow: var(--shadow-pop); }
+.cv-ctx .mi { display: flex; justify-content: space-between; align-items: center; height: 30px; padding: 0 10px; border-radius: var(--r-xs); font-size: var(--fs-xs); cursor: pointer; }
+.cv-ctx .mi { width: 100%; } .cv-ctx .mi:is(:hover, .is-hover, :focus-visible) { background: var(--island-2); outline: none; } .cv-ctx .mi.bad { color: var(--bad); }
+.cv-ctx .mi .k { font-family: var(--mono); font-size: 10px; color: var(--t3); }
+.cv-ctx .sep { height: 1px; background: var(--line); margin: 6px 0; }
+.cv-keys { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); display: flex; gap: 12px; padding: 6px 12px; border-radius: var(--r-pill); background: var(--island); color: var(--t3); font-size: 11px; box-shadow: var(--shadow-pop); white-space: nowrap; }
+.cv-keys .kbd { margin-right: 2px; }
+.cv-cursor { position: absolute; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--ok); color: var(--ok-fg); font: 500 10px/14px var(--font); pointer-events: none; }
+.cv-cursor::before { content: ""; position: absolute; left: -6px; top: -6px; width: 0; height: 0; border-left: 6px solid var(--ok); border-bottom: 8px solid transparent; }
+.cv-stage.is-panning { cursor: grab; } .cv-stage.is-panning:active { cursor: grabbing; }
+.cv-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; color: var(--t3); font-size: var(--fs-s); text-align: center; pointer-events: none; }
+@media (hover: none) { .cv-layers .ly .eye { opacity: 1; } }
+@media (max-width: 960px) { .cv-panel, .cv-layers { display: none; } .cv-panel.is-open { display: block; left: 16px; right: 16px; width: auto; top: auto; bottom: 72px; max-height: 50%; } .cv-tools { flex-direction: row; top: auto; bottom: 16px; left: 50%; transform: translateX(-50%); } .cv-tools .sep { width: 1px; height: 26px; margin: auto 3px; } .cv-keys { display: none; } }

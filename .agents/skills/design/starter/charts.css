@@ -1,0 +1,46 @@
+/* 图表零件：柱、折线、热力、环形进度、占比条。先定形再定色：单序列一种色相，两个序列才有图例。 */
+.chart { background: var(--island); border-radius: var(--r-island); padding: var(--s-5); }
+.chart .ch { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--s-4); }
+.chart .ch .t { font-weight: 600; } .chart .ch .m { font-size: var(--fs-xs); color: var(--t3); font-family: var(--mono); }
+.chart svg { display: block; width: 100%; height: auto; }
+.chart .grid-l { stroke: var(--line); stroke-width: 1; }
+.chart .axis-t { fill: var(--t3); font: 11px var(--mono); }
+.chart .bar { fill: var(--acc); transition: fill var(--dur) var(--ease); } .chart .bar.dim { fill: var(--island-3); } .chart .bar.sel { fill: var(--text); }
+.chart.interactive .bar { cursor: pointer; } .chart.interactive .bar:hover { fill: var(--text); }
+.chart .target { stroke: var(--warn); stroke-width: 1; stroke-dasharray: 4 3; } .chart .target-t { fill: var(--warn); font: 10px var(--mono); }
+.chart .line { fill: none; stroke: var(--acc); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .line2 { fill: none; stroke: var(--t3); stroke-width: 2; stroke-dasharray: 4 4; }
+.chart .area { fill: var(--acc-soft); }
+.chart .pt { fill: var(--island); stroke: var(--acc); stroke-width: 2; }
+.chart .cursor { stroke: var(--line-2); stroke-dasharray: 3 3; }
+.legend { display: flex; gap: var(--s-4); font-size: var(--fs-xs); color: var(--t2); margin-top: var(--s-3); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.chart-tip { display: inline-block; padding: 6px 10px; border-radius: 8px; background: var(--ink); color: var(--ink-fg); font-size: 12px; line-height: 18px; }
+.chart-tip .k { opacity: .6; }
+.heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; gap: 3px; justify-content: start; overflow-x: auto; }
+.heat i { width: 11px; height: 11px; border-radius: 2px; background: var(--island-3); }
+.heat i.l1 { background: color-mix(in srgb, var(--acc) 30%, var(--island-3)); } .heat i.l2 { background: color-mix(in srgb, var(--acc) 55%, var(--island-3)); } .heat i.l3 { background: color-mix(in srgb, var(--acc) 80%, var(--island-3)); } .heat i.l4 { background: var(--acc); }
+.heat-legend { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--t3); margin-top: 8px; }
+.heat-legend i { width: 11px; height: 11px; border-radius: 2px; background: var(--island-3); }
+.share { display: flex; flex-direction: column; gap: 10px; }
+.share .r { display: grid; grid-template-columns: minmax(0, 1fr) 72px 56px; gap: var(--s-3); align-items: center; font-size: var(--fs-s); }
+.share .r .b { height: 4px; border-radius: 2px; background: var(--island-3); position: relative; margin-top: 6px; }
+.share .r .b i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--acc); }
+.share .r .v { font-family: var(--mono); font-size: 12px; text-align: right; }
+.share .r .p { font-family: var(--mono); font-size: 11px; color: var(--t3); text-align: right; }
+.bignum { font-family: var(--mono); font-size: 40px; line-height: 46px; font-weight: 600; letter-spacing: -0.02em; }
+.bignum small { font-size: 14px; color: var(--t3); font-weight: 400; letter-spacing: 0; margin-left: 6px; }
+.spark { width: 84px; height: 26px; }
+.spark path { fill: none; stroke: var(--acc); stroke-width: 1.5; } .spark .f { fill: var(--acc-soft); stroke: none; }
+.stat { background: var(--island); border-radius: var(--r-island); padding: 20px 22px; }
+.stat .k { font-size: var(--fs-xs); color: var(--t3); margin-bottom: 8px; }
+.ring.lg { width: 56px; height: 56px; --ring: var(--acc); background: conic-gradient(var(--ring) calc(var(--p, 40) * 1%), var(--island-3) 0); position: relative; }
+.ring.lg::after { width: 44px; height: 44px; }
+.ring.lg b { position: absolute; inset: 0; display: grid; place-items: center; font: 600 13px/1 var(--mono); z-index: 1; }
+.up { color: var(--ok); } .down { color: var(--bad); }
+.chart .empty-c { min-height: 140px; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--t3); font-size: var(--fs-s); }
+.chart .empty-c .pill { margin-top: 8px; }
+.legend button, .legend .lg { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; }
+.legend .off { opacity: 0.4; text-decoration: line-through; }
+.heat i { cursor: default; } .heat i:hover { outline: 1px solid var(--text); }
+@media (max-width: 720px) { .bignum { font-size: 32px; line-height: 38px; } .chart { padding: var(--s-4); } }

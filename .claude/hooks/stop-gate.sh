@@ -17,7 +17,7 @@ case "$STATE" in
     exit 0
     ;;
   *)
-    echo '{"decision": "block", "reason": "代码已修改但未通过 code review。请派发 code-reviewer 两阶段审查，通过后写入 clean。用 /goal 自驱时，把 code-reviewer 通过写进 /goal 完成条件。"}'
+    echo '{"decision": "block", "reason": "代码已修改但还没复核。请用复核技能（review）派审查员（reviewer）审一遍，通过后写入 clean。用自驱目标时，把复核通过写进完成条件。"}'
     exit 0
     ;;
 esac

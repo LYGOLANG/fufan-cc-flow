@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI Kit · 基础 + Agent</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="base.css">
+<style>
+  /* 只有 Kit 页自己的排版 */
+  .kit { padding: 48px 64px 96px; max-width: 1240px; }
+  .kit-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 48px; }
+  .kit-toc { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--t2); margin-bottom: 64px; }
+  .kit-sec { margin-bottom: 72px; }
+  .kit-sec > h2 { font-size: 20px; line-height: 28px; font-weight: 600; margin-bottom: 4px; }
+  .kit-sec > p { color: var(--t2); font-size: 13px; margin-bottom: 24px; }
+  .kit-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 16px; }
+  .kit-row + .kit-row { margin-top: 4px; }
+  .lab { font-size: 11px; color: var(--t3); font-family: var(--mono); min-width: 72px; }
+  .sw { width: 96px; border-radius: 10px; overflow: hidden; }
+  .sw i { display: block; height: 56px; }
+  .sw b { display: block; font: 500 11px/16px var(--mono); color: var(--t2); padding: 6px 8px; background: var(--island); }
+  .box { background: var(--island); border-radius: 14px; padding: 20px 22px; }
+  .box.wide { width: 100%; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .demo-agent { width: 360px; background: var(--island); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 8px; }
+  .shell-mini { width: 100%; height: 220px; background: var(--bg); border-radius: 12px; border: 1px solid var(--line); display: grid; grid-template-columns: 24px 1fr 96px; gap: 6px; padding: 6px; }
+  .shell-mini i { display: block; background: var(--island); border-radius: 8px; }
+  .shell-mini .c { background: transparent; border: 1px dashed var(--line-2); display: grid; place-items: center; color: var(--t3); font-size: 11px; }
+  .kit .toast { position: static; transform: none; display: inline-flex; }
+  .note { position: fixed; right: 16px; bottom: 16px; z-index: 20; }
+  .kit .sheet { z-index: 0; }
+  @media (max-width: 720px) { .kit { padding: 24px 16px 96px; } .kit-top { flex-direction: column; gap: 12px; } .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="kit">
+<div class="kit-top"><div><h1 class="title">UI Kit · 基础 + Agent</h1><div class="s t2">浮岛。每个零件、每种变体、每个状态。值全在 tokens.css，零件全在 base.css。</div></div><button class="pill" id="theme">切换深浅</button></div>
+<div class="kit-toc"><a href="#c">颜色</a><a href="#t">字</a><a href="#s">间距与圆角</a><a href="#b">按钮</a><a href="#i">输入</a><a href="#f">表单行</a><a href="#g">开关与勾选</a><a href="#p">分段 · 筛选 · 徽标</a><a href="#k">卡片与统计块</a><a href="#r">列表与表格</a><a href="#e">空状态 · 加载 · 进度</a><a href="#o">弹层</a><a href="#n">通知 · 分页 · 折叠 · 步骤</a><a href="#h">页头与壳</a><a href="#a">Agent 零件</a><a href="#x">交互约定</a></div>
+
+<section class="kit-sec" id="c"><h2>颜色</h2><p>面靠明度分三层；字色三级；一个强调色；状态三色。彩色只出现在状态和强调上。</p>
+<div class="kit-row"><div class="sw"><i style="background:var(--bg)"></i><b>--bg 底</b></div><div class="sw"><i style="background:var(--island)"></i><b>--island 岛</b></div><div class="sw"><i style="background:var(--island-2)"></i><b>--island-2</b></div><div class="sw"><i style="background:var(--island-3)"></i><b>--island-3</b></div><div class="sw"><i style="background:var(--line)"></i><b>--line</b></div><div class="sw"><i style="background:var(--line-2)"></i><b>--line-2</b></div></div>
+<div class="kit-row"><div class="sw"><i style="background:var(--text)"></i><b>--text</b></div><div class="sw"><i style="background:var(--t2)"></i><b>--t2</b></div><div class="sw"><i style="background:var(--t3)"></i><b>--t3</b></div><div class="sw"><i style="background:var(--acc)"></i><b>--acc</b></div><div class="sw"><i style="background:var(--ok)"></i><b>--ok</b></div><div class="sw"><i style="background:var(--warn)"></i><b>--warn</b></div><div class="sw"><i style="background:var(--bad)"></i><b>--bad</b></div></div>
+</section>
+
+<section class="kit-sec" id="t"><h2>字</h2><p>六档，每档有用途；标题靠字重不靠放大；数字和时间等宽。</p>
+<div class="box wide">
+<div class="kit-row"><span class="lab">title 20/28</span><span class="title">区块大标题 Section title</span></div>
+<div class="kit-row"><span class="lab">h 16/24</span><span class="h">卡片与行标题 Card title</span></div>
+<div class="kit-row"><span class="lab">read 17/30</span><span class="read">长文阅读用的正文，行高 1.7 以上，一行 40 到 50 个汉字。</span></div>
+<div class="kit-row"><span class="lab">body 14/22</span><span>正文和控件里的文字 Body text</span></div>
+<div class="kit-row"><span class="lab">s 13/20</span><span class="s t2">说明文字 Secondary</span></div>
+<div class="kit-row"><span class="lab">xs 12/18</span><span class="xs t3">元信息 Meta</span></div>
+<div class="kit-row"><span class="lab">mono 11</span><span class="mono t3">2:13:07 · 13.2 MB · 2026-09-15</span></div>
+</div></section>
+
+<section class="kit-sec" id="s"><h2>间距与圆角</h2><p>间距只用阶梯里的数；圆角四档：岛 18、面板 14、控件 10、小件 6；胶囊只给按钮和徽标。</p>
+<div class="kit-row"><span class="lab">间距</span><i style="width:4px;height:24px;background:var(--acc)"></i><i style="width:8px;height:24px;background:var(--acc)"></i><i style="width:12px;height:24px;background:var(--acc)"></i><i style="width:16px;height:24px;background:var(--acc)"></i><i style="width:24px;height:24px;background:var(--acc)"></i><i style="width:32px;height:24px;background:var(--acc)"></i><i style="width:48px;height:24px;background:var(--acc)"></i><i style="width:64px;height:24px;background:var(--acc)"></i><span class="mono t3">4 8 12 16 24 32 48 64</span></div>
+<div class="kit-row"><span class="lab">圆角</span><i style="width:56px;height:56px;background:var(--island-2);border-radius:18px"></i><i style="width:56px;height:56px;background:var(--island-2);border-radius:14px"></i><i style="width:56px;height:56px;background:var(--island-2);border-radius:10px"></i><i style="width:56px;height:56px;background:var(--island-2);border-radius:6px"></i><i style="width:96px;height:32px;background:var(--island-2);border-radius:999px"></i><span class="mono t3">18 14 10 6 胶囊</span></div>
+</section>
+
+<section class="kit-sec" id="b"><h2>按钮</h2><p>实底一屏一个；描边是常规；软底表示"开着"；危险红字描边；文字动作不当按钮。三个高度 32 / 28 / 24。</p>
+<div class="kit-row"><span class="lab">实底</span><button class="pill on lg">开始剪辑</button><button class="pill on">剪这期</button><button class="pill on sm">听一遍</button><button class="pill on is-hover">悬停</button><button class="pill on is-loading">加载中</button><button class="pill on" disabled>禁用</button><button class="pill on is-focus">键盘焦点</button></div>
+<div class="kit-row"><span class="lab">描边</span><button class="pill lg">导入文件夹</button><button class="pill">先听</button><button class="pill sm">在 Finder 中显示</button><button class="pill is-hover">悬停</button><button class="pill is-loading">加载中</button><button class="pill" disabled>禁用</button></div>
+<div class="kit-row"><span class="lab">软底 / 危险</span><button class="pill soft">预览 · 开着</button><button class="pill danger">删除这期</button><button class="pill danger is-hover">悬停</button><button class="pill sm danger">弃用</button></div>
+<div class="kit-row"><span class="lab">图标</span><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 20l16-16M4 4l16 16"/></svg></button><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button><button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></button><button class="icon-btn" aria-pressed="true" aria-label="开着"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 12h16"/></svg></button><button class="icon-btn" disabled aria-label="禁用"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button><span class="s t3">图标按钮必带 aria-label 和悬停提示；按下一律缩 3%</span><span class="tip">删掉这期</span></div>
+<div class="kit-row"><span class="lab">文字</span><button class="link">为什么 ↓</button><a class="link" href="#">打开原文 ↗</a><span class="s t3">只用于行内展开和外链</span></div>
+<div class="kit-row"><span class="lab">加载圈</span><span class="spin"></span><span class="spin lg"></span><span class="s t3">单独等一小块内容时用；整块用骨架</span></div>
+</section>
+
+<section class="kit-sec" id="i"><h2>输入</h2><p>岛里升一级的底，不描边；聚焦是强调环；出错是红环加一句说明。</p>
+<div class="two">
+<div class="box"><div class="kit-row"><input class="input" placeholder="默认 · 占位文字"></div><div class="kit-row"><input class="input is-focus" value="聚焦"></div><div class="kit-row"><input class="input is-error" value="出错的值"></div><div class="err" style="margin:-8px 0 12px">这个地址打不开，检查一下有没有少字</div><div class="kit-row"><input class="input" value="禁用" disabled></div><div class="kit-row"><input class="input" value="只读的值，看着像文字" readonly></div><div class="kit-row"><input class="input short" value="10"><span class="hint">短数字 88 宽，单位跟在后面</span></div></div>
+<div class="box"><div class="kit-row"><select class="select"><option>下拉 · 超过 1.5 秒的</option></select></div><div class="kit-row"><textarea class="textarea" placeholder="多行 · 说点什么"></textarea></div><div class="kit-row"><div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input placeholder="搜标题、摘要"></div><span class="kbd">⌘K</span></div><div class="kit-row"><div class="stepper"><button>−</button><input value="3"><button>+</button></div><input type="range" class="slider" value="60"><span class="s t3">步进 · 滑块</span></div></div>
+</div></section>
+
+<section class="kit-sec" id="f"><h2>表单行</h2><p>三列：标签 160、控件、说明紧跟控件。行高 48 不画线，长说明收进问号。窄了标签上移。</p>
+<div class="box wide">
+<div class="field"><label>成片时长</label><input class="input short" value="10"><span class="hint">分钟，按内容多少上下浮动</span></div>
+<div class="field"><label>去掉的停顿</label><select class="select"><option>超过 1.5 秒的</option></select><span></span></div>
+<div class="field"><label>片头片尾</label><button class="switch" role="switch" aria-checked="true" aria-label="加片头片尾"></button><span class="hint">用 samples 里的那一版</span></div>
+<div class="field"><label>输出 <span class="icon-btn" style="width:18px;height:18px;vertical-align:middle">?</span></label><div class="seg"><button class="on">音频</button><button>视频</button><button>两个都要</button></div><span></span></div>
+</div></section>
+
+<section class="kit-sec" id="g"><h2>开关与勾选</h2><p>都是 button，状态写在 aria-checked 上，样式跟着属性走。开关是"立刻生效"的设置，勾选是"提交时才生效"的选择。</p>
+<div class="kit-row"><span class="lab">开关</span><button class="switch" role="switch" aria-checked="false" aria-label="关"></button><button class="switch" role="switch" aria-checked="true" aria-label="开"></button><button class="switch" role="switch" aria-checked="true" aria-label="禁用" disabled></button><label class="choice"><button class="switch" role="switch" aria-checked="true" aria-label="带文字"></button>开着就自动保存</label></div>
+<div class="kit-row"><span class="lab">勾选</span><button class="check" role="checkbox" aria-checked="false" aria-label="未选"></button><button class="check" role="checkbox" aria-checked="true" aria-label="已选"></button><button class="check" role="checkbox" aria-checked="mixed" aria-label="部分"></button><button class="check" role="checkbox" aria-checked="false" aria-label="禁用" disabled></button><label class="choice"><button class="check" role="checkbox" aria-checked="true"></button>把字幕一起导出</label></div>
+<div class="kit-row"><span class="lab">单选</span><button class="radio" role="radio" aria-checked="true" aria-label="选中"></button><button class="radio" role="radio" aria-checked="false" aria-label="未选"></button><span class="s t3">两到四个互斥项用单选；再多用下拉</span></div>
+</section>
+
+<section class="kit-sec" id="p"><h2>分段 · 筛选片 · 徽标 · 标签 · 状态点</h2>
+<div class="kit-row"><span class="lab">分段</span><div class="seg" role="group"><button aria-pressed="true">按条目</button><button>榜单</button><button>主题</button></div><div class="seg"><button class="on">精选</button><button>全部</button><button disabled>归档</button></div></div>
+<div class="kit-row"><span class="lab">筛选片</span><button class="chip" aria-pressed="true">全部方向</button><button class="chip">头条与重要 ▾</button><button class="chip">全部信源 ▾</button><button class="chip">今天 <span class="x">×</span></button><button class="chip" disabled>禁用</button></div>
+<div class="kit-row"><span class="lab">徽标</span><span class="badge ok">已识别</span><span class="badge warn">要处理</span><span class="badge bad">失败</span><span class="badge acc">新</span><span class="badge neutral">草稿</span></div>
+<div class="kit-row"><span class="lab">标签</span><span class="tag">音频</span><span class="tag">视频</span><span class="tag">论文</span><span class="kbd">⌘S</span><span class="kbd">Esc</span></div>
+<div class="kit-row"><span class="lab">状态点</span><span class="dot acc"></span><span class="dot ok"></span><span class="dot warn"></span><span class="dot bad"></span><span class="dot"></span><span class="dot hollow"></span><span class="dot acc live"></span><span class="s t3">强调 · 成功 · 警告 · 失败 · 一般 · 跳过 · 进行中</span></div>
+<div class="kit-row"><span class="lab">头像</span><span class="avatar">废</span><span class="avatar">C</span></div>
+</section>
+
+<section class="kit-sec" id="k"><h2>卡片与统计块</h2><p>岛色，无边框无投影。三卡一行，窄了自动两列、一列。</p>
+<div class="cards">
+<div class="card"><div class="k">播客 · 对谈</div><div class="t">第 48 期 · 和一位独立开发者聊本地模型</div><div class="d">47 个文件，2 小时 13 分。今早 08:40 导入，全部识别完。</div><div class="f"><span class="m">2:13:07</span><button class="pill on">剪这期</button><button class="pill">先听</button></div></div>
+<div class="tile"><div class="k">待剪</div><div class="v">3</div><div class="m">最早 9 月 12 日</div></div>
+<div class="tile"><div class="k">本月费用</div><div class="v">$4.12</div><div class="m">预算 $20 · 已用 21%</div><div class="progress" style="margin-top:12px"><i style="width:21%"></i></div></div>
+</div></section>
+
+<section class="kit-sec" id="r"><h2>列表与表格</h2><p>列表靠行高和一根淡线，悬停才出动作；两栏对照时左列是组名。表格只在多列要对齐时用。</p>
+<div class="groups">
+<div class="group"><div class="g">已导出</div><div class="c">3</div></div>
+<div class="rows">
+<div class="row"><span class="dot acc"></span><div><div class="tt">第 45 期 · 为什么我放弃了云剪辑</div><div class="ss">音频 · 9:48 · 13.2 MB · 昨天</div></div><div class="rr"><button class="pill sm hover">在 Finder 中显示</button><span>已导出</span></div></div>
+<div class="row is-hover"><span class="dot acc"></span><div><div class="tt">第 44 期 · 一个人的播客工作流（悬停态）</div><div class="ss">视频 · 11:02 · 412 MB · 9 月 12 日</div></div><div class="rr"><button class="pill sm hover">在 Finder 中显示</button><span>已导出</span></div></div>
+<div class="row sel"><span class="dot warn"></span><div><div class="tt">第 42 期 · 一次失败的采访（选中态）</div><div class="ss">剪好了 10:15 · 等你听一遍</div></div><div class="rr"><span class="badge warn">待验收</span></div></div>
+</div></div>
+<div class="day" style="margin-top:24px">今天 · 9 月 15 日 · 星期一</div>
+<div class="rows"><div class="row"><span class="dot"></span><div><div class="tt">按天分组的列表，日期标题贴在正文区顶上</div><div class="ss">滚过去的行从它下面淡出</div></div><div class="rr">08:40</div></div></div>
+<div class="sentinel">加载更早的…</div>
+<div class="table-wrap" style="margin-top:24px"><table class="table"><thead><tr><th style="width:32px"><button class="check" role="checkbox" aria-checked="mixed" aria-label="全选"></button></th><th class="sort desc">期</th><th>格式</th><th class="sort num">时长</th><th class="num">大小</th><th></th></tr></thead><tbody>
+<tr><td><button class="check" role="checkbox" aria-checked="false"></button></td><td>第 45 期 · 为什么我放弃了云剪辑</td><td><span class="tag">音频</span></td><td class="num mono">09:48</td><td class="num mono">13.2 MB</td><td class="num"><button class="pill sm hover">在 Finder 中显示</button></td></tr>
+<tr class="is-hover"><td><button class="check" role="checkbox" aria-checked="false"></button></td><td>第 44 期 · 一个人的播客工作流（悬停态）</td><td><span class="tag">视频</span></td><td class="num mono">11:02</td><td class="num mono">412 MB</td><td class="num"><button class="pill sm hover">在 Finder 中显示</button></td></tr>
+<tr aria-selected="true"><td><button class="check" role="checkbox" aria-checked="true"></button></td><td>第 43 期 · 三个人的圆桌（选中态）</td><td><span class="tag">音频</span></td><td class="num mono">48:10</td><td class="num mono">66 MB</td><td class="num"><button class="pill sm hover">在 Finder 中显示</button></td></tr>
+</tbody></table></div>
+<div class="pager" style="margin-top:12px"><span>共 128 条</span><span class="sp"></span><button class="pg" disabled>‹</button><button class="pg" aria-current="page">1</button><button class="pg">2</button><button class="pg">3</button><span>…</span><button class="pg">13</button><button class="pg">›</button></div>
+</section>
+
+<section class="kit-sec" id="e"><h2>空状态 · 加载 · 进度</h2>
+<div class="two">
+<div class="box"><div class="empty"><div class="h">还没有素材</div><p>把录好的文件夹拖进来，这里就会列出每一期。</p><button class="pill on">导入文件夹</button></div><div class="empty bad" style="padding-top:0"><div class="h">加载不出来</div><p>网络断了，或者服务没起来。</p><button class="pill">重试</button></div></div>
+<div class="box"><div class="kit-row"><span class="lab">骨架</span></div><div class="skeleton" style="width:60%;margin-bottom:10px"></div><div class="skeleton" style="width:90%;margin-bottom:10px"></div><div class="skeleton" style="width:40%;margin-bottom:24px"></div><div class="kit-row"><span class="lab">进度条</span><div class="progress" style="width:200px"><i style="width:45%"></i></div><div class="progress warn" style="width:120px"><i style="width:82%"></i></div><div class="progress busy" style="width:120px"><i></i></div><span class="s t3">不知道多久的用忙碌条</span></div><div class="kit-row"><span class="lab">环</span><span class="ring" style="--p:25%"></span><span class="ring" style="--p:70%"></span><span class="s t3">上下文用量这类</span></div></div>
+</div></section>
+
+<section class="kit-sec" id="o"><h2>弹层</h2><p>菜单贴触发元素下方 8；对话框居中带遮罩、只有不可逆操作才弹确认；底部面板给手机；提示条 4 秒。</p>
+<div class="kit-row" style="align-items:flex-start">
+<div class="menu" role="menu"><div class="mh">导出</div><button class="mi" role="menuitem">公众号版<span class="k">富文本</span></button><button class="mi is-hover" role="menuitem">Markdown<span class="k">⌘E</span></button><button class="mi" role="menuitem">复制纯文本<span class="k">⌘⇧C</span></button><button class="mi" role="menuitem" disabled>PDF<span class="k">还没做</span></button><div class="divider" style="margin:6px 0"></div><button class="mi bad" role="menuitem">删除这期</button></div>
+<div class="dialog" style="width:420px"><div class="title">删掉第 46 期？</div><div class="body">3 个文件会从素材库里移除，磁盘上的原文件不动。</div><div class="foot"><button class="pill">取消</button><button class="pill danger">删掉</button></div></div>
+</div>
+<div class="kit-row"><div class="toast" role="status">存了一个档，推上去了<button class="link">撤销</button></div><div class="toast bad" role="alert"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>推不上去，网络断了<button class="link">重试</button></div><span class="tip">悬停提示 · 400 毫秒后出现</span></div>
+<div class="kit-row" style="margin-top:16px;align-items:flex-start"><div class="sheet" style="position:static;width:360px;border-radius:18px 18px 0 0"><div class="grip"></div><div class="h" style="margin-bottom:8px">导出第 48 期</div><div class="s t2" style="margin-bottom:16px">手机上对话框和菜单都变成底部面板，从下面升起来。</div><div style="display:flex;gap:8px"><button class="pill" style="flex:1">取消</button><button class="pill on" style="flex:1">导出</button></div></div></div>
+</section>
+
+<section class="kit-sec" id="n"><h2>通知条 · 折叠 · 步骤</h2><p>通知条是页内的一句话，四种语气，有动作放右边；折叠用原生 details；多步流程只在真的分步（导入向导、首次设置）时用。</p>
+<div class="box wide" style="display:flex;flex-direction:column;gap:12px">
+<div class="notice"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><div class="b">还有 3 期没识别完，识别完会在这里提醒你。</div><div class="acts"><button class="icon-btn" aria-label="关闭">×</button></div></div>
+<div class="notice ok"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg><div class="b"><b>第 48 期导出完成。</b>412 MB，存在 ~/Clipper/导出。</div><div class="acts"><button class="pill sm">在 Finder 中显示</button></div></div>
+<div class="notice warn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17h.01"/></svg><div class="b">本月预算用了 82%，按现在的速度 9 月 24 日会用完。</div><div class="acts"><button class="pill sm">调预算</button></div></div>
+<div class="notice bad"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg><div class="b"><b>识别服务连不上。</b>检查一下密钥有没有过期。</div><div class="acts"><button class="pill sm">去设置</button><button class="icon-btn" aria-label="关闭">×</button></div></div>
+</div>
+<div class="two" style="margin-top:16px">
+<div class="box"><details class="disclosure" open><summary>为什么这段被拿掉了</summary><div class="dbody">这 40 秒里你们在等咖啡，没有一句和主题有关的话。拿掉之后前后能接上。</div></details><details class="disclosure"><summary>高级设置</summary><div class="dbody">收起来的。</div></details></div>
+<div class="box"><div class="steps"><span class="st done"><i>✓</i>选文件夹</span><span class="ln done"></span><span class="st on"><i>2</i>确认设置</span><span class="ln"></span><span class="st"><i>3</i>开始剪</span></div></div>
+</div></section>
+
+<section class="kit-sec" id="h"><h2>页头与壳</h2><p>页头：标题、副题灰字、右侧元信息或动作；开着详情时标题左边有返回箭头。壳：导航岛 60、内容区、辅助岛 360，窗口边距 16。1200 以下辅助岛收起、从导航岛的按钮打开成抽屉（.aux.drawer.is-open）；720 以下导航变底部 Tab，图标下面有字。</p>
+<div class="box wide">
+<div class="head" style="margin-bottom:24px"><div class="title-row"><button class="back">‹</button><h1 class="h">第 48 期 · 和一位独立开发者聊本地模型</h1><span class="sub">返回今天 ⌘←</span></div><div class="actions" style="display:flex;gap:8px"><button class="pill">先听</button><button class="pill on">剪这期</button></div></div>
+<div class="crumbs"><span>素材</span><span>/</span><span>2026-09-15</span><span>/</span><b>第 48 期</b></div>
+<div class="shell-mini" style="margin-top:24px"><i></i><span class="c">内容区 · 两侧留白 64</span><i></i></div>
+</div></section>
+
+<section class="kit-sec" id="a"><h2>Agent 零件</h2><p>消息在右、回复在左不带气泡；过程行常显、结果收起可展开；提问用输入框上方升起的抽屉；审批卡说清改什么；输入框带权限片和模型片。</p>
+<div class="kit-row" style="align-items:flex-start">
+<div class="demo-agent">
+<div class="aux-h"><b>助手</b><span>今天的素材</span></div>
+<div class="msg">第 48 期能不能剪成 8 分钟？</div>
+<div class="reply">能。这期有三段可以整段拿掉，拿掉之后正好 8 分 20 秒。
+<div class="step"><span class="st ok">✓</span>读 47 个文件的转写<span class="sum">2.1 万字</span></div>
+<div class="step"><span class="st run">●</span>找重复段落<span class="sum">跑着</span></div>
+<div class="step"><span class="st bad">✕</span>读 raw/03.wav<span class="sum">读不出时长</span></div>
+<div class="step-body">ffprobe: Invalid data found when processing input
+raw/03.wav</div>
+</div>
+<div class="approve"><small>助手想改一个文件</small><div class="what">edit · scripts/第48期.md（+3 −1）</div><div class="acts"><button class="pill on sm">允许 ⏎</button><button class="pill sm">拒绝 Esc</button><span class="link">本会话都允许</span></div></div>
+<div class="ask"><small>助手在问</small><div class="q">开头的设备闲聊要留吗？</div><div class="opt on"><i>1</i>整段拿掉</div><div class="opt is-hover"><i>2</i>留 30 秒当开场</div><div class="opt"><i>3</i>其他，我来说</div><div class="keys">↑↓ 选择 · ⏎ 确认 · Esc 跳过</div></div>
+<div class="composer"><textarea class="ta" rows="1" placeholder="说点什么"></textarea><div class="bar"><button class="chip-btn warn">完全访问</button><button class="chip-btn">GLM 5.3 · 高</button><button class="send">↑</button></div></div>
+<div class="composer"><textarea class="ta" rows="1" placeholder="跑着的时候，发送变成停止"></textarea><div class="bar"><span class="s t3" style="display:inline-flex;align-items:center;gap:6px"><span class="dot acc live" style="width:6px;height:6px"></span>正在跑 ffprobe</span><button class="send stop" aria-label="停止">■</button></div></div>
+</div>
+<div class="box" style="width:360px"><div class="kit-row"><span class="lab">权限片</span></div><div class="kit-row"><span class="chip-btn" style="height:26px;padding:0 10px;border-radius:999px;background:var(--island-3);color:var(--t2);font-size:12px;display:inline-flex;align-items:center">只读</span><span class="chip-btn" style="height:26px;padding:0 10px;border-radius:999px;background:var(--island-3);color:var(--text);font-size:12px;display:inline-flex;align-items:center">改前先问</span><span style="height:26px;padding:0 10px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:12px;display:inline-flex;align-items:center">完全访问</span></div><div class="kit-row" style="margin-top:16px"><span class="lab">运行态</span></div><div class="kit-row"><span class="s t2">思考中…</span><span class="s t2"><span class="dot acc" style="width:6px;height:6px"></span> 正在跑 ffprobe</span><span class="s t3">你按了停止，这一轮到这里为止</span></div><div class="kit-row" style="margin-top:16px"><span class="lab">会话菜单</span></div><div class="menu" style="min-width:300px"><div class="mh">当前 · 这篇稿</div><button class="mi">第 48 期 · 剪成 8 分钟<span class="k">10:12</span></button><div class="mh">历史</div><button class="mi">导入素材的问题<span class="k">昨天 18:40</span></button><button class="mi">开新会话<span class="k">⌘N</span></button></div></div>
+</div></section>
+<section class="kit-sec" id="x"><h2>交互约定</h2><p>这些不是零件，是每个零件都遵守的规矩。base.css 已经照做，自己的体系也要做到。</p>
+<div class="box wide"><div class="rows">
+<div class="row"><span class="dot"></span><div><div class="tt">可点的用 button 或 a</div><div class="ss">芯片、勾选、选项、菜单项、导航项、列表行的动作都是 button；状态写在 aria-checked / aria-pressed / aria-current / aria-selected 上，样式跟着属性走</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">每个可点的东西有五态</div><div class="ss">默认、悬停、按下（缩 3% 或再升一级）、键盘焦点（强调色环）、禁用（45% 透明、不响应）；加载中的按钮字隐掉换圈、不可再点</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">悬停才出现的东西，触屏上常显</div><div class="ss">行动作、图片格勾选、图层小眼睛、修剪柄：@media (hover: none) 里全部 opacity 1</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">点击目标至少 40，手机上 44</div><div class="ss">视觉上可以小（手柄 8、播放头 1px），点击范围要大：用 ::after 加一层透明的热区</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">键盘走得通</div><div class="ss">Tab 到每个控件；菜单、选项用 ↑↓ 选 ⏎ 确认 Esc 关；对话框开着焦点锁在里面、关了回到触发它的按钮；快捷键有 kbd 提示</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">反馈不只靠颜色</div><div class="ss">成功 / 警告 / 失败配文字或图标；状态改变用 role=status 或 aria-live 念出来；表单错误红环加一句话，说清怎么改</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">只有不可逆的操作弹确认</div><div class="ss">删除、覆盖、花钱弹对话框，按钮写动词（"删掉"不是"确定"）；能撤销的不弹，做完给提示条带"撤销"</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">等待有交代</div><div class="ss">小于 1 秒不显示；1 到 3 秒骨架或加载圈；更久要进度和剩余时间，能取消</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">每个列表有三种态</div><div class="ss">空（首日）、加载中（骨架）、出错（一句话加重试）；不是只有有数据的样子</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">窄屏有安排</div><div class="ss">收起的辅助岛能从导航打开成抽屉；对话框和菜单变底部面板；底部 Tab 有字；输入聚焦时不被键盘挡住</div></div><div class="rr"></div></div>
+<div class="row"><span class="dot"></span><div><div class="tt">动效 140 毫秒、只用于悬停选中展开</div><div class="ss">prefers-reduced-motion 时全部关掉；进度条宽度过渡 300 毫秒</div></div><div class="rr"></div></div>
+</div></div></section>
+</div>
+<div class="note"><span class="tag">UI Kit · 数据均为虚构</span></div>
+<script>
+  const root = document.documentElement, btn = document.getElementById('theme');
+  let saved = null; try { saved = localStorage.getItem('theme'); } catch {}
+  if (saved) root.dataset.theme = saved;
+  btn.onclick = () => { const dark = root.dataset.theme ? root.dataset.theme === 'dark' : !matchMedia('(prefers-color-scheme: light)').matches; root.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('theme', root.dataset.theme); } catch {} };
+</script>
+</body>
+</html>
