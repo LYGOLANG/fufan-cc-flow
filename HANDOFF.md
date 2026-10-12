@@ -56,13 +56,24 @@ typecheck 0、lint 0 error、测试 207+139 全过；六项后端真实请求验
 接口调用命中；server-dist 里新写路由逻辑(resolveWriteTarget 等)命中
 9 处、`express.json({ limit: "15mb" })` 修复命中。
 
+### v0.1.58 已发布上线
+https://github.com/LYGOLANG/fufan-cc-flow-releases/releases/tag/v0.1.58
+
+**纠正**：上一版实际线上最新是 v0.1.56（不是 v0.1.57——v0.1.57 打包后
+没发就转去做编辑功能了），所以这次发布说明覆盖的是 v0.1.56→v0.1.58
+两版的全部对外差异：文件直接编辑、产品经理模板升级（终态六件套）、
+标签栏横向滚动修复、模型适配（思考开关隐藏/推理力度按模型记忆/Fable
+限流降级）。见 `release/notes-0.1.58.md`。
+
+发布后从公开端点实测（不是拿上传返回码当验证）：
+`releases/latest/download/latest.json` HTTP 200、version=0.1.58、
+签名与 url 与本地逐字一致、安装包 HTTP 200 且 Content-Length
+123640845 与本地相同、前 1MB 哈希一致。
+
 ### 下一步
 1. **装机由用户执行** —— 本会话跑在 Agent Flow sidecar 里，装新版会
-   自断会话。
-2. 发布等用户拍板：
-   `gh release create v0.1.58 --repo LYGOLANG/fufan-cc-flow-releases --title "v0.1.58" --notes-file <说明文件> "release/updates/AgentFlow_0.1.58_x64-setup.exe" "release/updates/latest.json"`
-   上一版线上是 v0.1.57，发布说明按对外净差异写：代码查看器加编辑能力、
-   Express body 限制 100KB→15MB。
+   自断会话。也可以等应用自己弹更新提示。
+2. 本轮已无待办。工作区干净，所有改动均已提交推送。
 
 ---
 
