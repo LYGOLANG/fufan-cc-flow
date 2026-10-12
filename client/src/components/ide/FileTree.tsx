@@ -135,6 +135,9 @@ export default function FileTree({ onFileClickOverride }: { onFileClickOverride?
     openFile,
     setSearchQuery,
     searchFiles,
+    isEditing,
+    editingContent,
+    openFileContent,
   } = useFileStore();
   const projectPath = useUIStore((s) => s.projectPath);
   const setRightPanelOpen = useUIStore((s) => s.setRightPanelOpen);
@@ -169,6 +172,10 @@ export default function FileTree({ onFileClickOverride }: { onFileClickOverride?
 
   const handleFileClick = useCallback(
     (filePath: string) => {
+      // 正在编辑另一个文件时随手点树里别的节点,editingContent 会被
+      // openFile 直接清空——和关闭按钮同一个陷阱,拦一下。
+      const isDirty = isEditing && editingContent !== null && editingContent !== openFileContent?.content;
+      if (isDirty && !window.confirm("当前文件有未保存的改动，切换会丢失，确定继续吗？")) return;
       if (onFileClickOverride) {
         openFile(filePath);
         onFileClickOverride(filePath);
@@ -177,7 +184,7 @@ export default function FileTree({ onFileClickOverride }: { onFileClickOverride?
         setRightPanelOpen(true);
       }
     },
-    [onFileClickOverride, openFile, setRightPanelOpen]
+    [onFileClickOverride, openFile, setRightPanelOpen, isEditing, editingContent, openFileContent]
   );
 
   const handleSearch = useCallback(

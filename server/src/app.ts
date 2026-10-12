@@ -26,7 +26,12 @@ app.use(
     },
   })
 );
-app.use(express.json());
+// 默认 100KB 的上限对聊天消息够用,但文件保存接口(PUT /files/content)
+// 常规源码/文档文件轻松超过——实测刚踩中:11MB 的保存被这层拦下,报的是
+// Express 通用的 "request entity too large",而不是业务层那条更友好的
+// "内容过大"。15MB 留出余量,让 10MB 的业务上限真正先触发(见 files.ts
+// 的 WRITE_CONTENT_MAX_BYTES),Express 这层只兜底挡住明显异常的超大请求。
+app.use(express.json({ limit: "15mb" }));
 
 // Request logger — 只记录路径,丢弃 query string。
 // query 里可能带敏感值:/system/proxy-save?https=http://user:pass@host 会把

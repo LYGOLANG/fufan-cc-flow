@@ -213,6 +213,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ oldPath, newPath, projectRoot }),
     }),
+  // projectRoot 必填:写操作的范围比读更紧,只能落在项目内(见后端 resolveWriteTarget)。
+  saveFileContent: (filePath: string, content: string, projectRoot: string) =>
+    request<{ path: string; size: number }>("/files/content", {
+      method: "PUT",
+      body: JSON.stringify({ filePath, content, projectRoot }),
+    }),
   deleteFile: (filePath: string, projectRoot?: string) =>
     request<{ success: boolean }>("/files/delete", {
       method: "DELETE",

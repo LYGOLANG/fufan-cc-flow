@@ -111,6 +111,36 @@ router.get("/content", async (req, res) => {
   }
 });
 
+// 项目浏览器打开文件此前只能看、不能编辑——没有任何写回接口。
+// 10MB 够绝大多数源码/文档文件,挡住误粘超大内容撑爆编辑器和网络请求。
+const WRITE_CONTENT_MAX_BYTES = 10 * 1024 * 1024;
+
+// PUT /api/files/content  body: { filePath: string, content: string, projectRoot: string }
+//
+// 和 /create 一样用 resolveWriteTarget:projectRoot 必填且强制校验,不走
+// GET /content 那套读侧的多根回退(项目根 ∪ Claude/Codex 配置目录)——写操作
+// 的范围本就该比读更紧,这是本文件其它写接口已经立好的规矩,这里跟随。
+router.put("/content", async (req, res) => {
+  const content = req.body?.content;
+  if (typeof content !== "string") {
+    return res.status(400).json({ error: "content 必须是字符串" });
+  }
+  if (Buffer.byteLength(content, "utf-8") > WRITE_CONTENT_MAX_BYTES) {
+    return res.status(413).json({ error: "内容过大" });
+  }
+  try {
+    const normalized = resolveWriteTarget(req.body?.filePath, req.body?.projectRoot, "filePath");
+    if (SENSITIVE_BASENAMES.has(path.basename(normalized).toLowerCase())) {
+      return res.status(403).json({ error: "该文件包含凭据,不允许通过此接口写入" });
+    }
+    await fs.writeFile(normalized, content, "utf-8");
+    const stat = await fs.stat(normalized);
+    return res.json({ path: normalized, size: stat.size });
+  } catch (err) {
+    res.status(statusOf(err)).json({ error: messageOf(err, "保存失败") });
+  }
+});
+
 // GET /api/files/raw?path=<abs-or-rel>&base=<projectRoot>
 // 以原始字节流返回本地媒体文件,供聊天界面内联展示会话中生成的图片/视频/音频。
 // 仅允许媒体扩展名;相对路径按 base(项目根)解析。
