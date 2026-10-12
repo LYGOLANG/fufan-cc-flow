@@ -47,8 +47,22 @@ typecheck 0、lint 0 error、测试 207+139 全过；六项后端真实请求验
 自己的"关闭标签"按钮一起命中（那个是 `<span>`，这个是 `<button>`），
 必须用标签名 `button[title="关闭"]` 精确限定。
 
+### v0.1.58 已打包（未安装、未发布）
+`release/updates/AgentFlow_0.1.58_x64-setup.exe`，123,640,845 字节，
+验签通过（alg=ED, keyid=19d9f96e097fbd06）。
+
+产物内容核对（不是"应该在"，是 grep 到的）：前端 bundle 里两条确认
+文案（FileViewModal 关闭确认、FileTree 切换文件确认）都命中、保存
+接口调用命中；server-dist 里新写路由逻辑(resolveWriteTarget 等)命中
+9 处、`express.json({ limit: "15mb" })` 修复命中。
+
 ### 下一步
-1. 打包 v0.1.58。
+1. **装机由用户执行** —— 本会话跑在 Agent Flow sidecar 里，装新版会
+   自断会话。
+2. 发布等用户拍板：
+   `gh release create v0.1.58 --repo LYGOLANG/fufan-cc-flow-releases --title "v0.1.58" --notes-file <说明文件> "release/updates/AgentFlow_0.1.58_x64-setup.exe" "release/updates/latest.json"`
+   上一版线上是 v0.1.57，发布说明按对外净差异写：代码查看器加编辑能力、
+   Express body 限制 100KB→15MB。
 
 ---
 
